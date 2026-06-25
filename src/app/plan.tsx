@@ -9,15 +9,17 @@ import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Scre
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { weeklyCostUsd } from '@/lib/budget';
-import { mealVisual } from '@/lib/cuisine';
+import { localizeName, mealVisual } from '@/lib/cuisine';
 import { getDraftHousehold, setDraftHousehold } from '@/lib/draft';
 import { formatLocal } from '@/lib/geo';
 import { generatePlan } from '@/lib/generatePlan';
 import { currentWeekStart, loadHousehold, loadPlan, savePlan, saveHousehold } from '@/lib/store';
 import { usePalette } from '@/theme/use-theme';
-import { MEAL_SLOTS, type DayOfWeek, type Household, type MealPlan, type MealSlot, type PlannedMeal } from '@/types';
+import { MEAL_SLOTS, type DayOfWeek, type Household, type MealPlan, type MealSlot, type PlannedMeal, type Region } from '@/types';
 
 const DAY_ORDER: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
 const SLOT_LABEL: Record<MealSlot, string> = {
   breakfast: 'Breakfast',
@@ -187,7 +189,7 @@ export default function Plan() {
             )}
           </>
         ) : (
-          <GroceryList plan={plan} checked={checked} setChecked={setChecked} />
+          <GroceryList plan={plan} region={household.region} checked={checked} setChecked={setChecked} />
         )}
       </ScrollView>
 
@@ -206,7 +208,7 @@ export default function Plan() {
         </Small>
       </View>
 
-      <RecipeModal meal={selected} onClose={() => setSelected(null)} />
+      <RecipeModal meal={selected} region={household.region} onClose={() => setSelected(null)} />
     </Screen>
   );
 }
@@ -313,7 +315,7 @@ const DAY_FULL: Record<DayOfWeek, string> = {
 };
 
 /** Bottom-sheet recipe detail: hero, meta, ingredients, numbered steps. */
-function RecipeModal({ meal, onClose }: { meal: PlannedMeal | null; onClose: () => void }) {
+function RecipeModal({ meal, region, onClose }: { meal: PlannedMeal | null; region: Region; onClose: () => void }) {
   const palette = usePalette();
   if (!meal) return null;
   const { emoji, colors } = mealVisual(meal.name, meal.ingredients);
@@ -361,7 +363,9 @@ function RecipeModal({ meal, onClose }: { meal: PlannedMeal | null; onClose: () 
               <View style={styles.tagRow}>
                 {meal.ingredients.map((ing) => (
                   <View key={ing} style={[styles.tag, { borderColor: palette.border, backgroundColor: palette.card }]}>
-                    <Text style={{ fontFamily: Type.bodyMedium, fontSize: 13, color: palette.text }}>{ing}</Text>
+                    <Text style={{ fontFamily: Type.bodyMedium, fontSize: 13, color: palette.text }}>
+                      {localizeName(ing, region)}
+                    </Text>
                   </View>
                 ))}
               </View>
@@ -403,10 +407,12 @@ function MetaPill({ label, value }: { label: string; value: string }) {
 
 function GroceryList({
   plan,
+  region,
   checked,
   setChecked,
 }: {
   plan: MealPlan;
+  region: Region;
   checked: Record<string, boolean>;
   setChecked: (fn: (prev: Record<string, boolean>) => Record<string, boolean>) => void;
 }) {
@@ -455,7 +461,7 @@ function GroceryList({
                         textDecorationLine: on ? 'line-through' : 'none',
                       }}
                     >
-                      {item.name}
+                      {cap(localizeName(item.name, region))}
                     </Text>
                     <Small>{item.quantity}</Small>
                   </View>

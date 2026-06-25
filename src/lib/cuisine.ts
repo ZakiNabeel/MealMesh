@@ -41,6 +41,63 @@ interface StepCtx {
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+/* ------------------------------------------------------------------ */
+/* Local-language food names (DISPLAY ONLY)                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Region → { canonical English (lowercase) : local name }. Used only to make
+ * dish names, recipe steps and ingredient labels read in the household's own
+ * food language (aloo, not potato). The constraint engine never sees these —
+ * `ingredients` stay canonical English so the safety lexicon still matches.
+ */
+const LOCAL_NAMES: Partial<Record<Region, Record<string, string>>> = {
+  south_asian: {
+    chicken: 'murghi',
+    lamb: 'gosht',
+    goat: 'bakra',
+    beef: 'beef',
+    eggs: 'anday',
+    'white fish (cod/tilapia)': 'machli',
+    salmon: 'machli',
+    shrimp: 'jhinga',
+    lentils: 'daal',
+    chickpeas: 'chanay',
+    'kidney beans': 'rajma',
+    'white rice': 'chawal',
+    'brown rice': 'chawal',
+    rice: 'chawal',
+    'whole wheat bread': 'roti',
+    bread: 'roti',
+    potato: 'aloo',
+    spinach: 'palak',
+    cauliflower: 'gobi',
+    carrot: 'gajar',
+    zucchini: 'tori',
+    cucumber: 'kheera',
+    tomato: 'tamatar',
+    tomatoes: 'tamatar',
+    'bell pepper': 'shimla mirch',
+    onion: 'pyaaz',
+    garlic: 'lehsun',
+    ginger: 'adrak',
+    'green chili': 'hari mirch',
+    yogurt: 'dahi',
+    'greek yogurt': 'dahi',
+    paneer: 'paneer',
+    greens: 'saag',
+    'seasonal vegetables': 'sabzi',
+    'mixed beans': 'lobia',
+  },
+};
+
+/** Localize a single canonical food name for display. Falls back to the original. */
+export function localizeName(name: string, region: Region): string {
+  const map = LOCAL_NAMES[region];
+  if (!map) return name;
+  return map[name.trim().toLowerCase()] ?? name;
+}
+
 /* --- South Asian: the richest set (the founder's home market) ------ */
 
 const SOUTH_ASIAN: DishStyle[] = [
@@ -509,13 +566,25 @@ export function buildRegionalMeal(input: RegionalMealInput): RegionalMeal {
   const style = pool[seed % pool.length];
 
   const safeAromatics = style.aromatics.filter(isSafe);
-  const aromaticsText = safeAromatics.length ? joinList(safeAromatics) : `a little extra ${fat}`;
+  // Localize only the words shown to the user (name + steps); `extras` returned
+  // for the ingredient list stay canonical so the safety engine still matches.
+  const loc = (s: string) => localizeName(s, region);
+  const lAromatics = safeAromatics.map(loc);
+  const aromaticsText = lAromatics.length ? joinList(lAromatics) : `a little extra ${loc(fat)}`;
   const spicesText = joinList(style.spices);
 
-  const ctx: StepCtx = { p: protein, g: grain, v: veg, v2: veg2, fat, aromatics: aromaticsText, spices: spicesText };
+  const ctx: StepCtx = {
+    p: loc(protein),
+    g: loc(grain),
+    v: loc(veg),
+    v2: loc(veg2),
+    fat: loc(fat),
+    aromatics: aromaticsText,
+    spices: spicesText,
+  };
 
   return {
-    name: style.name(protein, grain, veg),
+    name: style.name(loc(protein), loc(grain), loc(veg)),
     cuisine: CUISINE_LABEL[region] ?? 'Everyday',
     extras: safeAromatics,
     recipe: {

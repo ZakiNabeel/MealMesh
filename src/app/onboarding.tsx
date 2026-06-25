@@ -3,12 +3,13 @@ import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Art } from '@/components/art';
+import { CountryPicker } from '@/components/CountryPicker';
 import { Body, Button, Chip, Eyebrow, Heading, PressableScale, ProgressBar, Reveal, Screen, Small } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { constraintsByCategory, makeConstraint } from '@/lib/constraints';
 import { REGIONS } from '@/lib/dietLibrary';
 import { setDraftHousehold } from '@/lib/draft';
-import { COUNTRIES, countryByCode } from '@/lib/geo';
+import { countryByCode } from '@/lib/geo';
 import { usePalette } from '@/theme/use-theme';
 import type { AgeBand, ConstraintCategory, ConstraintKey, Household, Member, Region } from '@/types';
 
@@ -148,20 +149,13 @@ export default function Onboarding() {
               />
               <View style={{ gap: Spacing.two }}>
                 <Body color={palette.textSecondary}>Where do you shop? (sets your currency)</Body>
-                <View style={styles.wrap}>
-                  {COUNTRIES.map((c) => (
-                    <Chip
-                      key={c.code}
-                      label={`${c.flag} ${c.label}`}
-                      tone="blue"
-                      selected={country === c.code}
-                      onPress={() => {
-                        setCountry(c.code);
-                        setRegion(c.region); // pre-pick a cuisine; user can change below
-                      }}
-                    />
-                  ))}
-                </View>
+                <CountryPicker
+                  value={country}
+                  onSelect={(code) => {
+                    setCountry(code);
+                    setRegion(countryByCode(code).region); // pre-pick a cuisine; user can change below
+                  }}
+                />
               </View>
               <View style={{ gap: Spacing.two }}>
                 <Body color={palette.textSecondary}>Lean the plan toward a cuisine?</Body>
