@@ -1,0 +1,6 @@
+{
+  "imports": {
+    "@/types": "../../../src/types/index.ts",
+    "@/lib/dietLibrary": "../../../src/lib/dietLibrary.ts"
+  }
+}

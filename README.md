@@ -1,56 +1,58 @@
-# Welcome to your Expo app 👋
+# MealMesh
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+**One household. Many diets. One plan. One grocery list.**
 
-## Get started
+MealMesh generates a single weekly meal plan for a whole household whose members
+have **different dietary needs** (halal, gluten-free, vegan, nut allergy,
+diabetic, …), plus one consolidated grocery list. The multi-profile
+constraint-merging engine is the product and the moat.
 
-1. Install dependencies
+## How it works
 
-   ```bash
-   npm install
-   ```
+1. **Onboard** a household — add members, tap each person's diets/allergens,
+   pick a regional cuisine.
+2. The **constraint engine** ([src/lib/constraints.ts](src/lib/constraints.ts))
+   merges every member into `HARD_EXCLUDE` (never allowed — safety),
+   `SOFT_AVOID`, and a positive `ALLOW` pantry.
+3. A **Supabase Edge Function** ([supabase/functions/generate-plan](supabase/functions/generate-plan))
+   sends that structured data to **Claude** (`claude-haiku-4-5`) and gets back a
+   7-day plan with recipes.
+4. A **deterministic safety pass** re-validates every meal in code — a plan that
+   contains any member's hard-excluded ingredient is never shown.
 
-2. Start the app
+## Tech stack
 
-   ```bash
-   npx expo start
-   ```
+- **Expo + React Native (TypeScript)** — one codebase → iOS, Android, web/PWA
+- **Expo Router** — file-based routing, SPA web output
+- **Supabase** — Postgres + Auth (magic link + Google) + Row Level Security
+- **Anthropic Claude API** — plan generation, proxied server-side (key never ships to the client)
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Run locally
 
 ```bash
-npm run reset-project
+npm install
+cp .env.example .env      # fill in your Supabase URL + anon key
+npm run web               # http://localhost:8081
+npm test                  # constraint-engine safety tests
+npm run typecheck
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Deploy (web)
 
-### Other setup steps
+The web build is a static SPA exported with `npm run build` (→ `dist/`) and
+deployed on Vercel. Set `EXPO_PUBLIC_SUPABASE_URL` and
+`EXPO_PUBLIC_SUPABASE_ANON_KEY` as Vercel environment variables.
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+The Edge Function is deployed separately:
 
-## Learn more
+```bash
+supabase functions deploy generate-plan
+supabase secrets set ANTHROPIC_API_KEY=sk-ant-...   # server-only secret
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+## Safety is non-negotiable
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+A meal plan must **never** include an ingredient in any member's hard-exclude
+set (allergens, religious prohibitions). This is enforced deterministically in
+code, not left to the model. See [docs/MealMesh-context.md](docs/MealMesh-context.md)
+for the full product spec.

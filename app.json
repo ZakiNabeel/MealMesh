@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "temp-init",
-    "slug": "temp-init",
-    "version": "1.0.0",
+    "name": "MealMesh",
+    "slug": "mealmesh",
+    "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "tempinit",
+    "scheme": "mealmesh",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
@@ -20,7 +20,7 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [

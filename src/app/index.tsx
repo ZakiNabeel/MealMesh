@@ -1,98 +1,91 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Art } from '@/components/art';
+import { MeshMark } from '@/components/MeshMark';
+import { Body, Button, Display, Eyebrow, Reveal, Screen, Small } from '@/components/ui';
+import { Spacing, Type } from '@/constants/theme';
+import { usePalette } from '@/theme/use-theme';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+const SAMPLE_DIETS = ['Halal', 'Gluten-free', 'Vegan', 'Nut allergy', 'Diabetic'];
+
+export default function Welcome() {
+  const router = useRouter();
+  const palette = usePalette();
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+    <Screen art={Art.rice}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+      >
+        <View style={styles.hero}>
+          <Reveal style={{ alignItems: 'center' }}>
+            <MeshMark size={116} />
+          </Reveal>
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+          <Reveal delay={120}>
+            <Eyebrow style={{ textAlign: 'center' }}>MealMesh</Eyebrow>
+          </Reveal>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+          <Reveal delay={220} style={styles.headlineWrap}>
+            <Display style={styles.headline}>One household.{'\n'}Many diets. One plan.</Display>
+          </Reveal>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
+          <Reveal delay={340} style={styles.subWrap}>
+            <Body color={palette.textSecondary} style={styles.sub}>
+              One weekly meal plan that works for everyone at the table — and a single grocery list to match.
+            </Body>
+          </Reveal>
+
+          <Reveal delay={460} style={styles.tags}>
+            {SAMPLE_DIETS.map((d, i) => (
+              <View
+                key={d}
+                style={[
+                  styles.tag,
+                  { backgroundColor: palette.card, borderColor: i % 2 === 1 ? palette.blueMuted : palette.border },
+                ]}
+              >
+                <View style={[styles.tagDot, { backgroundColor: i % 2 === 1 ? palette.blue : palette.accent }]} />
+                <Small color={palette.text} style={{ fontFamily: Type.bodyMedium }}>
+                  {d}
+                </Small>
+              </View>
+            ))}
+          </Reveal>
+        </View>
+
+        <Reveal delay={580} style={styles.actions}>
+          <Button title="Build our plan" onPress={() => router.push('/onboarding')} />
+          <Button
+            title="I already have an account"
+            variant="secondary"
+            onPress={() => router.push('/auth')}
           />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+        </Reveal>
+      </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
+  scroll: { flexGrow: 1, justifyContent: 'space-between', paddingVertical: Spacing.four, gap: Spacing.five },
+  hero: { alignItems: 'center', justifyContent: 'center', gap: Spacing.three, paddingTop: Spacing.three },
+  headlineWrap: { paddingHorizontal: Spacing.two },
+  headline: { textAlign: 'center' },
+  subWrap: { paddingHorizontal: Spacing.three },
+  sub: { textAlign: 'center' },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.two, paddingHorizontal: Spacing.two },
+  tag: {
     flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
+  tagDot: { width: 7, height: 7, borderRadius: 7 },
+  actions: { gap: Spacing.two },
 });
