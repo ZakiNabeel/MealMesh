@@ -12,7 +12,7 @@
  * `validatePlan` pass still has the final word on the assembled ingredients.
  */
 
-import type { Recipe, Region } from '@/types';
+import type { MealSlot, Recipe, Region } from '@/types';
 
 /* ------------------------------------------------------------------ */
 /* Dish blueprints                                                    */
@@ -375,6 +375,91 @@ const STYLES_BY_REGION: Record<Region, DishStyle[]> = {
   none: GLOBAL,
 };
 
+/* --- Breakfasts: a South Asian set + a global set ------------------ */
+
+// Breakfast blueprints use the same ${p}/${g}/${v} placeholders as the mains so
+// the name, steps and ingredient list always agree (no "whisk eggs" when the
+// protein is lamb). mockPlan biases the breakfast protein toward eggs when the
+// household allows them, so these usually read as anda/egg dishes.
+const SOUTH_ASIAN_BREAKFAST: DishStyle[] = [
+  {
+    name: (p, _g, _v) => `${cap(p)} bhurji`,
+    aromatics: ['onion', 'green chili', 'tomatoes'],
+    spices: ['cumin', 'red chili powder', 'coriander'],
+    steps: ({ p, g, fat, aromatics, spices }) => [
+      `Heat ${fat} and fry ${aromatics} until soft.`,
+      `Stir in ${spices}, then add the ${p}.`,
+      `Cook into a soft, spiced bhurji (scramble).`,
+      `Warm the ${g} (paratha, roti or toast).`,
+      `Serve hot with chai.`,
+    ],
+  },
+  {
+    name: (p, _g, v) => `Masala ${p} with ${v}`,
+    aromatics: ['onion', 'ginger', 'tomatoes'],
+    spices: ['cumin', 'turmeric', 'garam masala'],
+    steps: ({ p, g, v, fat, aromatics, spices }) => [
+      `Sauté ${aromatics} in ${fat} until soft.`,
+      `Add ${spices} and the ${p} with a splash of water.`,
+      `Stir through ${v} and simmer until thick.`,
+      `Warm the ${g}.`,
+      `Serve together, topped with coriander.`,
+    ],
+  },
+  {
+    name: (_p, g, _v) => `Spiced ${g} porridge`,
+    aromatics: [],
+    spices: ['cardamom', 'cinnamon'],
+    steps: ({ g, spices }) => [
+      `Simmer the ${g} with milk (or a dairy-free alternative) and ${spices}.`,
+      `Cook low and slow until creamy.`,
+      `Sweeten lightly to taste.`,
+      `Top with fruit if allowed.`,
+      `Serve warm.`,
+    ],
+  },
+];
+
+const GLOBAL_BREAKFAST: DishStyle[] = [
+  {
+    name: (p, _g, v) => `${cap(p)} & ${v} scramble`,
+    aromatics: ['onion', 'tomatoes'],
+    spices: ['black pepper'],
+    steps: ({ p, g, v, fat, aromatics, spices }) => [
+      `Soften ${aromatics} and ${v} in ${fat}.`,
+      `Add the ${p} and ${spices}.`,
+      `Cook gently until just set.`,
+      `Serve with the ${g} (toast or flatbread).`,
+    ],
+  },
+  {
+    name: (_p, g, _v) => `${cap(g)} breakfast bowl`,
+    aromatics: [],
+    spices: ['cinnamon'],
+    steps: ({ g, spices }) => [
+      `Cook the ${g} with milk or water and ${spices}.`,
+      `Simmer until soft and creamy.`,
+      `Top with fruit or seeds if allowed.`,
+      `Serve warm.`,
+    ],
+  },
+  {
+    name: (p, _g, v) => `${cap(v)} & ${p} plate`,
+    aromatics: ['garlic'],
+    spices: ['black pepper'],
+    steps: ({ p, g, v, v2, fat, aromatics, spices }) => [
+      `Sauté ${v} and ${v2} with ${aromatics} in ${fat}.`,
+      `Cook the ${p} alongside, seasoned with ${spices}.`,
+      `Plate together.`,
+      `Serve with the ${g}.`,
+    ],
+  },
+];
+
+const BREAKFAST_BY_REGION: Partial<Record<Region, DishStyle[]>> = {
+  south_asian: SOUTH_ASIAN_BREAKFAST,
+};
+
 const CUISINE_LABEL: Record<Region, string> = {
   south_asian: 'South Asian',
   middle_eastern: 'Middle Eastern',
@@ -391,6 +476,7 @@ const CUISINE_LABEL: Record<Region, string> = {
 
 export interface RegionalMealInput {
   region: Region;
+  slot: MealSlot;
   protein: string;
   grain: string;
   veg: string;
@@ -411,8 +497,11 @@ export interface RegionalMeal {
 }
 
 export function buildRegionalMeal(input: RegionalMealInput): RegionalMeal {
-  const { region, protein, grain, veg, veg2, fat, isLegume, seed, isSafe } = input;
-  const styles = STYLES_BY_REGION[region] ?? GLOBAL;
+  const { region, slot, protein, grain, veg, veg2, fat, isLegume, seed, isSafe } = input;
+  const styles =
+    slot === 'breakfast'
+      ? BREAKFAST_BY_REGION[region] ?? GLOBAL_BREAKFAST
+      : STYLES_BY_REGION[region] ?? GLOBAL;
 
   // Prefer a style that suits this protein (e.g. legume-only dishes for lentils).
   const suited = styles.filter((s) => (s.suits ? s.suits(protein, isLegume) : true));

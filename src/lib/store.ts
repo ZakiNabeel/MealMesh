@@ -21,6 +21,8 @@ interface HouseholdRow {
   id: string;
   name: string;
   region_preference: Region;
+  country: string | null;
+  currency: string | null;
 }
 
 interface MemberRow {
@@ -66,7 +68,13 @@ export async function saveHousehold(h: Household): Promise<Household | null> {
 
   const { data: hData, error: hErr } = await supabase
     .from('households')
-    .insert({ owner_user_id: userId, name: h.name, region_preference: h.region })
+    .insert({
+      owner_user_id: userId,
+      name: h.name,
+      region_preference: h.region,
+      country: h.country ?? null,
+      currency: h.currency ?? null,
+    })
     .select('id')
     .single();
   if (hErr || !hData) return null;
@@ -107,7 +115,7 @@ export async function loadHousehold(): Promise<Household | null> {
 
   const { data: hData } = await supabase
     .from('households')
-    .select('id, name, region_preference')
+    .select('id, name, region_preference, country, currency')
     .eq('owner_user_id', userId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -132,7 +140,14 @@ export async function loadHousehold(): Promise<Household | null> {
     ),
   }));
 
-  return { id: household.id, name: household.name, region: household.region_preference, members };
+  return {
+    id: household.id,
+    name: household.name,
+    region: household.region_preference,
+    country: household.country ?? undefined,
+    currency: household.currency ?? undefined,
+    members,
+  };
 }
 
 /* ------------------------------------------------------------------ */

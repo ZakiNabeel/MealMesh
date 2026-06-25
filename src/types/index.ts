@@ -166,6 +166,10 @@ export interface Household {
   id: string;
   name: string;
   region: Region;
+  /** ISO country code (e.g. 'PK', 'US'). Drives currency + budget. */
+  country?: string;
+  /** ISO currency code (e.g. 'PKR', 'USD'). Derived from country. */
+  currency?: string;
   members: Member[];
 }
 
@@ -214,7 +218,10 @@ export type DayOfWeek =
   | 'saturday'
   | 'sunday';
 
-export type MealSlot = 'breakfast' | 'lunch' | 'dinner';
+export type MealSlot = 'breakfast' | 'lunch' | 'supper' | 'dinner';
+
+/** The four daily meals, in order. */
+export const MEAL_SLOTS: MealSlot[] = ['breakfast', 'lunch', 'supper', 'dinner'];
 
 /** Step-by-step cooking guide shown when a meal card is opened. */
 export interface Recipe {

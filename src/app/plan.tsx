@@ -8,21 +8,22 @@ import { MeshMark } from '@/components/MeshMark';
 import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
+import { weeklyCostUsd } from '@/lib/budget';
 import { mealVisual } from '@/lib/cuisine';
 import { getDraftHousehold, setDraftHousehold } from '@/lib/draft';
+import { formatLocal } from '@/lib/geo';
 import { generatePlan } from '@/lib/generatePlan';
 import { currentWeekStart, loadHousehold, loadPlan, savePlan, saveHousehold } from '@/lib/store';
 import { usePalette } from '@/theme/use-theme';
-import type { DayOfWeek, Household, MealPlan, PlannedMeal } from '@/types';
+import { MEAL_SLOTS, type DayOfWeek, type Household, type MealPlan, type MealSlot, type PlannedMeal } from '@/types';
 
-const DAY_LABEL: Record<DayOfWeek, string> = {
-  monday: 'MON',
-  tuesday: 'TUE',
-  wednesday: 'WED',
-  thursday: 'THU',
-  friday: 'FRI',
-  saturday: 'SAT',
-  sunday: 'SUN',
+const DAY_ORDER: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+const SLOT_LABEL: Record<MealSlot, string> = {
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  supper: 'Supper',
+  dinner: 'Dinner',
 };
 
 export default function Plan() {
@@ -164,14 +165,19 @@ export default function Plan() {
           </View>
         ) : tab === 'plan' ? (
           <>
+            <BudgetBanner plan={plan} country={household.country} />
             <Small color={palette.accent} style={{ fontFamily: Type.bodyMedium }}>
               ✓ Every dish checked against your household&apos;s rules
             </Small>
-            {plan.days.map((meal, i) => (
-              <Reveal key={meal.dayOfWeek} delay={i * 50}>
-                <DayCard meal={meal} onPress={() => setSelected(meal)} />
-              </Reveal>
-            ))}
+            {DAY_ORDER.map((day, i) => {
+              const meals = plan.days.filter((m) => m.dayOfWeek === day);
+              if (!meals.length) return null;
+              return (
+                <Reveal key={day} delay={i * 40}>
+                  <DayGroup day={day} meals={meals} onSelect={setSelected} />
+                </Reveal>
+              );
+            })}
             {!session && (
               <GlassCard style={{ gap: Spacing.two, marginTop: Spacing.one }}>
                 <Body style={{ fontFamily: Type.bodySemibold }}>Save this plan</Body>
@@ -220,51 +226,78 @@ function FoodTile({ meal, size = 56 }: { meal: PlannedMeal; size?: number }) {
   );
 }
 
-function DayCard({ meal, onPress }: { meal: PlannedMeal; onPress: () => void }) {
+/** Estimated weekly grocery spend, shown in the household's local currency. */
+function BudgetBanner({ plan, country }: { plan: MealPlan; country?: string }) {
+  const palette = usePalette();
+  const usd = weeklyCostUsd(plan);
+  return (
+    <GlassCard style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three }}>
+      <View style={[styles.budgetIcon, { backgroundColor: palette.accentMuted }]}>
+        <Text style={{ fontSize: 20 }}>🧾</Text>
+      </View>
+      <View style={{ flex: 1 }}>
+        <Eyebrow>Est. weekly groceries</Eyebrow>
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          style={{ fontFamily: Type.displayBold, fontSize: 26, color: palette.text }}
+        >
+          {formatLocal(usd, country)}
+        </Text>
+      </View>
+      <Small color={palette.textSecondary} style={{ maxWidth: 64, textAlign: 'right' }}>
+        approx{'\n'}/ week
+      </Small>
+    </GlassCard>
+  );
+}
+
+/** One day with its four meals (breakfast → dinner) as tappable rows. */
+function DayGroup({
+  day,
+  meals,
+  onSelect,
+}: {
+  day: DayOfWeek;
+  meals: PlannedMeal[];
+  onSelect: (m: PlannedMeal) => void;
+}) {
+  const palette = usePalette();
+  const ordered = MEAL_SLOTS.map((slot) => meals.find((m) => m.slot === slot)).filter(Boolean) as PlannedMeal[];
+  return (
+    <View style={{ gap: Spacing.two }}>
+      <Eyebrow>{DAY_FULL[day]}</Eyebrow>
+      <GlassCard style={{ gap: 0, paddingVertical: Spacing.one, paddingHorizontal: Spacing.one }}>
+        {ordered.map((meal, i) => (
+          <MealRow
+            key={meal.slot}
+            meal={meal}
+            divider={i > 0}
+            onPress={() => onSelect(meal)}
+          />
+        ))}
+      </GlassCard>
+    </View>
+  );
+}
+
+function MealRow({ meal, divider, onPress }: { meal: PlannedMeal; divider: boolean; onPress: () => void }) {
   const palette = usePalette();
   const shared = meal.sharedOrVariant === 'shared';
-  const badgeColor = shared ? palette.accent : palette.blue;
-  const badgeBg = shared ? palette.accentMuted : palette.blueMuted;
-  const tags = meal.satisfies.slice(0, 2);
   return (
-    <PressableScale onPress={onPress} to={0.98}>
-      <GlassCard style={{ gap: Spacing.two }}>
-        <View style={styles.dayTop}>
-          <Eyebrow>{DAY_LABEL[meal.dayOfWeek]}</Eyebrow>
-          <View style={[styles.badge, { backgroundColor: badgeBg }]}>
-            <View style={[styles.badgeDot, { backgroundColor: badgeColor }]} />
-            <Text style={{ fontFamily: Type.bodySemibold, fontSize: 12, color: badgeColor }}>
-              {shared ? 'One shared dish' : 'Simple variations'}
-            </Text>
-          </View>
+    <PressableScale onPress={onPress} to={0.99}>
+      <View style={[styles.mealRow, divider && { borderTopWidth: 1, borderTopColor: palette.border }]}>
+        <FoodTile meal={meal} size={46} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Small color={palette.textSecondary} style={{ fontFamily: Type.bodySemibold }}>
+            {SLOT_LABEL[meal.slot]}
+          </Small>
+          <Text numberOfLines={1} style={{ fontFamily: Type.display, fontSize: 16, color: palette.text }}>
+            {meal.name}
+          </Text>
         </View>
-        <View style={{ flexDirection: 'row', gap: Spacing.three, alignItems: 'center' }}>
-          <FoodTile meal={meal} />
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text style={{ fontFamily: Type.display, fontSize: 18, lineHeight: 23, color: palette.text }}>{meal.name}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two, flexWrap: 'wrap' }}>
-              {meal.cuisine && <Small color={palette.accent}>{meal.cuisine}</Small>}
-              {meal.recipe && <Small>· {meal.recipe.timeMinutes} min · recipe ›</Small>}
-            </View>
-          </View>
-        </View>
-        {tags.length > 0 && (
-          <View style={styles.tagRow}>
-            {tags.map((k) => (
-              <View key={k} style={[styles.tag, { borderColor: palette.border }]}>
-                <Text style={{ fontFamily: Type.bodyMedium, fontSize: 12, color: palette.textSecondary }}>
-                  ✓ {k.replace(/_/g, ' ')}
-                </Text>
-              </View>
-            ))}
-            {meal.satisfies.length > 2 && (
-              <Text style={{ fontFamily: Type.bodyMedium, fontSize: 12, color: palette.textSecondary, alignSelf: 'center' }}>
-                +{meal.satisfies.length - 2}
-              </Text>
-            )}
-          </View>
-        )}
-      </GlassCard>
+        <View style={[styles.dot, { backgroundColor: shared ? palette.accent : palette.blue }]} />
+      </View>
     </PressableScale>
   );
 }
@@ -296,7 +329,10 @@ function RecipeModal({ meal, onClose }: { meal: PlannedMeal | null; onClose: () 
 
           <View style={{ padding: Spacing.four, gap: Spacing.three }}>
             <View style={{ gap: 4 }}>
-              {meal.cuisine && <Eyebrow>{meal.cuisine} · {DAY_FULL[meal.dayOfWeek]}</Eyebrow>}
+              <Eyebrow>
+                {SLOT_LABEL[meal.slot]} · {DAY_FULL[meal.dayOfWeek]}
+                {meal.cuisine ? ` · ${meal.cuisine}` : ''}
+              </Eyebrow>
               <Heading>{meal.name}</Heading>
             </View>
 
@@ -447,6 +483,9 @@ const styles = StyleSheet.create({
   groceryRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.three, paddingHorizontal: Spacing.three },
   check: { width: 24, height: 24, borderRadius: 8, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   footer: { paddingVertical: Spacing.three },
+  budgetIcon: { width: 44, height: 44, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' },
+  mealRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.two, paddingHorizontal: Spacing.two },
+  dot: { width: 8, height: 8, borderRadius: 8 },
   scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
   sheet: {
     position: 'absolute',

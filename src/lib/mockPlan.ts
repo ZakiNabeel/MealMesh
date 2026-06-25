@@ -14,7 +14,7 @@
 
 import { analyzeIngredient, deriveAllowList, unionHardExclusions, validatePlan } from '@/lib/constraints';
 import { buildRegionalMeal } from '@/lib/cuisine';
-import type { ConstraintKey, DayOfWeek, GroceryItem, Household, MealPlan, PlannedMeal, Token } from '@/types';
+import { MEAL_SLOTS, type ConstraintKey, type DayOfWeek, type GroceryItem, type Household, type MealPlan, type MealSlot, type PlannedMeal, type Token } from '@/types';
 
 const DAYS: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -46,49 +46,56 @@ export function generateMockPlan(household: Household, seed = 0): MealPlan {
 
   const satisfies = uniqueKeys(household);
 
-  const days: PlannedMeal[] = DAYS.map((day, idx) => {
-    const i = idx + seed;
-    const protein = pick(safeProteins, i, 'mixed beans');
-    const grain = pick(grains, i + 1, 'rice');
-    const v1 = pick(veg, i, 'seasonal vegetables');
-    const v2 = pick(veg, i + 2, 'greens');
-    const fat = pick(oil, i, 'olive oil');
-    const isLegume = legumeSet.has(protein);
+  // Four meals per day: breakfast, lunch, supper, dinner. Each slot draws from
+  // the pantry at a different offset so the week stays varied.
+  const days: PlannedMeal[] = [];
+  DAYS.forEach((day, dayIdx) => {
+    MEAL_SLOTS.forEach((slot: MealSlot, slotIdx) => {
+      const i = dayIdx * 4 + slotIdx + seed;
+      // Breakfasts read best with eggs — use them when the household allows it.
+      const eggsOk = safeProteins.includes('eggs');
+      const protein = slot === 'breakfast' && eggsOk && i % 3 !== 0 ? 'eggs' : pick(safeProteins, i, 'mixed beans');
+      const grain = pick(grains, i + 1, 'rice');
+      const v1 = pick(veg, i, 'seasonal vegetables');
+      const v2 = pick(veg, i + 2, 'greens');
+      const fat = pick(oil, i, 'olive oil');
+      const isLegume = legumeSet.has(protein);
 
-    const dish = buildRegionalMeal({
-      region: household.region,
-      protein,
-      grain,
-      veg: v1,
-      veg2: v2,
-      fat,
-      isLegume,
-      seed: i,
-      isSafe,
+      const dish = buildRegionalMeal({
+        region: household.region,
+        slot,
+        protein,
+        grain,
+        veg: v1,
+        veg2: v2,
+        fat,
+        isLegume,
+        seed: i,
+        isSafe,
+      });
+
+      const ingredients = dedupe([protein, grain, v1, v2, fat, ...dish.extras]);
+      const shared = ingredients.every((ing) => universal.has(ing) || isSafe(ing));
+
+      days.push({
+        dayOfWeek: day,
+        slot,
+        name: dish.name,
+        sharedOrVariant: shared ? 'shared' : 'variant',
+        ingredients,
+        satisfies,
+        cuisine: dish.cuisine,
+        recipe: dish.recipe,
+      });
     });
-
-    const ingredients = dedupe([protein, grain, v1, v2, fat, ...dish.extras]);
-    const shared = ingredients.every((ing) => universal.has(ing) || isSafe(ing));
-
-    return {
-      dayOfWeek: day,
-      slot: 'dinner',
-      name: dish.name,
-      sharedOrVariant: shared ? 'shared' : 'variant',
-      ingredients,
-      satisfies,
-      cuisine: dish.cuisine,
-      recipe: dish.recipe,
-    };
   });
 
   const grocery = buildGrocery(days, { proteinPool: safeProteins, grains, veg, oil, legumes: allow.legumes });
 
-  // Defense in depth: never hand back a meal that fails the safety pass.
+  // Defense in depth: never hand back a meal that fails the safety pass. The
+  // validator filters whole meal objects, so cuisine/recipe survive intact.
   const { safePlan } = validatePlan({ days, grocery }, [...hardSet], household.members);
-  // Re-attach presentation fields the validator drops (it only knows core fields).
-  const safeDays = safePlan.days.map((d) => days.find((o) => o.dayOfWeek === d.dayOfWeek && o.name === d.name) ?? d);
-  return { days: safeDays, grocery: safePlan.grocery };
+  return safePlan;
 }
 
 function uniqueKeys(household: Household): ConstraintKey[] {

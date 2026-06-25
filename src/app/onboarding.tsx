@@ -8,6 +8,7 @@ import { Radius, Spacing, Type } from '@/constants/theme';
 import { constraintsByCategory, makeConstraint } from '@/lib/constraints';
 import { REGIONS } from '@/lib/dietLibrary';
 import { setDraftHousehold } from '@/lib/draft';
+import { COUNTRIES, countryByCode } from '@/lib/geo';
 import { usePalette } from '@/theme/use-theme';
 import type { AgeBand, ConstraintCategory, ConstraintKey, Household, Member, Region } from '@/types';
 
@@ -42,6 +43,7 @@ export default function Onboarding() {
 
   const [householdName, setHouseholdName] = useState('');
   const [region, setRegion] = useState<Region>('none');
+  const [country, setCountry] = useState<string>('');
   const [members, setMembers] = useState<DraftMember[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -100,6 +102,8 @@ export default function Onboarding() {
         id: 'draft',
         name: householdName.trim() || 'Our household',
         region,
+        country: country || undefined,
+        currency: country ? countryByCode(country).currency : undefined,
         members: built,
       };
       setDraftHousehold(household);
@@ -142,6 +146,23 @@ export default function Onboarding() {
                 placeholder="e.g. The Khan family"
                 autoFocus
               />
+              <View style={{ gap: Spacing.two }}>
+                <Body color={palette.textSecondary}>Where do you shop? (sets your currency)</Body>
+                <View style={styles.wrap}>
+                  {COUNTRIES.map((c) => (
+                    <Chip
+                      key={c.code}
+                      label={`${c.flag} ${c.label}`}
+                      tone="blue"
+                      selected={country === c.code}
+                      onPress={() => {
+                        setCountry(c.code);
+                        setRegion(c.region); // pre-pick a cuisine; user can change below
+                      }}
+                    />
+                  ))}
+                </View>
+              </View>
               <View style={{ gap: Spacing.two }}>
                 <Body color={palette.textSecondary}>Lean the plan toward a cuisine?</Body>
                 <View style={styles.wrap}>

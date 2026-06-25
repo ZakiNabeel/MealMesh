@@ -33,10 +33,13 @@ const SYSTEM_PROMPT =
   'You are a culturally-aware household meal planner. You MUST respect halal, kosher, ' +
   'and all medical/allergen rules exactly. Use ONLY ingredients consistent with the ALLOW ' +
   'list and never any item in HARD_EXCLUDE.\n' +
-  'CUISINE: When a `region` other than "none" is given, AT LEAST 5 of the 7 dinners must be ' +
-  'authentic, named dishes of that cuisine (e.g. for south_asian: karahi, biryani, daal, ' +
-  'pulao, sabzi, qeema — not generic "traybake" or "stir-fry"). Use that cuisine\'s real ' +
-  'spices and techniques. The remaining 1–2 may be lighter/global for variety.\n' +
+  'MEALS: Produce FOUR meals for EACH of the 7 days — slot must be one of ' +
+  '"breakfast","lunch","supper","dinner" (28 entries total). Breakfasts should be ' +
+  'breakfast-appropriate for the region (e.g. south_asian: anda paratha, chana, halwa puri).\n' +
+  'CUISINE: When a `region` other than "none" is given, the MAJORITY of meals must be ' +
+  'authentic, named dishes of that cuisine (e.g. south_asian: karahi, biryani, daal, pulao, ' +
+  'sabzi, qeema — not generic "traybake" or "stir-fry"). Use that cuisine\'s real spices and ' +
+  'techniques. A few lighter/global meals are fine for variety.\n' +
   'RECIPES: For every meal include a `recipe` with `servings` (number), `timeMinutes` ' +
   '(number), and `steps` (5–8 short numbered instructions a home cook can follow), plus a ' +
   '`cuisine` label string.\n' +
@@ -65,9 +68,10 @@ async function requestPlan(household: Household, retryNote?: string): Promise<Me
     ALLOW: allow,
     region: household.region,
     days: 7,
+    mealsPerDay: ['breakfast', 'lunch', 'supper', 'dinner'],
     format:
-      '{"days":[{"dayOfWeek":"monday".."sunday","slot":"dinner","name":string,' +
-      '"sharedOrVariant":"shared"|"variant","ingredients":string[],"satisfies":string[],' +
+      '{"days":[{"dayOfWeek":"monday".."sunday","slot":"breakfast"|"lunch"|"supper"|"dinner",' +
+      '"name":string,"sharedOrVariant":"shared"|"variant","ingredients":string[],"satisfies":string[],' +
       '"cuisine":string,"recipe":{"servings":number,"timeMinutes":number,"steps":string[]}}],' +
       '"grocery":[{"name":string,"category":string,"quantity":string}]}',
     ...(retryNote ? { correction: retryNote } : {}),
