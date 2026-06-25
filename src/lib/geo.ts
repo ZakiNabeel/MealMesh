@@ -13,6 +13,19 @@ export function countryByCode(code: string | undefined): Country {
   return COUNTRIES.find((c) => c.code === code) ?? DEFAULT;
 }
 
+/** Convert an amount in the country's local currency back to USD. */
+export function localToUsd(local: number, code: string | undefined): number {
+  const country = countryByCode(code);
+  const rate = CURRENCY[country.currency]?.usdRate ?? 1;
+  return rate ? local / rate : local;
+}
+
+/** The currency symbol for a country (for input prefixes etc.). */
+export function currencySymbol(code: string | undefined): string {
+  const country = countryByCode(code);
+  return CURRENCY[country.currency]?.symbol ?? '$';
+}
+
 /** Convert a USD amount to the country's currency and format it with the symbol. */
 export function formatLocal(usd: number, code: string | undefined): string {
   const country = countryByCode(code);

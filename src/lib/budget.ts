@@ -23,10 +23,13 @@ const COST_RULES: { re: RegExp; usd: number }[] = [
 
 const DEFAULT_COST = 0.4;
 
-function ingredientCost(name: string): number {
+/** Approx USD cost of one serving of a single ingredient (market-price estimate). */
+export function ingredientCostUsd(name: string): number {
   for (const rule of COST_RULES) if (rule.re.test(name)) return rule.usd;
   return DEFAULT_COST;
 }
+
+const ingredientCost = ingredientCostUsd;
 
 /** Estimated USD cost to cook one meal (per serving). */
 export function mealCostUsd(ingredients: string[]): number {

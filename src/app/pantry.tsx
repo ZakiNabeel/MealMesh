@@ -1,12 +1,12 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Art } from '@/components/art';
+import { FoodImage } from '@/components/FoodImage';
 import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
-import { localizeName, mealVisual } from '@/lib/cuisine';
+import { localizeName, youtubeSearchUrl } from '@/lib/cuisine';
 import { cookFrom, type Suggestion } from '@/lib/cookFrom';
 import { getDraftHousehold } from '@/lib/draft';
 import { usePalette } from '@/theme/use-theme';
@@ -151,19 +151,11 @@ function SuggestionCard({ suggestion, region }: { suggestion: Suggestion; region
   const palette = usePalette();
   const [open, setOpen] = useState(false);
   const { meal, alsoNeed } = suggestion;
-  const { emoji, colors } = mealVisual(meal.name, meal.ingredients);
   return (
     <PressableScale onPress={() => setOpen((o) => !o)} to={0.98}>
       <GlassCard style={{ gap: Spacing.three }}>
         <View style={{ flexDirection: 'row', gap: Spacing.three, alignItems: 'center' }}>
-          <LinearGradient
-            colors={colors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ width: 52, height: 52, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Text style={{ fontSize: 26, lineHeight: 32 }}>{emoji}</Text>
-          </LinearGradient>
+          <FoodImage name={meal.name} ingredients={meal.ingredients} style={{ width: 52, height: 52 }} emojiSize={26} />
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={{ fontFamily: Type.display, fontSize: 17, color: palette.text }}>{meal.name}</Text>
             {meal.cuisine && <Small color={palette.accent}>{meal.cuisine} · tap for recipe</Small>}
@@ -187,6 +179,11 @@ function SuggestionCard({ suggestion, region }: { suggestion: Suggestion; region
                 <Body style={{ flex: 1, fontSize: 15 }}>{step}</Body>
               </View>
             ))}
+            <PressableScale onPress={() => Linking.openURL(youtubeSearchUrl(meal.name))} to={0.98}>
+              <Small color={palette.blue} style={{ fontFamily: Type.bodySemibold, marginTop: Spacing.one }}>
+                ▶  Watch recipe on YouTube
+              </Small>
+            </PressableScale>
           </View>
         )}
       </GlassCard>

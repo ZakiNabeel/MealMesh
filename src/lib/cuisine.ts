@@ -638,6 +638,11 @@ const PROTEIN_EMOJI: { re: RegExp; emoji: string }[] = [
   { re: /tofu|tempeh|paneer/i, emoji: '🥡' },
 ];
 
+/** A YouTube search link for a dish — opens real cooking videos, no API key. */
+export function youtubeSearchUrl(dish: string): string {
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${dish} recipe`)}`;
+}
+
 /** Deterministic emoji + gradient for a meal, from its name and ingredients. */
 export function mealVisual(name: string, ingredients: string[]): Visual {
   const hay = `${name} ${ingredients.join(' ')}`;

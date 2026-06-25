@@ -23,6 +23,7 @@ interface HouseholdRow {
   region_preference: Region;
   country: string | null;
   currency: string | null;
+  budget_weekly: number | null;
 }
 
 interface MemberRow {
@@ -74,6 +75,7 @@ export async function saveHousehold(h: Household): Promise<Household | null> {
       region_preference: h.region,
       country: h.country ?? null,
       currency: h.currency ?? null,
+      budget_weekly: h.budgetWeekly ?? null,
     })
     .select('id')
     .single();
@@ -115,7 +117,7 @@ export async function loadHousehold(): Promise<Household | null> {
 
   const { data: hData } = await supabase
     .from('households')
-    .select('id, name, region_preference, country, currency')
+    .select('id, name, region_preference, country, currency, budget_weekly')
     .eq('owner_user_id', userId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -146,6 +148,7 @@ export async function loadHousehold(): Promise<Household | null> {
     region: household.region_preference,
     country: household.country ?? undefined,
     currency: household.currency ?? undefined,
+    budgetWeekly: household.budget_weekly ?? undefined,
     members,
   };
 }

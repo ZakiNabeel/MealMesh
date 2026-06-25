@@ -5,7 +5,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { PressableScale, Small } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
@@ -25,6 +25,11 @@ export function CountryPicker({
   const palette = usePalette();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+
+  // Explicit pixel heights — RN-web won't give a flex:1 list a scroll viewport
+  // inside a Modal, so we size the sheet and its scroll area directly.
+  const sheetHeight = Math.round(Dimensions.get('window').height * 0.86);
+  const listHeight = sheetHeight - 132; // minus grabber + title + search
 
   const selected = value ? countryByCode(value) : null;
 
@@ -59,7 +64,9 @@ export function CountryPicker({
 
       <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.scrim} onPress={() => setOpen(false)} />
-        <View style={[styles.sheet, { backgroundColor: palette.background, borderColor: palette.border }]}>
+        <View
+          style={[styles.sheet, { height: sheetHeight, backgroundColor: palette.background, borderColor: palette.border }]}
+        >
           <View style={styles.grabber} />
           <View style={{ padding: Spacing.three, gap: Spacing.two }}>
             <Text style={{ fontFamily: Type.display, fontSize: 20, color: palette.text }}>Where do you shop?</Text>
@@ -76,46 +83,49 @@ export function CountryPicker({
               />
             </View>
           </View>
-          <FlatList
-            data={results}
-            keyExtractor={(c) => c.code}
+          <ScrollView
+            style={{ height: listHeight }}
             keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator
             contentContainerStyle={{ paddingHorizontal: Spacing.three, paddingBottom: Spacing.six }}
-            renderItem={({ item }) => {
-              const active = item.code === value;
-              return (
-                <PressableScale
-                  onPress={() => {
-                    onSelect(item.code);
-                    setOpen(false);
-                    setQuery('');
-                  }}
-                  to={0.98}
-                >
-                  <View
-                    style={[
-                      styles.row,
-                      { borderColor: palette.border },
-                      active && { backgroundColor: palette.accentMuted, borderColor: palette.accent },
-                    ]}
-                  >
-                    <Text style={{ fontSize: 22 }}>{flagEmoji(item.code)}</Text>
-                    <Text style={{ flex: 1, fontFamily: Type.bodyMedium, fontSize: 16, color: palette.text }}>
-                      {item.label}
-                    </Text>
-                    <Small color={active ? palette.accent : palette.textSecondary}>
-                      {CURRENCY[item.currency]?.symbol ?? ''} {item.currency}
-                    </Small>
-                  </View>
-                </PressableScale>
-              );
-            }}
-            ListEmptyComponent={
+          >
+            {results.length === 0 ? (
               <Small color={palette.textSecondary} style={{ textAlign: 'center', marginTop: Spacing.four }}>
                 No match — try the country&apos;s English name.
               </Small>
-            }
-          />
+            ) : (
+              results.map((item) => {
+                const active = item.code === value;
+                return (
+                  <PressableScale
+                    key={item.code}
+                    onPress={() => {
+                      onSelect(item.code);
+                      setOpen(false);
+                      setQuery('');
+                    }}
+                    to={0.98}
+                  >
+                    <View
+                      style={[
+                        styles.row,
+                        { borderColor: palette.border },
+                        active && { backgroundColor: palette.accentMuted, borderColor: palette.accent },
+                      ]}
+                    >
+                      <Text style={{ fontSize: 22 }}>{flagEmoji(item.code)}</Text>
+                      <Text style={{ flex: 1, fontFamily: Type.bodyMedium, fontSize: 16, color: palette.text }}>
+                        {item.label}
+                      </Text>
+                      <Small color={active ? palette.accent : palette.textSecondary}>
+                        {CURRENCY[item.currency]?.symbol ?? ''} {item.currency}
+                      </Small>
+                    </View>
+                  </PressableScale>
+                );
+              })
+            )}
+          </ScrollView>
         </View>
       </Modal>
     </>
@@ -138,7 +148,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    top: '12%',
     borderTopLeftRadius: Radius.xl,
     borderTopRightRadius: Radius.xl,
     borderWidth: 1,

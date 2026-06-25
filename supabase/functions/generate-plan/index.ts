@@ -43,6 +43,9 @@ const SYSTEM_PROMPT =
   'RECIPES: For every meal include a `recipe` with `servings` (number), `timeMinutes` ' +
   '(number), and `steps` (5–8 short numbered instructions a home cook can follow), plus a ' +
   '`cuisine` label string.\n' +
+  'BUDGET: If `budgetWeekly` (in the local `currency`) is given, choose affordable, in-season, ' +
+  'locally-common ingredients so the whole week fits roughly within that budget — lean on ' +
+  'legumes, eggs and cheaper cuts before premium proteins.\n' +
   'Return ONLY valid JSON, no prose, no markdown code fences.';
 
 function safeParseJSON(text: string): unknown {
@@ -67,6 +70,8 @@ async function requestPlan(household: Household, retryNote?: string): Promise<Me
     SOFT_AVOID: softAvoid,
     ALLOW: allow,
     region: household.region,
+    budgetWeekly: household.budgetWeekly ?? null,
+    currency: household.currency ?? null,
     days: 7,
     mealsPerDay: ['breakfast', 'lunch', 'supper', 'dinner'],
     format:

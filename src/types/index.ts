@@ -170,6 +170,8 @@ export interface Household {
   country?: string;
   /** ISO currency code (e.g. 'PKR', 'USD'). Derived from country. */
   currency?: string;
+  /** Optional target weekly grocery budget, in the local currency. */
+  budgetWeekly?: number;
   members: Member[];
 }
 

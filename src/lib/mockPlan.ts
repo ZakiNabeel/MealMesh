@@ -12,8 +12,10 @@
  * (`MealPlan`) is identical.
  */
 
+import { ingredientCostUsd, weeklyCostUsd } from '@/lib/budget';
 import { analyzeIngredient, deriveAllowList, unionHardExclusions, validatePlan } from '@/lib/constraints';
 import { buildRegionalMeal } from '@/lib/cuisine';
+import { localToUsd } from '@/lib/geo';
 import { MEAL_SLOTS, type ConstraintKey, type DayOfWeek, type GroceryItem, type Household, type MealPlan, type MealSlot, type PlannedMeal, type Token } from '@/types';
 
 const DAYS: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -46,49 +48,63 @@ export function generateMockPlan(household: Household, seed = 0): MealPlan {
 
   const satisfies = uniqueKeys(household);
 
-  // Four meals per day: breakfast, lunch, supper, dinner. Each slot draws from
-  // the pantry at a different offset so the week stays varied.
-  const days: PlannedMeal[] = [];
-  DAYS.forEach((day, dayIdx) => {
-    MEAL_SLOTS.forEach((slot: MealSlot, slotIdx) => {
-      const i = dayIdx * 4 + slotIdx + seed;
-      // Breakfasts read best with eggs — use them when the household allows it.
-      const eggsOk = safeProteins.includes('eggs');
-      const protein = slot === 'breakfast' && eggsOk && i % 3 !== 0 ? 'eggs' : pick(safeProteins, i, 'mixed beans');
-      const grain = pick(grains, i + 1, 'rice');
-      const v1 = pick(veg, i, 'seasonal vegetables');
-      const v2 = pick(veg, i + 2, 'greens');
-      const fat = pick(oil, i, 'olive oil');
-      const isLegume = legumeSet.has(protein);
+  // Four meals per day: breakfast, lunch, supper, dinner. Built around a given
+  // protein pool so we can retry with a cheaper pool if a budget is set.
+  const buildDays = (pool: string[]): PlannedMeal[] => {
+    const out: PlannedMeal[] = [];
+    DAYS.forEach((day, dayIdx) => {
+      MEAL_SLOTS.forEach((slot: MealSlot, slotIdx) => {
+        const i = dayIdx * 4 + slotIdx + seed;
+        // Breakfasts read best with eggs — use them when the household allows it.
+        const eggsOk = pool.includes('eggs');
+        const protein = slot === 'breakfast' && eggsOk && i % 3 !== 0 ? 'eggs' : pick(pool, i, 'mixed beans');
+        const grain = pick(grains, i + 1, 'rice');
+        const v1 = pick(veg, i, 'seasonal vegetables');
+        const v2 = pick(veg, i + 2, 'greens');
+        const fat = pick(oil, i, 'olive oil');
+        const isLegume = legumeSet.has(protein);
 
-      const dish = buildRegionalMeal({
-        region: household.region,
-        slot,
-        protein,
-        grain,
-        veg: v1,
-        veg2: v2,
-        fat,
-        isLegume,
-        seed: i,
-        isSafe,
-      });
+        const dish = buildRegionalMeal({
+          region: household.region,
+          slot,
+          protein,
+          grain,
+          veg: v1,
+          veg2: v2,
+          fat,
+          isLegume,
+          seed: i,
+          isSafe,
+        });
 
-      const ingredients = dedupe([protein, grain, v1, v2, fat, ...dish.extras]);
-      const shared = ingredients.every((ing) => universal.has(ing) || isSafe(ing));
+        const ingredients = dedupe([protein, grain, v1, v2, fat, ...dish.extras]);
+        const shared = ingredients.every((ing) => universal.has(ing) || isSafe(ing));
 
-      days.push({
-        dayOfWeek: day,
-        slot,
-        name: dish.name,
-        sharedOrVariant: shared ? 'shared' : 'variant',
-        ingredients,
-        satisfies,
-        cuisine: dish.cuisine,
-        recipe: dish.recipe,
+        out.push({
+          dayOfWeek: day,
+          slot,
+          name: dish.name,
+          sharedOrVariant: shared ? 'shared' : 'variant',
+          ingredients,
+          satisfies,
+          cuisine: dish.cuisine,
+          recipe: dish.recipe,
+        });
       });
     });
-  });
+    return out;
+  };
+
+  let days = buildDays(safeProteins);
+
+  // Budget-aware: if the week's estimate blows the household's budget, rebuild
+  // around the more affordable proteins (legumes, eggs, chicken before lamb).
+  const budgetUsd = household.budgetWeekly ? localToUsd(household.budgetWeekly, household.country) : null;
+  if (budgetUsd != null && weeklyCostUsd({ days, grocery: [] }) > budgetUsd) {
+    const cheapestFirst = [...safeProteins].sort((a, b) => ingredientCostUsd(a) - ingredientCostUsd(b));
+    const affordable = cheapestFirst.filter((p) => ingredientCostUsd(p) <= 1.0);
+    days = buildDays(affordable.length ? affordable : cheapestFirst.slice(0, Math.max(1, Math.ceil(cheapestFirst.length / 2))));
+  }
 
   const grocery = buildGrocery(days, { proteinPool: safeProteins, grains, veg, oil, legumes: allow.legumes });
 

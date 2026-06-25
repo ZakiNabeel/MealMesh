@@ -1,17 +1,17 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Art } from '@/components/art';
+import { FoodImage } from '@/components/FoodImage';
 import { MeshMark } from '@/components/MeshMark';
 import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { weeklyCostUsd } from '@/lib/budget';
-import { localizeName, mealVisual } from '@/lib/cuisine';
+import { localizeName, youtubeSearchUrl } from '@/lib/cuisine';
 import { getDraftHousehold, setDraftHousehold } from '@/lib/draft';
-import { formatLocal } from '@/lib/geo';
+import { currencySymbol, formatLocal } from '@/lib/geo';
 import { generatePlan } from '@/lib/generatePlan';
 import { currentWeekStart, loadHousehold, loadPlan, savePlan, saveHousehold } from '@/lib/store';
 import { usePalette } from '@/theme/use-theme';
@@ -167,7 +167,7 @@ export default function Plan() {
           </View>
         ) : tab === 'plan' ? (
           <>
-            <BudgetBanner plan={plan} country={household.country} />
+            <BudgetBanner plan={plan} country={household.country} budgetWeekly={household.budgetWeekly} />
             <Small color={palette.accent} style={{ fontFamily: Type.bodyMedium }}>
               ✓ Every dish checked against your household&apos;s rules
             </Small>
@@ -215,43 +215,54 @@ export default function Plan() {
   );
 }
 
-/** Square gradient tile with a food glyph — always loads, no network. */
+/** Square dish thumbnail — real photo if a Pexels key is set, else emoji tile. */
 function FoodTile({ meal, size = 56 }: { meal: PlannedMeal; size?: number }) {
-  const { emoji, colors } = mealVisual(meal.name, meal.ingredients);
   return (
-    <LinearGradient
-      colors={colors}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{ width: size, height: size, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' }}
-    >
-      <Text style={{ fontSize: size * 0.5 }}>{emoji}</Text>
-    </LinearGradient>
+    <FoodImage
+      name={meal.name}
+      ingredients={meal.ingredients}
+      style={{ width: size, height: size }}
+      emojiSize={size * 0.5}
+    />
   );
 }
 
 /** Estimated weekly grocery spend, shown in the household's local currency. */
-function BudgetBanner({ plan, country }: { plan: MealPlan; country?: string }) {
+function BudgetBanner({ plan, country, budgetWeekly }: { plan: MealPlan; country?: string; budgetWeekly?: number }) {
   const palette = usePalette();
   const usd = weeklyCostUsd(plan);
+  // budgetWeekly is in local currency; the estimate string is too — compare numerically.
+  const estLocalNum = Number(formatLocal(usd, country).replace(/[^0-9.]/g, ''));
+  const within = budgetWeekly != null ? estLocalNum <= budgetWeekly : null;
   return (
-    <GlassCard style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three }}>
-      <View style={[styles.budgetIcon, { backgroundColor: palette.accentMuted }]}>
-        <Text style={{ fontSize: 20 }}>🧾</Text>
+    <GlassCard style={{ gap: Spacing.two }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three }}>
+        <View style={[styles.budgetIcon, { backgroundColor: palette.accentMuted }]}>
+          <Text style={{ fontSize: 20 }}>🧾</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Eyebrow>Est. weekly groceries</Eyebrow>
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            style={{ fontFamily: Type.displayBold, fontSize: 26, color: palette.text }}
+          >
+            {formatLocal(usd, country)}
+          </Text>
+        </View>
+        <Small color={palette.textSecondary} style={{ maxWidth: 64, textAlign: 'right' }}>
+          approx{'\n'}/ week
+        </Small>
       </View>
-      <View style={{ flex: 1 }}>
-        <Eyebrow>Est. weekly groceries</Eyebrow>
-        <Text
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          style={{ fontFamily: Type.displayBold, fontSize: 26, color: palette.text }}
-        >
-          {formatLocal(usd, country)}
-        </Text>
-      </View>
-      <Small color={palette.textSecondary} style={{ maxWidth: 64, textAlign: 'right' }}>
-        approx{'\n'}/ week
-      </Small>
+      {budgetWeekly != null && (
+        <View style={[styles.budgetTag, { backgroundColor: within ? palette.accentMuted : palette.blueMuted }]}>
+          <Text style={{ fontFamily: Type.bodySemibold, fontSize: 12, color: within ? palette.accent : palette.blue }}>
+            {within
+              ? `✓ Within your ${currencySymbol(country)}${budgetWeekly.toLocaleString()} budget`
+              : `Just over your ${currencySymbol(country)}${budgetWeekly.toLocaleString()} budget — Regenerate for cheaper picks`}
+          </Text>
+        </View>
+      )}
     </GlassCard>
   );
 }
@@ -320,16 +331,13 @@ const DAY_FULL: Record<DayOfWeek, string> = {
 function RecipeModal({ meal, region, onClose }: { meal: PlannedMeal | null; region: Region; onClose: () => void }) {
   const palette = usePalette();
   if (!meal) return null;
-  const { emoji, colors } = mealVisual(meal.name, meal.ingredients);
   return (
     <Modal visible animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={styles.scrim} onPress={onClose} />
       <View style={[styles.sheet, { backgroundColor: palette.background, borderColor: palette.border }]}>
         <View style={styles.grabber} />
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing.six }}>
-          <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
-            <Text style={{ fontSize: 64, lineHeight: 76, textAlign: 'center' }}>{emoji}</Text>
-          </LinearGradient>
+          <FoodImage name={meal.name} ingredients={meal.ingredients} style={styles.hero} radius={0} emojiSize={64} />
 
           <View style={{ padding: Spacing.four, gap: Spacing.three }}>
             <View style={{ gap: 4 }}>
@@ -339,6 +347,15 @@ function RecipeModal({ meal, region, onClose }: { meal: PlannedMeal | null; regi
               </Eyebrow>
               <Heading>{meal.name}</Heading>
             </View>
+
+            <PressableScale onPress={() => Linking.openURL(youtubeSearchUrl(meal.name))} to={0.98}>
+              <View style={[styles.ytBtn, { borderColor: palette.border, backgroundColor: palette.card }]}>
+                <View style={styles.ytIcon}>
+                  <Text style={{ color: '#FFFFFF', fontSize: 11 }}>▶</Text>
+                </View>
+                <Text style={{ fontFamily: Type.bodySemibold, fontSize: 15, color: palette.text }}>Watch recipe on YouTube</Text>
+              </View>
+            </PressableScale>
 
             {meal.recipe && (
               <View style={{ flexDirection: 'row', gap: Spacing.three }}>
@@ -492,6 +509,7 @@ const styles = StyleSheet.create({
   check: { width: 24, height: 24, borderRadius: 8, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   footer: { paddingVertical: Spacing.three },
   budgetIcon: { width: 44, height: 44, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' },
+  budgetTag: { alignSelf: 'flex-start', paddingHorizontal: Spacing.three, paddingVertical: 6, borderRadius: Radius.pill },
   mealRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.two, paddingHorizontal: Spacing.two },
   dot: { width: 8, height: 8, borderRadius: 8 },
   scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
@@ -510,7 +528,9 @@ const styles = StyleSheet.create({
     maxWidth: 480,
   },
   grabber: { alignSelf: 'center', width: 40, height: 4, borderRadius: 999, backgroundColor: 'rgba(127,127,127,0.4)', marginTop: 10, marginBottom: 4 },
-  hero: { height: 150, alignItems: 'center', justifyContent: 'center' },
+  hero: { height: 150, width: '100%', alignItems: 'center', justifyContent: 'center' },
+  ytBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.two, height: 48, borderRadius: Radius.pill, borderWidth: 1.5 },
+  ytIcon: { width: 26, height: 26, borderRadius: 6, backgroundColor: '#FF0000', alignItems: 'center', justifyContent: 'center' },
   stepNum: { width: 26, height: 26, borderRadius: 999, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   metaPill: { flex: 1, gap: 2, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: Radius.md },
 });

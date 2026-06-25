@@ -9,7 +9,7 @@ import { Radius, Spacing, Type } from '@/constants/theme';
 import { constraintsByCategory, makeConstraint } from '@/lib/constraints';
 import { REGIONS } from '@/lib/dietLibrary';
 import { setDraftHousehold } from '@/lib/draft';
-import { countryByCode } from '@/lib/geo';
+import { countryByCode, currencySymbol } from '@/lib/geo';
 import { usePalette } from '@/theme/use-theme';
 import type { AgeBand, ConstraintCategory, ConstraintKey, Household, Member, Region } from '@/types';
 
@@ -45,6 +45,7 @@ export default function Onboarding() {
   const [householdName, setHouseholdName] = useState('');
   const [region, setRegion] = useState<Region>('none');
   const [country, setCountry] = useState<string>('');
+  const [budget, setBudget] = useState('');
   const [members, setMembers] = useState<DraftMember[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -105,6 +106,7 @@ export default function Onboarding() {
         region,
         country: country || undefined,
         currency: country ? countryByCode(country).currency : undefined,
+        budgetWeekly: budget ? Number(budget) : undefined,
         members: built,
       };
       setDraftHousehold(household);
@@ -157,6 +159,26 @@ export default function Onboarding() {
                   }}
                 />
               </View>
+
+              {country !== '' && (
+                <View style={{ gap: Spacing.two }}>
+                  <Body color={palette.textSecondary}>Weekly grocery budget? (optional — we&apos;ll plan to fit)</Body>
+                  <View style={[styles.budgetRow, { backgroundColor: palette.card, borderColor: palette.border }]}>
+                    <Text style={{ fontFamily: Type.bodySemibold, fontSize: 16, color: palette.textSecondary }}>
+                      {currencySymbol(country)}
+                    </Text>
+                    <TextInput
+                      value={budget}
+                      onChangeText={(t) => setBudget(t.replace(/[^0-9]/g, ''))}
+                      placeholder="e.g. 8000"
+                      placeholderTextColor={palette.textSecondary}
+                      keyboardType="number-pad"
+                      style={{ flex: 1, fontFamily: Type.body, fontSize: 16, color: palette.text }}
+                    />
+                    <Small color={palette.textSecondary}>/ week</Small>
+                  </View>
+                </View>
+              )}
               <View style={{ gap: Spacing.two }}>
                 <Body color={palette.textSecondary}>Lean the plan toward a cuisine?</Body>
                 <View style={styles.wrap}>
@@ -377,6 +399,15 @@ const styles = StyleSheet.create({
   field: {
     fontFamily: Type.body,
     fontSize: 16,
+    height: 52,
+    borderWidth: 1.5,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.three,
+  },
+  budgetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
     height: 52,
     borderWidth: 1.5,
     borderRadius: Radius.md,
