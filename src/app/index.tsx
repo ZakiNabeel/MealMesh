@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Art } from '@/components/art';
 import { MeshMark } from '@/components/MeshMark';
-import { Body, Button, Display, Eyebrow, Reveal, Screen, Small } from '@/components/ui';
+import { Body, Button, Display, Eyebrow, PressableScale, Reveal, Screen, Small } from '@/components/ui';
 import { Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { usePalette } from '@/theme/use-theme';
@@ -74,6 +74,11 @@ export default function Welcome() {
               />
             </>
           )}
+          <PressableScale onPress={() => router.push('/pantry')} to={0.97}>
+            <Body color={palette.accent} style={{ textAlign: 'center', fontFamily: Type.bodySemibold, paddingVertical: Spacing.two }}>
+              🥘  Cook with what I have
+            </Body>
+          </PressableScale>
         </Reveal>
       </ScrollView>
     </Screen>
