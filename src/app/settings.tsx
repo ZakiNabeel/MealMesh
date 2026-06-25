@@ -4,14 +4,15 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Art } from '@/components/art';
 import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
-import { Spacing, Type } from '@/constants/theme';
+import { Radius, Spacing, THEME_META, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { getDraftHousehold } from '@/lib/draft';
-import { usePalette } from '@/theme/use-theme';
+import { usePalette, useTheme } from '@/theme/use-theme';
 
 export default function Settings() {
   const router = useRouter();
   const palette = usePalette();
+  const { themeName, setTheme } = useTheme();
   const { user, signOut } = useAuth();
   const household = getDraftHousehold();
 
@@ -56,6 +57,37 @@ export default function Settings() {
         </Reveal>
 
         <Reveal delay={160}>
+          <Section title="Appearance">
+            <View style={{ gap: Spacing.two }}>
+              {THEME_META.map((t) => {
+                const active = themeName === t.name;
+                return (
+                  <PressableScale key={t.name} onPress={() => setTheme(t.name)} to={0.98}>
+                    <View
+                      style={[
+                        styles.themeRow,
+                        { borderColor: active ? palette.accent : palette.border, backgroundColor: active ? palette.accentMuted : 'transparent' },
+                      ]}
+                    >
+                      <View style={styles.swatch}>
+                        {t.swatch.map((c, i) => (
+                          <View key={i} style={[styles.chip, { backgroundColor: c, borderColor: palette.border }]} />
+                        ))}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Body style={{ fontFamily: Type.bodySemibold }}>{t.label}</Body>
+                        <Small>{t.hint}</Small>
+                      </View>
+                      {active && <Text style={{ color: palette.accent, fontSize: 16 }}>✓</Text>}
+                    </View>
+                  </PressableScale>
+                );
+              })}
+            </View>
+          </Section>
+        </Reveal>
+
+        <Reveal delay={240}>
           <Section title="Subscription">
             <Row label="Plan" value="Free" />
             <Button title="Upgrade to Pro" onPress={() => router.push('/paywall')} />
@@ -95,4 +127,7 @@ const styles = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingTop: Spacing.three },
   back: { width: 40, height: 40, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.three },
+  themeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderWidth: 1.5, borderRadius: Radius.md },
+  swatch: { flexDirection: 'row' },
+  chip: { width: 18, height: 18, borderRadius: 999, borderWidth: 1, marginLeft: -6 },
 });

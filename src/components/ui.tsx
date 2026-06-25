@@ -41,21 +41,19 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 /** Soft gradient-mesh ground: a calm wash plus two diffuse colour blobs. */
 export function Atmosphere() {
   const palette = usePalette();
-  const top = '#EAF8F1';
-  const bottom = '#EAF2FB';
   return (
     <View style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]} pointerEvents="none">
-      <LinearGradient colors={[top, bottom]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={[palette.atmosphereTop, palette.atmosphereBottom]} style={StyleSheet.absoluteFill} />
       <View
         style={[
           styles.blob,
-          { top: -120, left: -80, backgroundColor: palette.accent, opacity: 0.16 },
+          { top: -120, left: -80, backgroundColor: palette.blobA, opacity: 0.16 },
         ]}
       />
       <View
         style={[
           styles.blob,
-          { bottom: -140, right: -100, backgroundColor: palette.blue, opacity: 0.14 },
+          { bottom: -140, right: -100, backgroundColor: palette.blobB, opacity: 0.14 },
         ]}
       />
     </View>
@@ -81,7 +79,7 @@ export function Screen({
           <Image
             source={art}
             resizeMode="contain"
-            style={[StyleSheet.absoluteFill, { opacity: 0.07 }]}
+            style={[StyleSheet.absoluteFill, { opacity: palette.glassTint === 'dark' ? 0.12 : 0.07 }]}
           />
         </View>
       )}
@@ -101,13 +99,14 @@ export function GlassCard({
   style?: StyleProp<ViewStyle>;
 }) {
   const palette = usePalette();
+  const dark = palette.glassTint === 'dark';
   return (
     <BlurView
-      intensity={40}
-      tint="light"
+      intensity={dark ? 24 : 40}
+      tint={dark ? 'dark' : 'light'}
       style={[
         styles.glass,
-        { borderColor: palette.border, backgroundColor: palette.card + 'B3' },
+        { borderColor: palette.border, backgroundColor: palette.card + (dark ? 'CC' : 'B3') },
         style,
       ]}
     >

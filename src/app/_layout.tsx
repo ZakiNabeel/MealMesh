@@ -17,8 +17,8 @@ import { Component, useEffect, type ReactNode } from 'react';
 import { ScrollView, Text } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { Colors } from '@/constants/theme';
 import { AuthProvider } from '@/lib/auth';
+import { ThemeProvider, usePalette } from '@/theme/use-theme';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -48,10 +48,24 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   }
 }
 
-export default function RootLayout() {
-  // MealMesh is always its light mint-green/blue brand — never follow OS dark mode.
-  const palette = Colors.light;
+/** Stack + status bar that follow the active theme (lives under ThemeProvider). */
+function ThemedChrome() {
+  const palette = usePalette();
+  return (
+    <>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: 'fade',
+          contentStyle: { backgroundColor: palette.background },
+        }}
+      />
+      <StatusBar style={palette.statusBar} />
+    </>
+  );
+}
 
+export default function RootLayout() {
   const [loaded] = useFonts({
     Fraunces_400Regular,
     Fraunces_600SemiBold,
@@ -70,18 +84,13 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ErrorBoundary>
-        <AuthProvider>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              animation: 'fade',
-              contentStyle: { backgroundColor: palette.background },
-            }}
-          />
-        </AuthProvider>
-      </ErrorBoundary>
-      <StatusBar style="dark" />
+      <ThemeProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            <ThemedChrome />
+          </AuthProvider>
+        </ErrorBoundary>
+      </ThemeProvider>
     </GestureHandlerRootView>
   );
 }
