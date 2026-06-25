@@ -6,4 +6,28 @@
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
   --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
   --font-serif: Georgia, 'Times New Roman', serif;
+
+  /* MealMesh is a single light brand — never let the browser apply dark UA styles. */
+  color-scheme: light;
+}
+
+/*
+ * App-shell sizing for the web/PWA build. The page itself must NOT scroll or
+ * pan — each screen is a fixed full-viewport surface and only the inner
+ * ScrollViews scroll. This kills the horizontal (left/right) drift caused by
+ * the decorative background blobs and the unwanted page-level vertical scroll.
+ */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none; /* no rubber-band / bounce */
+  background-color: #f1faf5; /* matches palette.background so edges never flash */
+}
+
+#root {
+  height: 100%;
+  max-width: 100vw;
+  overflow: hidden;
 }

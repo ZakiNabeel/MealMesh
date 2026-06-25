@@ -1,12 +1,14 @@
-import { useColorScheme } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 
 import { Colors } from '@/constants/theme';
 
-/** The active colour palette for the current light/dark scheme. */
+/**
+ * The active colour palette. MealMesh is intentionally a single, consistent
+ * light mint-green/blue brand — we do NOT follow the OS dark theme, so this
+ * always returns the light palette regardless of the device setting.
+ */
 export function usePalette() {
-  const scheme = useColorScheme();
-  return Colors[scheme === 'dark' ? 'dark' : 'light'];
+  return Colors.light;
 }
 
 export type Palette = ReturnType<typeof usePalette>;

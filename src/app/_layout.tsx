@@ -14,7 +14,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { Component, useEffect, type ReactNode } from 'react';
-import { ScrollView, Text, useColorScheme } from 'react-native';
+import { ScrollView, Text } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { Colors } from '@/constants/theme';
@@ -49,8 +49,8 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 }
 
 export default function RootLayout() {
-  const scheme = useColorScheme();
-  const palette = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  // MealMesh is always its light mint-green/blue brand — never follow OS dark mode.
+  const palette = Colors.light;
 
   const [loaded] = useFonts({
     Fraunces_400Regular,
@@ -81,7 +81,7 @@ export default function RootLayout() {
           />
         </AuthProvider>
       </ErrorBoundary>
-      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style="dark" />
     </GestureHandlerRootView>
   );
 }
