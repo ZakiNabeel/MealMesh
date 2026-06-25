@@ -5,6 +5,7 @@ import { Art } from '@/components/art';
 import { MeshMark } from '@/components/MeshMark';
 import { Body, Button, Display, Eyebrow, Reveal, Screen, Small } from '@/components/ui';
 import { Spacing, Type } from '@/constants/theme';
+import { useAuth } from '@/lib/auth';
 import { usePalette } from '@/theme/use-theme';
 
 const SAMPLE_DIETS = ['Halal', 'Gluten-free', 'Vegan', 'Nut allergy', 'Diabetic'];
@@ -12,6 +13,7 @@ const SAMPLE_DIETS = ['Halal', 'Gluten-free', 'Vegan', 'Nut allergy', 'Diabetic'
 export default function Welcome() {
   const router = useRouter();
   const palette = usePalette();
+  const { session } = useAuth();
 
   return (
     <Screen art={Art.rice}>
@@ -57,12 +59,21 @@ export default function Welcome() {
         </View>
 
         <Reveal delay={580} style={styles.actions}>
-          <Button title="Build our plan" onPress={() => router.push('/onboarding')} />
-          <Button
-            title="I already have an account"
-            variant="secondary"
-            onPress={() => router.push('/auth')}
-          />
+          {session ? (
+            <>
+              <Button title="View this week's plan" onPress={() => router.push('/plan')} />
+              <Button title="Set up a new household" variant="secondary" onPress={() => router.push('/onboarding')} />
+            </>
+          ) : (
+            <>
+              <Button title="Build our plan" onPress={() => router.push('/onboarding')} />
+              <Button
+                title="I already have an account"
+                variant="secondary"
+                onPress={() => router.push('/auth')}
+              />
+            </>
+          )}
         </Reveal>
       </ScrollView>
     </Screen>

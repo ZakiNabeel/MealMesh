@@ -9,10 +9,11 @@ import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Scre
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { mealVisual } from '@/lib/cuisine';
-import { getDraftHousehold } from '@/lib/draft';
+import { getDraftHousehold, setDraftHousehold } from '@/lib/draft';
 import { generatePlan } from '@/lib/generatePlan';
+import { currentWeekStart, loadHousehold, loadPlan, savePlan, saveHousehold } from '@/lib/store';
 import { usePalette } from '@/theme/use-theme';
-import type { DayOfWeek, MealPlan, PlannedMeal } from '@/types';
+import type { DayOfWeek, Household, MealPlan, PlannedMeal } from '@/types';
 
 const DAY_LABEL: Record<DayOfWeek, string> = {
   monday: 'MON',
@@ -27,9 +28,10 @@ const DAY_LABEL: Record<DayOfWeek, string> = {
 export default function Plan() {
   const router = useRouter();
   const palette = usePalette();
-  const { session } = useAuth();
-  const household = getDraftHousehold();
+  const { session, loading: authLoading } = useAuth();
 
+  const [household, setHousehold] = useState<Household | null>(getDraftHousehold());
+  const [resolving, setResolving] = useState(true);
   const [seed, setSeed] = useState(0);
   const [tab, setTab] = useState<'plan' | 'grocery'>('plan');
   const [checked, setChecked] = useState<Record<string, boolean>>({});
@@ -37,21 +39,70 @@ export default function Plan() {
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<PlannedMeal | null>(null);
 
+  // Resolve the working household: persist a guest's draft once signed in, or
+  // load the saved one on return. Runs before generation so we never call Claude
+  // twice (once as a draft, once after persisting).
   useEffect(() => {
-    if (!household) return;
+    if (authLoading) return;
+    let cancelled = false;
+    (async () => {
+      setResolving(true);
+      const draft = getDraftHousehold();
+      let resolved: Household | null = draft;
+      if (session) {
+        if (draft && draft.id === 'draft') {
+          resolved = (await saveHousehold(draft)) ?? draft;
+        } else if (!draft) {
+          resolved = await loadHousehold();
+        }
+      }
+      if (cancelled) return;
+      if (resolved) setDraftHousehold(resolved);
+      setHousehold(resolved);
+      setResolving(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session, authLoading]);
+
+  // Generate (or load a saved) plan once the household is resolved.
+  useEffect(() => {
+    if (resolving || !household) return;
     let cancelled = false;
     setLoading(true);
-    generatePlan(household, seed, Boolean(session)).then((next) => {
+    (async () => {
+      const week = currentWeekStart();
+      const persisted = Boolean(session) && household.id !== 'draft';
+      let result: MealPlan | null = null;
+      // On first view, prefer the saved plan (no Claude call / no cost). A
+      // regenerate (seed > 0) always asks for a fresh one and overwrites it.
+      if (persisted && seed === 0) result = await loadPlan(household.id, week);
+      if (!result) {
+        result = await generatePlan(household, seed, Boolean(session));
+        if (persisted) await savePlan(household.id, week, result);
+      }
       if (!cancelled) {
-        setPlan(next);
+        setPlan(result);
         setLoading(false);
       }
-    });
+    })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [household, seed, Boolean(session)]);
+  }, [household, seed, resolving]);
+
+  if (resolving) {
+    return (
+      <Screen art={Art.ramen}>
+        <View style={styles.empty}>
+          <ActivityIndicator color={palette.accent} />
+          <Small color={palette.textSecondary}>Loading your household…</Small>
+        </View>
+      </Screen>
+    );
+  }
 
   if (!household) {
     return (
