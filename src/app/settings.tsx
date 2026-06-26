@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Art } from '@/components/art';
-import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
+import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small, useIsDesktop } from '@/components/ui';
 import { Radius, Spacing, THEME_META, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { getDraftHousehold } from '@/lib/draft';
@@ -17,9 +17,11 @@ export default function Settings() {
   const { user, signOut } = useAuth();
   const { isPro } = useSubscription();
   const household = getDraftHousehold();
+  const isDesktop = useIsDesktop();
+  const col = isDesktop ? styles.col : undefined;
 
   return (
-    <Screen art={Art.tacos}>
+    <Screen art={Art.tacos} wide>
       <View style={styles.top}>
         <PressableScale onPress={() => router.back()} to={0.9}>
           <View style={[styles.back, { borderColor: palette.border, backgroundColor: palette.card }]}>
@@ -30,7 +32,8 @@ export default function Settings() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: Spacing.four, gap: Spacing.four }}>
-        <Reveal>
+        <View style={isDesktop ? styles.grid : { gap: Spacing.four }}>
+        <Reveal style={col}>
           <Section title="Account">
             {user ? (
               <View style={{ gap: Spacing.three }}>
@@ -46,7 +49,7 @@ export default function Settings() {
           </Section>
         </Reveal>
 
-        <Reveal delay={80}>
+        <Reveal delay={80} style={col}>
           <Section title="Household">
             <Row label="Name" value={household?.name ?? 'Not set up yet'} />
             <Row label="Members" value={household ? String(household.members.length) : '0'} />
@@ -58,7 +61,7 @@ export default function Settings() {
           </Section>
         </Reveal>
 
-        <Reveal delay={160}>
+        <Reveal delay={160} style={col}>
           <Section title="Appearance">
             <View style={{ gap: Spacing.two }}>
               {THEME_META.map((t) => {
@@ -89,12 +92,13 @@ export default function Settings() {
           </Section>
         </Reveal>
 
-        <Reveal delay={240}>
+        <Reveal delay={240} style={col}>
           <Section title="Subscription">
             <Row label="Plan" value={isPro ? 'Pro ✦' : 'Free'} />
             {!isPro && <Button title="Upgrade to Pro" onPress={() => router.push('/paywall')} />}
           </Section>
         </Reveal>
+        </View>
 
         <Small color={palette.textSecondary} style={{ textAlign: 'center' }}>
           MealMesh v0.1.0
@@ -126,6 +130,8 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
+  grid: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: Spacing.four },
+  col: { flexGrow: 1, flexBasis: '45%', minWidth: 300 },
   top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingTop: Spacing.three },
   back: { width: 40, height: 40, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.three },

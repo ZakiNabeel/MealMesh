@@ -1,11 +1,12 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Art } from '@/components/art';
 import { FoodImage } from '@/components/FoodImage';
 import { MeshMark } from '@/components/MeshMark';
-import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
+import { SheetModal } from '@/components/SheetModal';
+import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small, useIsDesktop } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { weeklyLocal } from '@/lib/budget';
@@ -32,6 +33,7 @@ const SLOT_LABEL: Record<MealSlot, string> = {
 export default function Plan() {
   const router = useRouter();
   const palette = usePalette();
+  const isDesktop = useIsDesktop();
   const { session, loading: authLoading } = useAuth();
   const { isPro } = useSubscription();
 
@@ -124,41 +126,44 @@ export default function Plan() {
     );
   }
 
-  return (
-    <Screen art={Art.ramen}>
-      {/* header */}
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Eyebrow>This week</Eyebrow>
-          <Heading numberOfLines={1}>{household.name}</Heading>
-        </View>
-        <PressableScale onPress={() => router.push('/settings')} to={0.9}>
-          <View style={[styles.iconBtn, { borderColor: palette.border, backgroundColor: palette.card }]}>
-            <Text style={{ fontSize: 16 }}>⚙︎</Text>
-          </View>
-        </PressableScale>
-      </View>
+  const centerCol = isDesktop ? styles.centerCol : undefined;
 
-      {/* tabs */}
-      <View style={[styles.tabs, { backgroundColor: palette.backgroundElement }]}>
-        {(['plan', 'grocery'] as const).map((t) => {
-          const active = tab === t;
-          return (
-            <PressableScale key={t} onPress={() => setTab(t)} to={0.97} style={{ flex: 1 }}>
-              <View style={[styles.tab, active && { backgroundColor: palette.card }]}>
-                <Text
-                  style={{
-                    fontFamily: active ? Type.bodySemibold : Type.bodyMedium,
-                    fontSize: 14,
-                    color: active ? palette.accent : palette.textSecondary,
-                  }}
-                >
-                  {t === 'plan' ? 'Meal plan' : 'Grocery list'}
-                </Text>
-              </View>
-            </PressableScale>
-          );
-        })}
+  return (
+    <Screen art={Art.ramen} wide>
+      {/* header + tabs — kept to a comfortable width even on a wide desktop */}
+      <View style={centerCol}>
+        <View style={styles.header}>
+          <View style={{ flex: 1 }}>
+            <Eyebrow>This week</Eyebrow>
+            <Heading numberOfLines={1}>{household.name}</Heading>
+          </View>
+          <PressableScale onPress={() => router.push('/settings')} to={0.9}>
+            <View style={[styles.iconBtn, { borderColor: palette.border, backgroundColor: palette.card }]}>
+              <Text style={{ fontSize: 16 }}>⚙︎</Text>
+            </View>
+          </PressableScale>
+        </View>
+
+        <View style={[styles.tabs, { backgroundColor: palette.backgroundElement }]}>
+          {(['plan', 'grocery'] as const).map((t) => {
+            const active = tab === t;
+            return (
+              <PressableScale key={t} onPress={() => setTab(t)} to={0.97} style={{ flex: 1 }}>
+                <View style={[styles.tab, active && { backgroundColor: palette.card }]}>
+                  <Text
+                    style={{
+                      fontFamily: active ? Type.bodySemibold : Type.bodyMedium,
+                      fontSize: 14,
+                      color: active ? palette.accent : palette.textSecondary,
+                    }}
+                  >
+                    {t === 'plan' ? 'Meal plan' : 'Grocery list'}
+                  </Text>
+                </View>
+              </PressableScale>
+            );
+          })}
+        </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: Spacing.three, gap: Spacing.three }}>
@@ -169,33 +174,43 @@ export default function Plan() {
           </View>
         ) : tab === 'plan' ? (
           <>
-            <BudgetBanner plan={plan} country={household.country} budgetWeekly={household.budgetWeekly} />
-            <Small color={palette.accent} style={{ fontFamily: Type.bodyMedium }}>
-              ✓ Every dish checked against your household&apos;s rules
-            </Small>
-            {DAY_ORDER.map((day, i) => {
-              const meals = plan.days.filter((m) => m.dayOfWeek === day);
-              if (!meals.length) return null;
-              return (
-                <Reveal key={day} delay={i * 40}>
-                  <DayGroup day={day} meals={meals} onSelect={setSelected} />
-                </Reveal>
-              );
-            })}
+            <View style={[centerCol, { gap: Spacing.three }]}>
+              <BudgetBanner plan={plan} country={household.country} budgetWeekly={household.budgetWeekly} />
+              <Small color={palette.accent} style={{ fontFamily: Type.bodyMedium }}>
+                ✓ Every dish checked against your household&apos;s rules
+              </Small>
+            </View>
+            <View style={isDesktop ? styles.dayGrid : { gap: Spacing.three }}>
+              {DAY_ORDER.map((day, i) => {
+                const meals = plan.days.filter((m) => m.dayOfWeek === day);
+                if (!meals.length) return null;
+                return (
+                  <View key={day} style={isDesktop ? styles.dayCol : undefined}>
+                    <Reveal delay={i * 40}>
+                      <DayGroup day={day} meals={meals} onSelect={setSelected} />
+                    </Reveal>
+                  </View>
+                );
+              })}
+            </View>
             {!session && (
-              <GlassCard style={{ gap: Spacing.two, marginTop: Spacing.one }}>
-                <Body style={{ fontFamily: Type.bodySemibold }}>Save this plan</Body>
-                <Small>Sign in to keep your plans and sync across devices.</Small>
-                <Button title="Sign in" variant="secondary" onPress={() => router.push('/auth')} />
-              </GlassCard>
+              <View style={[centerCol, { marginTop: Spacing.one }]}>
+                <GlassCard style={{ gap: Spacing.two }}>
+                  <Body style={{ fontFamily: Type.bodySemibold }}>Save this plan</Body>
+                  <Small>Sign in to keep your plans and sync across devices.</Small>
+                  <Button title="Sign in" variant="secondary" onPress={() => router.push('/auth')} />
+                </GlassCard>
+              </View>
             )}
           </>
         ) : (
-          <GroceryList plan={plan} region={household.region} checked={checked} setChecked={setChecked} />
+          <View style={centerCol}>
+            <GroceryList plan={plan} region={household.region} checked={checked} setChecked={setChecked} />
+          </View>
         )}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, centerCol]}>
         <Button
           title="Regenerate this week"
           variant="secondary"
@@ -336,16 +351,13 @@ const DAY_FULL: Record<DayOfWeek, string> = {
   sunday: 'Sunday',
 };
 
-/** Bottom-sheet recipe detail: hero, meta, ingredients, numbered steps. */
+/** Recipe detail dialog: hero, meta, ingredients, numbered steps. */
 function RecipeModal({ meal, region, onClose }: { meal: PlannedMeal | null; region: Region; onClose: () => void }) {
   const palette = usePalette();
-  if (!meal) return null;
   return (
-    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={styles.scrim} onPress={onClose} />
-      <View style={[styles.sheet, { backgroundColor: palette.background, borderColor: palette.border }]}>
-        <View style={styles.grabber} />
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing.six }}>
+    <SheetModal visible={Boolean(meal)} onClose={onClose} maxWidth={560}>
+      {meal && (
+        <ScrollView showsVerticalScrollIndicator contentContainerStyle={{ paddingBottom: Spacing.four }}>
           <FoodImage name={meal.name} ingredients={meal.ingredients} style={styles.hero} radius={0} emojiSize={64} />
 
           <View style={{ padding: Spacing.four, gap: Spacing.three }}>
@@ -418,8 +430,8 @@ function RecipeModal({ meal, region, onClose }: { meal: PlannedMeal | null; regi
             <Button title="Close" variant="secondary" onPress={onClose} />
           </View>
         </ScrollView>
-      </View>
-    </Modal>
+      )}
+    </SheetModal>
   );
 }
 
@@ -505,6 +517,9 @@ function GroceryList({
 
 const styles = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.three },
+  centerCol: { width: '100%', maxWidth: 560, alignSelf: 'center' },
+  dayGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three },
+  dayCol: { flexGrow: 1, flexBasis: '45%', minWidth: 300 },
   header: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingTop: Spacing.three },
   iconBtn: { width: 44, height: 44, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   tabs: { flexDirection: 'row', padding: 4, borderRadius: Radius.pill, gap: 4, marginTop: Spacing.three },

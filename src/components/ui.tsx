@@ -32,7 +32,7 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FoodMarquee } from '@/components/FoodMarquee';
-import { DesktopWidth, MaxContentWidth, Radius, Spacing, Type } from '@/constants/theme';
+import { DesktopContentWidth, DesktopWidth, MaxContentWidth, Radius, Spacing, Type } from '@/constants/theme';
 import { usePalette, useReduced } from '@/theme/use-theme';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -91,6 +91,7 @@ export function Screen({
   art,
   style,
   rail = false,
+  wide = false,
 }: {
   children: ReactNode;
   art?: ImageSourcePropType;
@@ -98,9 +99,14 @@ export function Screen({
   /** Show the desktop food-photo rail on the right. Only a couple of screens
    *  (onboarding, paywall) opt in — it shouldn't follow you around the app. */
   rail?: boolean;
+  /** Use the roomier desktop content width (for grid/dashboard screens) so the
+   *  page doesn't read as a thin phone-width strip floating in empty space. */
+  wide?: boolean;
 }) {
   const palette = usePalette();
-  const showRail = useIsDesktop() && rail;
+  const isDesktop = useIsDesktop();
+  const showRail = isDesktop && rail;
+  const columnStyle = isDesktop && wide && !rail ? [styles.column, { maxWidth: DesktopContentWidth }] : styles.column;
   return (
     <View style={{ flex: 1, backgroundColor: palette.background, overflow: 'hidden' }}>
       <Atmosphere />
@@ -124,7 +130,7 @@ export function Screen({
             </View>
           </View>
         ) : (
-          <View style={[styles.column, style]}>{children}</View>
+          <View style={[columnStyle, style]}>{children}</View>
         )}
       </SafeAreaView>
     </View>

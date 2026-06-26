@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Art } from '@/components/art';
 import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
@@ -53,7 +53,7 @@ export default function Paywall() {
         </PressableScale>
       </View>
 
-      <View style={styles.body}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.body}>
         <Reveal>
           <Eyebrow>MealMesh Pro</Eyebrow>
           <Heading style={{ marginTop: 4 }}>Unlock the whole table</Heading>
@@ -106,7 +106,7 @@ export default function Paywall() {
             {isFreemiusConfigured ? 'Cancel anytime · local pricing available' : 'Cancel anytime · powered by Freemius'}
           </Small>
         </Reveal>
-      </View>
+      </ScrollView>
     </Screen>
   );
 }
@@ -114,7 +114,7 @@ export default function Paywall() {
 const styles = StyleSheet.create({
   top: { paddingTop: Spacing.two },
   back: { width: 40, height: 40, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  body: { flex: 1, justifyContent: 'center', paddingBottom: Spacing.five },
+  body: { flexGrow: 1, justifyContent: 'center', paddingTop: Spacing.three, paddingBottom: Spacing.five },
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   tick: { width: 24, height: 24, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   billing: { flexDirection: 'row', padding: 4, borderRadius: Radius.pill, gap: 4 },

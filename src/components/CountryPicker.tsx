@@ -5,9 +5,10 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Dimensions, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Flag } from '@/components/Flag';
+import { SheetModal } from '@/components/SheetModal';
 import { PressableScale, Small } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { COUNTRIES, countryByCode } from '@/lib/geo';
@@ -27,10 +28,10 @@ export function CountryPicker({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
 
-  // Explicit pixel heights — RN-web won't give a flex:1 list a scroll viewport
-  // inside a Modal, so we size the sheet and its scroll area directly.
-  const sheetHeight = Math.round(Dimensions.get('window').height * 0.86);
-  const listHeight = sheetHeight - 132; // minus grabber + title + search
+  // Explicit list height — RN-web won't give a flex:1 list a scroll viewport
+  // inside a modal, so we size the scroll area directly (it scrolls with a
+  // mouse wheel too).
+  const listHeight = Math.min(540, Math.round(Dimensions.get('window').height * 0.62));
 
   const selected = value ? countryByCode(value) : null;
 
@@ -63,12 +64,7 @@ export function CountryPicker({
         </View>
       </PressableScale>
 
-      <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.scrim} onPress={() => setOpen(false)} />
-        <View
-          style={[styles.sheet, { height: sheetHeight, backgroundColor: palette.background, borderColor: palette.border }]}
-        >
-          <View style={styles.grabber} />
+      <SheetModal visible={open} onClose={() => setOpen(false)} maxWidth={520}>
           <View style={{ padding: Spacing.three, gap: Spacing.two }}>
             <Text style={{ fontFamily: Type.display, fontSize: 20, color: palette.text }}>Where do you shop?</Text>
             <View style={[styles.search, { backgroundColor: palette.backgroundElement, borderColor: palette.border }]}>
@@ -88,7 +84,7 @@ export function CountryPicker({
             style={{ height: listHeight }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator
-            contentContainerStyle={{ paddingHorizontal: Spacing.three, paddingBottom: Spacing.six }}
+            contentContainerStyle={{ paddingHorizontal: Spacing.three, paddingBottom: Spacing.four }}
           >
             {results.length === 0 ? (
               <Small color={palette.textSecondary} style={{ textAlign: 'center', marginTop: Spacing.four }}>
@@ -127,8 +123,7 @@ export function CountryPicker({
               })
             )}
           </ScrollView>
-        </View>
-      </Modal>
+      </SheetModal>
     </>
   );
 }
@@ -143,21 +138,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.three,
   },
-  scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
-  sheet: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderTopLeftRadius: Radius.xl,
-    borderTopRightRadius: Radius.xl,
-    borderWidth: 1,
-    overflow: 'hidden',
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: 480,
-  },
-  grabber: { alignSelf: 'center', width: 40, height: 4, borderRadius: 999, backgroundColor: 'rgba(127,127,127,0.4)', marginTop: 10 },
   search: {
     flexDirection: 'row',
     alignItems: 'center',

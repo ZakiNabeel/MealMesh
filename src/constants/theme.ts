@@ -196,3 +196,8 @@ export const MaxContentWidth = 480;
 /** At/above this viewport width the web build switches to the desktop layout
  * (app content on the left, a vertical food-photo rail on the right). */
 export const DesktopWidth = 960;
+
+/** Roomier content width for app screens that lay out in columns/grids on a
+ * wide desktop (plan dashboard, settings) — so they don't float as a thin
+ * phone-width strip in an empty page. */
+export const DesktopContentWidth = 920;
