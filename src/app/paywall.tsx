@@ -5,6 +5,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Art } from '@/components/art';
 import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
+import { useAuth } from '@/lib/auth';
+import { isFreemiusConfigured, openCheckout } from '@/lib/freemius';
 import { usePalette } from '@/theme/use-theme';
 
 const FEATURES = [
@@ -18,11 +20,28 @@ const FEATURES = [
 export default function Paywall() {
   const router = useRouter();
   const palette = usePalette();
+  const { user } = useAuth();
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('yearly');
-  const [note, setNote] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const price = billing === 'monthly' ? '$2.99' : '$24.99';
   const per = billing === 'monthly' ? '/month' : '/year';
+
+  async function goPro() {
+    setNote(null);
+    setBusy(true);
+    const { error } = await openCheckout(billing === 'yearly' ? 'annual' : 'monthly', {
+      email: user?.email ?? undefined,
+      onSuccess: () => router.replace('/plan'),
+    });
+    setBusy(false);
+    if (error === 'NOT_CONFIGURED') {
+      setNote('Checkout goes live once the Freemius product IDs are set — local pricing for your region is built in.');
+    } else if (error) {
+      setNote(error);
+    }
+  }
 
   return (
     <Screen art={Art.steak}>
@@ -77,14 +96,14 @@ export default function Paywall() {
             <Body color={palette.textSecondary}>{per}</Body>
           </View>
 
-          <Button title="Go Pro" onPress={() => setNote(true)} />
+          <Button title={busy ? 'Opening checkout…' : 'Go Pro'} onPress={goPro} disabled={busy} />
           {note && (
             <Small color={palette.textSecondary} style={{ textAlign: 'center' }}>
-              Freemius checkout connects next — with local pricing for your region.
+              {note}
             </Small>
           )}
           <Small color={palette.textSecondary} style={{ textAlign: 'center' }}>
-            Cancel anytime · local pricing available
+            {isFreemiusConfigured ? 'Cancel anytime · local pricing available' : 'Cancel anytime · powered by Freemius'}
           </Small>
         </Reveal>
       </View>

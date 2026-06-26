@@ -6,6 +6,7 @@
  * is converted to local currency for display (see geo.ts).
  */
 
+import { foodIndex, usdToLocalNumber } from '@/lib/geo';
 import type { MealPlan } from '@/types';
 
 /** Approx USD cost per serving, matched by keyword. First match wins. */
@@ -39,4 +40,13 @@ export function mealCostUsd(ingredients: string[]): number {
 /** Estimated USD grocery cost for the whole plan (per serving across the week). */
 export function weeklyCostUsd(plan: MealPlan): number {
   return plan.days.reduce((sum, meal) => sum + mealCostUsd(meal.ingredients), 0);
+}
+
+/**
+ * Estimated weekly grocery cost as a raw number in the country's LOCAL currency,
+ * corrected by the local food-price index so it reflects real market prices
+ * rather than US prices × FX. This is the figure the budget UI compares against.
+ */
+export function weeklyLocal(plan: MealPlan, country: string | undefined): number {
+  return usdToLocalNumber(weeklyCostUsd(plan) * foodIndex(country), country);
 }

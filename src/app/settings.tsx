@@ -7,6 +7,7 @@ import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Scre
 import { Radius, Spacing, THEME_META, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { getDraftHousehold } from '@/lib/draft';
+import { useSubscription } from '@/lib/subscription';
 import { usePalette, useTheme } from '@/theme/use-theme';
 
 export default function Settings() {
@@ -14,6 +15,7 @@ export default function Settings() {
   const palette = usePalette();
   const { themeName, setTheme } = useTheme();
   const { user, signOut } = useAuth();
+  const { isPro } = useSubscription();
   const household = getDraftHousehold();
 
   return (
@@ -89,8 +91,8 @@ export default function Settings() {
 
         <Reveal delay={240}>
           <Section title="Subscription">
-            <Row label="Plan" value="Free" />
-            <Button title="Upgrade to Pro" onPress={() => router.push('/paywall')} />
+            <Row label="Plan" value={isPro ? 'Pro ✦' : 'Free'} />
+            {!isPro && <Button title="Upgrade to Pro" onPress={() => router.push('/paywall')} />}
           </Section>
         </Reveal>
 

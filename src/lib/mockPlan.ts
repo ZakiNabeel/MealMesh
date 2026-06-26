@@ -12,10 +12,9 @@
  * (`MealPlan`) is identical.
  */
 
-import { ingredientCostUsd, weeklyCostUsd } from '@/lib/budget';
+import { ingredientCostUsd, weeklyLocal } from '@/lib/budget';
 import { analyzeIngredient, deriveAllowList, unionHardExclusions, validatePlan } from '@/lib/constraints';
 import { buildRegionalMeal } from '@/lib/cuisine';
-import { localToUsd } from '@/lib/geo';
 import { MEAL_SLOTS, type ConstraintKey, type DayOfWeek, type GroceryItem, type Household, type MealPlan, type MealSlot, type PlannedMeal, type Token } from '@/types';
 
 const DAYS: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -97,10 +96,11 @@ export function generateMockPlan(household: Household, seed = 0): MealPlan {
 
   let days = buildDays(safeProteins);
 
-  // Budget-aware: if the week's estimate blows the household's budget, rebuild
-  // around the more affordable proteins (legumes, eggs, chicken before lamb).
-  const budgetUsd = household.budgetWeekly ? localToUsd(household.budgetWeekly, household.country) : null;
-  if (budgetUsd != null && weeklyCostUsd({ days, grocery: [] }) > budgetUsd) {
+  // Budget-aware: if the week's local-price estimate blows the household's
+  // budget, rebuild around the more affordable proteins (legumes, eggs, chicken
+  // before lamb).
+  const budget = household.budgetWeekly ?? null;
+  if (budget != null && weeklyLocal({ days, grocery: [] }, household.country) > budget) {
     const cheapestFirst = [...safeProteins].sort((a, b) => ingredientCostUsd(a) - ingredientCostUsd(b));
     const affordable = cheapestFirst.filter((p) => ingredientCostUsd(p) <= 1.0);
     days = buildDays(affordable.length ? affordable : cheapestFirst.slice(0, Math.max(1, Math.ceil(cheapestFirst.length / 2))));

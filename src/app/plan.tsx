@@ -8,12 +8,13 @@ import { MeshMark } from '@/components/MeshMark';
 import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
-import { weeklyCostUsd } from '@/lib/budget';
+import { weeklyLocal } from '@/lib/budget';
 import { localizeName, youtubeSearchUrl } from '@/lib/cuisine';
 import { getDraftHousehold, setDraftHousehold } from '@/lib/draft';
-import { currencySymbol, formatLocal } from '@/lib/geo';
+import { currencySymbol, formatMoney } from '@/lib/geo';
 import { generatePlan } from '@/lib/generatePlan';
 import { currentWeekStart, loadHousehold, loadPlan, savePlan, saveHousehold } from '@/lib/store';
+import { bumpGenerations, FREE_WEEKLY_PLANS, generationsThisWeek, useSubscription } from '@/lib/subscription';
 import { usePalette } from '@/theme/use-theme';
 import { MEAL_SLOTS, type DayOfWeek, type Household, type MealPlan, type MealSlot, type PlannedMeal, type Region } from '@/types';
 
@@ -32,6 +33,7 @@ export default function Plan() {
   const router = useRouter();
   const palette = usePalette();
   const { session, loading: authLoading } = useAuth();
+  const { isPro } = useSubscription();
 
   const [household, setHousehold] = useState<Household | null>(getDraftHousehold());
   const [resolving, setResolving] = useState(true);
@@ -198,7 +200,15 @@ export default function Plan() {
           title="Regenerate this week"
           variant="secondary"
           disabled={loading}
-          onPress={() => {
+          onPress={async () => {
+            if (!isPro) {
+              const used = await generationsThisWeek();
+              if (used >= FREE_WEEKLY_PLANS - 1) {
+                router.push('/paywall');
+                return;
+              }
+              await bumpGenerations();
+            }
             setPlan(null);
             setSeed((s) => s + 1);
           }}
@@ -230,10 +240,9 @@ function FoodTile({ meal, size = 56 }: { meal: PlannedMeal; size?: number }) {
 /** Estimated weekly grocery spend, shown in the household's local currency. */
 function BudgetBanner({ plan, country, budgetWeekly }: { plan: MealPlan; country?: string; budgetWeekly?: number }) {
   const palette = usePalette();
-  const usd = weeklyCostUsd(plan);
-  // budgetWeekly is in local currency; the estimate string is too — compare numerically.
-  const estLocalNum = Number(formatLocal(usd, country).replace(/[^0-9.]/g, ''));
-  const within = budgetWeekly != null ? estLocalNum <= budgetWeekly : null;
+  // Estimate is already in local currency, calibrated to local food prices.
+  const estLocal = weeklyLocal(plan, country);
+  const within = budgetWeekly != null ? estLocal <= budgetWeekly : null;
   return (
     <GlassCard style={{ gap: Spacing.two }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three }}>
@@ -247,7 +256,7 @@ function BudgetBanner({ plan, country, budgetWeekly }: { plan: MealPlan; country
             adjustsFontSizeToFit
             style={{ fontFamily: Type.displayBold, fontSize: 26, color: palette.text }}
           >
-            {formatLocal(usd, country)}
+            {formatMoney(estLocal, country)}
           </Text>
         </View>
         <Small color={palette.textSecondary} style={{ maxWidth: 64, textAlign: 'right' }}>
