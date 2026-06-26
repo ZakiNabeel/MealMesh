@@ -192,3 +192,7 @@ export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 
 /** Mobile-first: constrain content so the web build reads like the app. */
 export const MaxContentWidth = 480;
+
+/** At/above this viewport width the web build switches to the desktop layout
+ * (app content on the left, a vertical food-photo rail on the right). */
+export const DesktopWidth = 960;

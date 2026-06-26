@@ -1,0 +1,31 @@
+<svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="300" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0E9F6E"/>
+      <stop offset="1" stop-color="#2596CE"/>
+    </linearGradient>
+    <linearGradient id="green" x1="40" y1="120" x2="260" y2="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1FBF8F"/>
+      <stop offset="1" stop-color="#0E9F6E"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="40" y1="180" x2="260" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3AA0D9"/>
+      <stop offset="1" stop-color="#2596CE"/>
+    </linearGradient>
+  </defs>
+
+  <!-- rounded-square app tile -->
+  <rect x="0" y="0" width="300" height="300" rx="66" fill="url(#bg)"/>
+
+  <!-- two diet "threads" weaving across each other -->
+  <g stroke-linecap="round" fill="none">
+    <!-- green thread (under) -->
+    <path d="M58 120 C 120 70, 180 230, 242 180" stroke="url(#green)" stroke-width="34" opacity="0.96"/>
+    <!-- blue thread (over) -->
+    <path d="M58 180 C 120 230, 180 70, 242 120" stroke="url(#blue)" stroke-width="34" opacity="0.96"/>
+  </g>
+
+  <!-- the knot: one plan -->
+  <circle cx="150" cy="150" r="40" fill="#FFFFFF"/>
+  <circle cx="150" cy="150" r="17" fill="url(#bg)"/>
+</svg>

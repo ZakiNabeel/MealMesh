@@ -10,9 +10,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, type ReactNode } from 'react';
 import {
   Image,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
   type ImageSourcePropType,
   type StyleProp,
@@ -29,7 +31,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { MaxContentWidth, Radius, Spacing, Type } from '@/constants/theme';
+import { FoodMarquee } from '@/components/FoodMarquee';
+import { DesktopWidth, MaxContentWidth, Radius, Spacing, Type } from '@/constants/theme';
 import { usePalette, useReduced } from '@/theme/use-theme';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -71,10 +74,12 @@ export function Screen({
   style?: StyleProp<ViewStyle>;
 }) {
   const palette = usePalette();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && width >= DesktopWidth;
   return (
     <View style={{ flex: 1, backgroundColor: palette.background, overflow: 'hidden' }}>
       <Atmosphere />
-      {art && (
+      {art && !isDesktop && (
         <View style={styles.art} pointerEvents="none">
           <Image
             source={art}
@@ -84,7 +89,18 @@ export function Screen({
         </View>
       )}
       <SafeAreaView style={{ flex: 1 }}>
-        <View style={[styles.column, style]}>{children}</View>
+        {isDesktop ? (
+          <View style={styles.desktopRow}>
+            <View style={styles.desktopContent}>
+              <View style={[styles.column, style]}>{children}</View>
+            </View>
+            <View style={[styles.desktopRail, { borderLeftColor: palette.border }]}>
+              <FoodMarquee />
+            </View>
+          </View>
+        ) : (
+          <View style={[styles.column, style]}>{children}</View>
+        )}
       </SafeAreaView>
     </View>
   );
@@ -348,6 +364,14 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
     paddingHorizontal: Spacing.four,
+  },
+  desktopRow: { flex: 1, flexDirection: 'row' },
+  desktopContent: { flex: 1, minWidth: 0 },
+  desktopRail: {
+    width: '42%',
+    maxWidth: 620,
+    minWidth: 360,
+    borderLeftWidth: 1,
   },
   blob: {
     position: 'absolute',
