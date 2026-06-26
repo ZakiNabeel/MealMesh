@@ -7,7 +7,7 @@
 
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   Image,
   Platform,
@@ -43,6 +43,22 @@ export function useIsDesktop(): boolean {
   return Platform.OS === 'web' && width >= DesktopWidth;
 }
 
+/**
+ * True when MealMesh is running as the actual app — native, or an installed PWA
+ * (standalone display mode) — rather than a plain browser visit. We use this to
+ * decide between the marketing website (browser) and the focused app (installed)
+ * so the same code serves both without one bleeding into the other.
+ */
+export function useIsInstalledApp(): boolean {
+  const [installed] = useState(() => {
+    if (Platform.OS !== 'web') return true;
+    if (typeof window === 'undefined') return false;
+    const nav = window.navigator as Navigator & { standalone?: boolean };
+    return window.matchMedia?.('(display-mode: standalone)').matches === true || nav.standalone === true;
+  });
+  return installed;
+}
+
 /* ------------------------------------------------------------------ */
 /* Atmosphere                                                          */
 /* ------------------------------------------------------------------ */
@@ -74,18 +90,21 @@ export function Screen({
   children,
   art,
   style,
+  rail = false,
 }: {
   children: ReactNode;
   art?: ImageSourcePropType;
   style?: StyleProp<ViewStyle>;
+  /** Show the desktop food-photo rail on the right. Only a couple of screens
+   *  (onboarding, paywall) opt in — it shouldn't follow you around the app. */
+  rail?: boolean;
 }) {
   const palette = usePalette();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === 'web' && width >= DesktopWidth;
+  const showRail = useIsDesktop() && rail;
   return (
     <View style={{ flex: 1, backgroundColor: palette.background, overflow: 'hidden' }}>
       <Atmosphere />
-      {art && !isDesktop && (
+      {art && !showRail && (
         <View style={styles.art} pointerEvents="none">
           <Image
             source={art}
@@ -95,7 +114,7 @@ export function Screen({
         </View>
       )}
       <SafeAreaView style={{ flex: 1 }}>
-        {isDesktop ? (
+        {showRail ? (
           <View style={styles.desktopRow}>
             <View style={styles.desktopContent}>
               <View style={[styles.column, style]}>{children}</View>

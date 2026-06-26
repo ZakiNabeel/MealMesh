@@ -118,7 +118,7 @@ export default function Onboarding() {
   }
 
   return (
-    <Screen art={Art.sandwich}>
+    <Screen art={Art.sandwich} rail>
       {/* header */}
       <View style={styles.header}>
         <PressableScale onPress={onBack} to={0.9}>

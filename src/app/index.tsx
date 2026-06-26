@@ -3,15 +3,18 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Art } from '@/components/art';
 import { MeshMark } from '@/components/MeshMark';
-import { Body, Button, Display, Eyebrow, PressableScale, Reveal, Screen, Small, useIsDesktop } from '@/components/ui';
+import { ThemeSwitcher } from '@/components/ThemeSwitcher';
+import { Body, Button, Display, Eyebrow, PressableScale, Reveal, Screen, Small, useIsInstalledApp } from '@/components/ui';
 import { WebsiteLanding } from '@/components/WebsiteLanding';
 import { Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { usePalette } from '@/theme/use-theme';
 
 export default function Welcome() {
-  const isDesktop = useIsDesktop();
-  if (isDesktop) return <WebsiteLanding />;
+  // Browser visitors (phone or laptop) see the marketing website; the installed
+  // PWA and the native app get the focused app experience.
+  const isApp = useIsInstalledApp();
+  if (!isApp) return <WebsiteLanding />;
   return <MobileWelcome />;
 }
 
@@ -60,6 +63,10 @@ function MobileWelcome() {
               🥘  Cook with what I have
             </Body>
           </PressableScale>
+          <View style={{ alignItems: 'center', gap: Spacing.two, paddingTop: Spacing.two }}>
+            <Small color={palette.textSecondary}>Theme</Small>
+            <ThemeSwitcher />
+          </View>
         </Reveal>
       </ScrollView>
     </Screen>

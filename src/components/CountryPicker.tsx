@@ -7,9 +7,10 @@
 import { useMemo, useState } from 'react';
 import { Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { Flag } from '@/components/Flag';
 import { PressableScale, Small } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
-import { COUNTRIES, countryByCode, flagEmoji } from '@/lib/geo';
+import { COUNTRIES, countryByCode } from '@/lib/geo';
 import { CURRENCY } from '@/lib/countries';
 import { usePalette } from '@/theme/use-theme';
 
@@ -47,7 +48,7 @@ export function CountryPicker({
         <View style={[styles.field, { backgroundColor: palette.card, borderColor: palette.border }]}>
           {selected ? (
             <>
-              <Text style={{ fontSize: 22 }}>{flagEmoji(selected.code)}</Text>
+              <Flag code={selected.code} size={22} />
               <Text style={{ flex: 1, fontFamily: Type.bodyMedium, fontSize: 16, color: palette.text }}>
                 {selected.label}
               </Text>
@@ -113,7 +114,7 @@ export function CountryPicker({
                         active && { backgroundColor: palette.accentMuted, borderColor: palette.accent },
                       ]}
                     >
-                      <Text style={{ fontSize: 22 }}>{flagEmoji(item.code)}</Text>
+                      <Flag code={item.code} size={22} />
                       <Text style={{ flex: 1, fontFamily: Type.bodyMedium, fontSize: 16, color: palette.text }}>
                         {item.label}
                       </Text>

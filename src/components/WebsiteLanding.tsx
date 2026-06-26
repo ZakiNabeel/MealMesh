@@ -14,6 +14,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
   type LayoutChangeEvent,
   type PressableStateCallbackType,
@@ -23,6 +24,7 @@ import {
 
 import { FoodImage } from '@/components/FoodImage';
 import { BrandLockup, SocialBar } from '@/components/SocialBar';
+import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { Atmosphere } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { usePalette } from '@/theme/use-theme';
@@ -84,6 +86,8 @@ function NavLink({ label, onPress }: { label: string; onPress: () => void }) {
 export function WebsiteLanding() {
   const palette = usePalette();
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const narrow = width < 760;
   const scrollRef = useRef<ScrollView>(null);
   const anchors = useRef<Record<string, number>>({});
 
@@ -92,37 +96,50 @@ export function WebsiteLanding() {
   };
   const goTo = (key: string) => scrollRef.current?.scrollTo({ y: Math.max(0, (anchors.current[key] ?? 0) - 24), animated: true });
 
+  const pad = narrow ? 20 : 40;
+  const cards3 = [styles.cards3, narrow && ({ flexDirection: 'column' } as const)];
+  const sectionPad = [styles.section, { paddingVertical: narrow ? 52 : 80, paddingHorizontal: pad }];
+
   return (
     <View style={{ flex: 1, backgroundColor: palette.background }}>
       <Atmosphere />
       <ScrollView ref={scrollRef} showsVerticalScrollIndicator style={{ flex: 1 }}>
         {/* NAV */}
-        <Center style={styles.nav}>
-          <BrandLockup palette={palette} size={36} />
-          <View style={styles.navRight}>
-            <NavLink label="How it works" onPress={() => goTo('how')} />
-            <NavLink label="Why MealMesh" onPress={() => goTo('why')} />
-            <NavLink label="Articles" onPress={() => goTo('articles')} />
-            <NavLink label="Pricing" onPress={() => router.push('/paywall')} />
-            <View style={{ width: 8 }} />
-            <CTA label="Sign in" variant="ghost" onPress={() => router.push('/auth')} />
-            <CTA label="Build our plan" onPress={() => router.push('/onboarding')} />
-          </View>
+        <Center style={[styles.nav, { paddingHorizontal: pad }]}>
+          <BrandLockup palette={palette} size={narrow ? 30 : 36} />
+          {narrow ? (
+            <View style={styles.navRight}>
+              <ThemeSwitcher size={22} />
+              <CTA label="Start" onPress={() => router.push('/onboarding')} />
+            </View>
+          ) : (
+            <View style={styles.navRight}>
+              <NavLink label="How it works" onPress={() => goTo('how')} />
+              <NavLink label="Why MealMesh" onPress={() => goTo('why')} />
+              <NavLink label="Articles" onPress={() => goTo('articles')} />
+              <NavLink label="Pricing" onPress={() => router.push('/paywall')} />
+              <View style={{ width: 6 }} />
+              <ThemeSwitcher size={24} />
+              <View style={{ width: 6 }} />
+              <CTA label="Sign in" variant="ghost" onPress={() => router.push('/auth')} />
+              <CTA label="Build our plan" onPress={() => router.push('/onboarding')} />
+            </View>
+          )}
         </Center>
 
         {/* HERO */}
-        <Center style={styles.hero}>
-          <View style={styles.heroLeft}>
+        <Center style={[styles.hero, { paddingHorizontal: pad, flexDirection: narrow ? 'column' : 'row', gap: narrow ? 36 : 56, paddingTop: narrow ? 28 : 48, paddingBottom: narrow ? 56 : 88 }]}>
+          <View style={[styles.heroLeft, narrow && { flexGrow: 0, flexBasis: 'auto', width: '100%' }]}>
             <Text style={[styles.eyebrow, { color: palette.accent }]}>MEAL PLANNING FOR REAL HOUSEHOLDS</Text>
-            <Text style={[styles.h1, { color: palette.text }]}>
+            <Text style={[styles.h1, { color: palette.text, fontSize: narrow ? 40 : 56, lineHeight: narrow ? 44 : 60 }]}>
               One household.{'\n'}Many diets.{'\n'}
               <Text style={{ color: palette.accent }}>One plan.</Text>
             </Text>
-            <Text style={[styles.lead, { color: palette.textSecondary }]}>
+            <Text style={[styles.lead, { color: palette.textSecondary, fontSize: narrow ? 16 : 18 }]}>
               Halal, gluten-free, diabetic, vegan, a picky kid — MealMesh merges every diet at your table into a single
               weekly plan, and one grocery list to match. No cooking three different dinners.
             </Text>
-            <View style={styles.heroCtas}>
+            <View style={[styles.heroCtas, narrow && { flexDirection: 'column' }]}>
               <CTA label="Build our plan — free" onPress={() => router.push('/onboarding')} />
               <CTA label="See how it works" variant="ghost" onPress={() => goTo('how')} />
             </View>
@@ -131,16 +148,16 @@ export function WebsiteLanding() {
             </Text>
           </View>
 
-          <View style={styles.heroRight}>
+          <View style={[styles.heroRight, narrow && { flexGrow: 0, flexBasis: 'auto', width: '100%' }]}>
             <PlanPreview />
           </View>
         </Center>
 
         {/* HOW IT WORKS */}
         <View onLayout={onAnchor('how')}>
-          <Center style={styles.section}>
+          <Center style={sectionPad}>
             <SectionHead kicker="HOW IT WORKS" title="Three steps to one plan everyone can eat" />
-            <View style={styles.cards3}>
+            <View style={cards3}>
               {STEPS.map((s, i) => (
                 <View key={s.title} style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
                   <View style={[styles.stepNum, { backgroundColor: palette.accentMuted }]}>
@@ -156,9 +173,9 @@ export function WebsiteLanding() {
 
         {/* WHY MEALMESH */}
         <View onLayout={onAnchor('why')} style={{ backgroundColor: palette.backgroundElement }}>
-          <Center style={styles.section}>
+          <Center style={sectionPad}>
             <SectionHead kicker="THE DIFFERENCE" title="Built for safety, not guesswork" />
-            <View style={styles.cards3}>
+            <View style={cards3}>
               {VALUES.map((v) => (
                 <View key={v.title} style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
                   <Text style={{ fontSize: 26, marginBottom: 6 }}>{v.icon}</Text>
@@ -172,9 +189,9 @@ export function WebsiteLanding() {
 
         {/* ARTICLES */}
         <View onLayout={onAnchor('articles')}>
-          <Center style={styles.section}>
+          <Center style={sectionPad}>
             <SectionHead kicker="FROM THE KITCHEN" title="Guides for multi-diet households" />
-            <View style={styles.cards3}>
+            <View style={cards3}>
               {ARTICLES.map((a) => (
                 <Pressable
                   key={a.title}
@@ -204,9 +221,9 @@ export function WebsiteLanding() {
         </View>
 
         {/* CTA BAND */}
-        <Center style={{ paddingVertical: 24 }}>
-          <View style={[styles.band, { backgroundColor: palette.accent }]}>
-            <Text style={[styles.bandTitle, { color: palette.onAccent }]}>Ready to feed everyone at your table?</Text>
+        <Center style={{ paddingVertical: 24, paddingHorizontal: pad }}>
+          <View style={[styles.band, { backgroundColor: palette.accent, paddingVertical: narrow ? 40 : 56, paddingHorizontal: pad }]}>
+            <Text style={[styles.bandTitle, { color: palette.onAccent, fontSize: narrow ? 24 : 30 }]}>Ready to feed everyone at your table?</Text>
             <Text style={[styles.bandSub, { color: palette.onAccent }]}>
               Set up your household once. Get a fresh, safe plan every week.
             </Text>
@@ -221,7 +238,7 @@ export function WebsiteLanding() {
 
         {/* FOOTER */}
         <View style={[styles.footer, { borderTopColor: palette.border }]}>
-          <Center style={styles.footerInner}>
+          <Center style={[styles.footerInner, { paddingHorizontal: pad }]}>
             <View style={styles.footerBrand}>
               <BrandLockup palette={palette} size={34} />
               <Text style={[styles.cardBody, { color: palette.textSecondary, maxWidth: 280 }]}>

@@ -44,7 +44,7 @@ export default function Paywall() {
   }
 
   return (
-    <Screen art={Art.steak}>
+    <Screen art={Art.steak} rail>
       <View style={styles.top}>
         <PressableScale onPress={() => router.back()} to={0.9}>
           <View style={[styles.back, { borderColor: palette.border, backgroundColor: palette.card }]}>
