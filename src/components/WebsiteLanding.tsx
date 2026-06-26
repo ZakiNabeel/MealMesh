@@ -10,6 +10,7 @@
 import { useRouter } from 'expo-router';
 import { useRef, type ReactNode } from 'react';
 import {
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,6 +23,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import { Art } from '@/components/art';
 import { FoodImage } from '@/components/FoodImage';
 import { BrandLockup, SocialBar } from '@/components/SocialBar';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
@@ -153,6 +155,23 @@ export function WebsiteLanding() {
           </View>
         </Center>
 
+        {/* CUISINES STRIP */}
+        <View style={{ backgroundColor: palette.backgroundElement }}>
+          <Center style={{ paddingVertical: narrow ? 36 : 52, paddingHorizontal: pad }}>
+            <SectionHead kicker="EVERY KITCHEN" title="Real dishes from every cuisine" />
+            <View style={styles.cuisineRow}>
+              {CUISINES.map((c) => (
+                <View key={c.label} style={styles.cuisineItem}>
+                  <View style={[styles.cuisineIcon, { backgroundColor: palette.card, borderColor: palette.border }]}>
+                    <Image source={c.art} resizeMode="contain" style={styles.cuisineImg} />
+                  </View>
+                  <Text style={[styles.cuisineLabel, { color: palette.textSecondary }]}>{c.label}</Text>
+                </View>
+              ))}
+            </View>
+          </Center>
+        </View>
+
         {/* HOW IT WORKS */}
         <View onLayout={onAnchor('how')}>
           <Center style={sectionPad}>
@@ -215,6 +234,27 @@ export function WebsiteLanding() {
                     </Text>
                   </View>
                 </Pressable>
+              ))}
+            </View>
+          </Center>
+        </View>
+
+        {/* REVIEWS */}
+        <View style={{ backgroundColor: palette.backgroundElement }}>
+          <Center style={sectionPad}>
+            <SectionHead kicker="LOVED BY HOUSEHOLDS" title="One plan, every diet at the table" />
+            <View style={cards3}>
+              {REVIEWS.map((r) => (
+                <View key={r.who} style={[styles.review, { backgroundColor: palette.card, borderColor: palette.border }]}>
+                  <Text style={[styles.stars, { color: palette.accent }]}>{'★'.repeat(r.stars)}</Text>
+                  <Text style={[styles.quote, { color: palette.text }]}>“{r.quote}”</Text>
+                  <View style={styles.reviewer}>
+                    <View style={[styles.reviewerIcon, { backgroundColor: palette.accentMuted, borderColor: palette.border }]}>
+                      <Image source={r.art} resizeMode="contain" style={{ width: 26, height: 26 }} />
+                    </View>
+                    <Text style={{ fontFamily: Type.bodySemibold, fontSize: 13.5, color: palette.textSecondary }}>{r.who}</Text>
+                  </View>
+                </View>
               ))}
             </View>
           </Center>
@@ -320,6 +360,38 @@ function PlanPreview() {
   );
 }
 
+const CUISINES = [
+  { art: Art.rice, label: 'South Asian' },
+  { art: Art.ramen, label: 'East Asian' },
+  { art: Art.tacos, label: 'Latin' },
+  { art: Art.steak, label: 'High-protein' },
+  { art: Art.sandwich, label: 'Everyday' },
+  { art: Art.fruits, label: 'Fresh & raw' },
+  { art: Art.cinnamon, label: 'Breakfast' },
+];
+
+// Placeholder testimonials — replace with real, attributable reviews before launch.
+const REVIEWS = [
+  {
+    art: Art.rice,
+    stars: 5,
+    quote: 'Finally stopped cooking three separate dinners. My halal husband, gluten-free daughter and diabetic dad all eat the same plan now.',
+    who: 'Ayesha · family of 5',
+  },
+  {
+    art: Art.sandwich,
+    stars: 5,
+    quote: 'The single grocery list saves me an hour every Sunday — and the local dish names made my mum actually trust it.',
+    who: 'Bilal · household of 3',
+  },
+  {
+    art: Art.fruits,
+    stars: 5,
+    quote: 'I was skeptical an app could keep my son’s nut allergy safe. The hard-exclude checks completely won me over.',
+    who: 'Sarah · couple + 1',
+  },
+];
+
 const STEPS = [
   { title: 'Add your household', body: 'Each person, each diet — halal, gluten-free, diabetic, allergies, the lot. Tap a few chips and you’re done.' },
   { title: 'We merge every diet', body: 'Our engine computes what’s safe for everyone, then asks Claude for real, culturally-aware dishes.' },
@@ -383,6 +455,18 @@ const styles = StyleSheet.create({
   stepNum: { width: 40, height: 40, borderRadius: 999, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   cardTitle: { fontFamily: Type.displayBold, fontSize: 19, lineHeight: 24 },
   cardBody: { fontFamily: Type.body, fontSize: 14.5, lineHeight: 22 },
+
+  cuisineRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 28 },
+  cuisineItem: { alignItems: 'center', gap: 10, width: 92 },
+  cuisineIcon: { width: 76, height: 76, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  cuisineImg: { width: 46, height: 46 },
+  cuisineLabel: { fontFamily: Type.bodySemibold, fontSize: 13, textAlign: 'center' },
+
+  review: { flex: 1, borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.four, gap: 12, justifyContent: 'space-between' },
+  stars: { fontSize: 16, letterSpacing: 2 },
+  quote: { fontFamily: Type.serif, fontSize: 17, lineHeight: 25 },
+  reviewer: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
+  reviewerIcon: { width: 40, height: 40, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
 
   article: { flex: 1, borderWidth: 1, borderRadius: Radius.lg, overflow: 'hidden' },
   articleImg: { width: '100%', height: 150 },
