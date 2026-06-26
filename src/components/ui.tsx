@@ -37,6 +37,12 @@ import { usePalette, useReduced } from '@/theme/use-theme';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+/** True on web viewports wide enough for the desktop / website layout. */
+export function useIsDesktop(): boolean {
+  const { width } = useWindowDimensions();
+  return Platform.OS === 'web' && width >= DesktopWidth;
+}
+
 /* ------------------------------------------------------------------ */
 /* Atmosphere                                                          */
 /* ------------------------------------------------------------------ */

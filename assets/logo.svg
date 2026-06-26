@@ -1,31 +1,39 @@
-<svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="300" y2="300" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0E9F6E"/>
-      <stop offset="1" stop-color="#2596CE"/>
-    </linearGradient>
-    <linearGradient id="green" x1="40" y1="120" x2="260" y2="180" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#1FBF8F"/>
-      <stop offset="1" stop-color="#0E9F6E"/>
-    </linearGradient>
-    <linearGradient id="blue" x1="40" y1="180" x2="260" y2="120" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#3AA0D9"/>
-      <stop offset="1" stop-color="#2596CE"/>
-    </linearGradient>
+    <clipPath id="tile"><rect width="512" height="512" rx="116"/></clipPath>
   </defs>
 
-  <!-- rounded-square app tile -->
-  <rect x="0" y="0" width="300" height="300" rx="66" fill="url(#bg)"/>
-
-  <!-- two diet "threads" weaving across each other -->
-  <g stroke-linecap="round" fill="none">
-    <!-- green thread (under) -->
-    <path d="M58 120 C 120 70, 180 230, 242 180" stroke="url(#green)" stroke-width="34" opacity="0.96"/>
-    <!-- blue thread (over) -->
-    <path d="M58 180 C 120 230, 180 70, 242 120" stroke="url(#blue)" stroke-width="34" opacity="0.96"/>
+  <!-- sage tile -->
+  <g clip-path="url(#tile)">
+    <rect width="512" height="512" fill="#9DBA8C"/>
+    <!-- faint topographic texture -->
+    <g stroke="#8CAA7A" stroke-width="3" fill="none" opacity="0.45" stroke-linecap="round">
+      <path d="M-20 96 C 90 60, 150 150, 256 110 S 430 60, 540 120"/>
+      <path d="M-20 170 C 100 140, 150 220, 256 188 S 440 150, 540 196"/>
+      <path d="M-20 372 C 90 340, 160 420, 256 386 S 430 344, 540 396"/>
+      <path d="M-20 444 C 110 410, 150 486, 256 452 S 440 416, 540 462"/>
+    </g>
   </g>
 
-  <!-- the knot: one plan -->
-  <circle cx="150" cy="150" r="40" fill="#FFFFFF"/>
-  <circle cx="150" cy="150" r="17" fill="url(#bg)"/>
+  <!-- steam -->
+  <g stroke="#FFFFFF" stroke-width="11" fill="none" stroke-linecap="round" opacity="0.95">
+    <path d="M300 196 C 282 176, 318 164, 300 142 C 286 124, 314 114, 302 96"/>
+    <path d="M340 206 C 326 188, 356 178, 340 158"/>
+  </g>
+
+  <!-- lid -->
+  <g fill="#FFFFFF">
+    <g transform="rotate(-7 256 222)">
+      <ellipse cx="256" cy="222" rx="120" ry="27"/>
+      <rect x="234" y="190" width="44" height="15" rx="7.5"/>
+    </g>
+  </g>
+
+  <!-- pot body + rim + handles -->
+  <g fill="#FFFFFF">
+    <rect x="146" y="250" width="220" height="30" rx="13"/>
+    <rect x="118" y="256" width="36" height="20" rx="10"/>
+    <rect x="358" y="256" width="36" height="20" rx="10"/>
+    <path d="M160 280 L352 280 L341 360 Q336 386 309 386 L203 386 Q176 386 171 360 Z"/>
+  </g>
 </svg>
