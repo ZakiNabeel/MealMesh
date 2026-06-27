@@ -16,7 +16,7 @@ export async function generatePlan(household: Household, seed: number, signedIn:
   if (signedIn && isSupabaseConfigured) {
     try {
       const { data, error } = await supabase.functions.invoke<{ plan: MealPlan }>('generate-plan', {
-        body: { household },
+        body: { household, seed },
       });
       if (!error && data?.plan) return data.plan;
     } catch {

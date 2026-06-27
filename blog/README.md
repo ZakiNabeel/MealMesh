@@ -32,8 +32,31 @@ npm run build    # type-checks (astro check) + builds to dist/
    ```
 2. Write the body in Markdown below the frontmatter.
 3. Add this article's slug to 1–2 siblings' `relatedSlugs` to weave the reading flow.
-4. Commit + redeploy. No code change needed — it appears in the index, the
+4. Also add an `imageQuery` field — the Pexels search term for this article's
+   hero photo (e.g. `'grilled chicken dinner plate'`). See "Hero images &
+   caching" below.
+5. Commit + redeploy. No code change needed — it appears in the index, the
    `/feed.json` endpoint, and any related-reads strip automatically.
+
+## Hero images & caching
+
+Hero images come from Pexels at **build time**, matched against each
+article's `imageQuery` frontmatter field (`src/lib/pexels.ts`), falling back
+to the article's local placeholder SVG if no key is set or the lookup is
+empty.
+
+Resolved photos are cached in the **committed** `src/data/pexels-cache.json`,
+keyed by query. Every build checks that file first — a query already in it
+costs zero Pexels API calls, even on a brand-new Vercel checkout. Only a
+genuinely new or edited `imageQuery` hits the API.
+
+Workflow when you add articles or change an `imageQuery`:
+1. Set `PEXELS_KEY` in `blog/.env` locally (get a free key at pexels.com/api).
+2. Run `npm run build` once locally — this fetches just the new queries and
+   writes them into `src/data/pexels-cache.json`.
+3. Commit the updated cache file along with the article(s) and push. Vercel's
+   build then reads straight from the cache — it can't write back to git
+   itself, which is why this has to happen locally first.
 
 ## Deploying (not yet done — needs your hands)
 

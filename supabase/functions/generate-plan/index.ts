@@ -11,6 +11,14 @@
  * a client. If a violation slips through, we ask Claude to fix it once more;
  * if it still fails, we return the engine-scrubbed safe plan rather than an
  * unsafe one.
+ *
+ * CACHING: two households with an identical merged constraint profile (same
+ * HARD_EXCLUDE/SOFT_AVOID/ALLOW/region/budget/currency — member names don't
+ * affect what Claude generates) reuse one validated plan from `plan_cache`
+ * instead of paying for a second Claude call. A first-time generation
+ * (`seed === 0`) checks the cache first; an explicit regenerate (`seed > 0`)
+ * always calls Claude fresh and refreshes the cache entry, so repeat
+ * regenerate requests for the same profile still see fresh variety over time.
  */
 
 import Anthropic from 'npm:@anthropic-ai/sdk@0.70.1';
@@ -26,6 +34,29 @@ const CORS_HEADERS = {
 };
 
 const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
+
+// Service-role client for the shared, content-addressable plan cache — RLS
+// has no policies for it, so only this (server-side, bypasses RLS) client
+// can read/write it. Separate from the per-request anon+user-JWT client used
+// below for the auth check.
+const admin = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+);
+
+async function constraintHash(household: Household, hardExclude: string[], softAvoid: string[], allow: ReturnType<typeof deriveAllowList>): Promise<string> {
+  const canonical = {
+    hardExclude: [...hardExclude].sort(),
+    softAvoid: [...softAvoid].sort(),
+    allow: Object.fromEntries(Object.entries(allow).map(([k, v]) => [k, [...(v as string[])].sort()])),
+    region: household.region ?? null,
+    budgetWeekly: household.budgetWeekly ?? null,
+    currency: household.currency ?? null,
+  };
+  const bytes = new TextEncoder().encode(JSON.stringify(canonical));
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 const MODEL = 'claude-haiku-4-5';
 
@@ -111,7 +142,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { household } = (await req.json()) as { household?: Household };
+    const { household, seed } = (await req.json()) as { household?: Household; seed?: number };
     if (!household || !Array.isArray(household.members) || household.members.length === 0) {
       return new Response(JSON.stringify({ error: 'A household with at least one member is required.' }), {
         status: 400,
@@ -120,6 +151,22 @@ Deno.serve(async (req) => {
     }
 
     const hardExclude = unionHardExclusions(household.members);
+    const softAvoid = unionSoftAvoid(household.members);
+    const allow = deriveAllowList(household.members, household.region);
+    const hash = await constraintHash(household, hardExclude, softAvoid, allow);
+    const isRegenerate = Boolean(seed && seed > 0);
+
+    if (!isRegenerate) {
+      const { data: cached } = await admin.from('plan_cache').select('plan_json').eq('constraint_hash', hash).maybeSingle();
+      if (cached?.plan_json) {
+        // Cheap re-validation even on a cache hit — defense in depth, never
+        // trust stored content blindly even though it was validated on write.
+        const result = validatePlan(cached.plan_json as MealPlan, hardExclude, household.members);
+        return new Response(JSON.stringify({ plan: result.safePlan, hadViolations: !result.ok, cached: true }), {
+          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     let plan = await requestPlan(household);
     let result = validatePlan(plan, hardExclude, household.members);
@@ -132,9 +179,18 @@ Deno.serve(async (req) => {
       result = validatePlan(plan, hardExclude, household.members);
     }
 
+    // Refresh the cache with this profile's latest validated plan — on a
+    // first generation this populates it; on a regenerate it keeps the
+    // cache from going stale, so the next household with this profile still
+    // gets some variety over time instead of the very first plan forever.
+    await admin.from('plan_cache').upsert(
+      { constraint_hash: hash, plan_json: result.safePlan, updated_at: new Date().toISOString() },
+      { onConflict: 'constraint_hash' },
+    );
+
     // Defense in depth: whatever happens above, only ever return the
     // engine-validated safe plan, never the raw model output.
-    return new Response(JSON.stringify({ plan: result.safePlan, hadViolations: !result.ok }), {
+    return new Response(JSON.stringify({ plan: result.safePlan, hadViolations: !result.ok, cached: false }), {
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     });
   } catch (err) {

@@ -1,11 +1,16 @@
 /**
  * Batch food-photo source for the desktop slideshow. When a Pexels key is
  * configured (`EXPO_PUBLIC_PEXELS_KEY`) it pulls a spread of real, appetising
- * dish photos; otherwise callers fall back to emoji-gradient tiles. The result
- * is fetched once and memoised for the session.
+ * dish photos; otherwise callers fall back to emoji-gradient tiles. The
+ * resolved URL list is cached in AsyncStorage — across app restarts, not just
+ * within a session — so this fixed set of queries hits the Pexels API once
+ * per device, ever, rather than once per visit.
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 const PEXELS_KEY = process.env.EXPO_PUBLIC_PEXELS_KEY;
+const STORAGE_KEY = '@mealmesh/pexels-slideshow-cache';
 
 /** A spread of world cuisines so the rail feels like MealMesh's many households. */
 const QUERIES = [
@@ -54,11 +59,19 @@ async function fetchOne(query: string): Promise<string[]> {
 export function loadFoodPhotos(): Promise<string[]> {
   if (!PEXELS_KEY) return Promise.resolve([]);
   if (!inflight) {
-    inflight = Promise.all(QUERIES.map(fetchOne)).then((groups) => {
-      const urls = groups.flat();
-      // Keep it interesting even if some queries came back empty.
-      return urls.length ? urls : [];
-    });
+    inflight = AsyncStorage.getItem(STORAGE_KEY)
+      .catch(() => null)
+      .then((raw) => {
+        if (raw) {
+          const cached = JSON.parse(raw) as string[];
+          if (cached.length) return cached;
+        }
+        return Promise.all(QUERIES.map(fetchOne)).then((groups) => {
+          const urls = groups.flat();
+          if (urls.length) AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(urls)).catch(() => {});
+          return urls;
+        });
+      });
   }
   return inflight;
 }
