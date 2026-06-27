@@ -11,7 +11,7 @@
 
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { SheetModal } from '@/components/SheetModal';
 import { BrandLockup } from '@/components/SocialBar';
@@ -53,7 +53,7 @@ export function AppHeader({ active }: { active?: HeaderTab }) {
   return (
     <View style={[styles.bar, { borderBottomColor: palette.border, backgroundColor: palette.background }]}>
       <View style={[styles.inner, { paddingHorizontal: isDesktop ? Spacing.four : Spacing.three, gap: isDesktop ? Spacing.three : Spacing.two }]}>
-        <PressableScale onPress={() => router.push('/home')} to={0.96}>
+        <PressableScale onPress={() => Linking.openURL('https://www.getmealmesh.com')} to={0.96}>
           {isDesktop ? (
             <BrandLockup palette={palette} size={30} />
           ) : (
@@ -167,7 +167,11 @@ function MenuItem({ label, onPress, danger }: { label: string; onPress: () => vo
 }
 
 const styles = StyleSheet.create({
-  bar: { width: '100%', borderBottomWidth: 1 },
+  // Explicit zIndex (with RN's default position:relative) gives the whole
+  // header its own stacking context above page content, so the account
+  // popover — anchored inside it — always paints on top of cards below,
+  // regardless of DOM order or blur/filter effects those cards use.
+  bar: { width: '100%', borderBottomWidth: 1, zIndex: 30 },
   inner: {
     width: '100%',
     maxWidth: 1180,
