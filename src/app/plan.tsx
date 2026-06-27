@@ -197,7 +197,7 @@ export default function Plan() {
                 <GlassCard style={{ gap: Spacing.two }}>
                   <Body style={{ fontFamily: Type.bodySemibold }}>Save this plan</Body>
                   <Small>Sign in to keep your plans and sync across devices.</Small>
-                  <Button title="Sign in" variant="secondary" onPress={() => router.push('/auth')} />
+                  <Button title="Sign in" onPress={() => router.push('/auth')} />
                 </GlassCard>
               </View>
             )}

@@ -39,6 +39,7 @@ import { Radius, Spacing, Type } from '@/constants/theme';
 import { usePalette } from '@/theme/use-theme';
 
 const MAXW = 1180;
+const ARTICLE_CARD_W = 320;
 
 // The blog is a separate, independently-deployed Astro site (see /blog). Until
 // it's live, EXPO_PUBLIC_BLOG_URL is unset and the page falls back to the
@@ -315,62 +316,69 @@ export function WebsiteLanding() {
         </View>
 
         {/* ARTICLES */}
-        <View onLayout={onAnchor('articles')}>
-          <Center style={sectionPad}>
+        <View onLayout={onAnchor('articles')} style={{ paddingVertical: narrow ? 52 : 80 }}>
+          <Center style={{ paddingHorizontal: pad, marginBottom: Spacing.four }}>
             <SectionHead kicker="FROM THE KITCHEN" title="Guides for multi-diet households" />
-            <View style={cards3}>
-              {latestArticles
-                ? latestArticles.map((a) => (
-                    <Pressable
-                      key={a.slug}
-                      onPress={() => Linking.openURL(a.url)}
-                      style={(s) => [
-                        styles.article,
-                        { backgroundColor: palette.card, borderColor: palette.border },
-                        isHovered(s) && { transform: [{ translateY: -3 }], borderColor: palette.accent },
-                      ]}
-                    >
-                      <Image source={{ uri: a.heroImage }} alt={a.heroImageAlt} resizeMode="cover" style={styles.articleImg} />
-                      <View style={{ padding: Spacing.three, gap: 6 }}>
-                        <View style={styles.articleMeta}>
-                          <Text style={[styles.eyebrow, { color: palette.accent, fontSize: 11 }]}>{a.category.toUpperCase()}</Text>
-                          <Text style={{ fontFamily: Type.bodyMedium, fontSize: 10.5, color: palette.textSecondary }}>
-                            {a.readingTime}
-                          </Text>
-                        </View>
-                        <Text style={[styles.articleTitle, { color: palette.text }]}>{a.title}</Text>
-                        <Text style={[styles.cardBody, { color: palette.textSecondary }]} numberOfLines={2}>
-                          {a.excerpt}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  ))
-                : ARTICLES.map((a) => (
-                    <Pressable
-                      key={a.title}
-                      style={(s) => [
-                        styles.article,
-                        { backgroundColor: palette.card, borderColor: palette.border },
-                        isHovered(s) && { transform: [{ translateY: -3 }], borderColor: palette.accent },
-                      ]}
-                    >
-                      <FoodImage name={a.query} ingredients={[]} query={a.query} style={styles.articleImg} radius={0} emojiSize={40} />
-                      <View style={{ padding: Spacing.three, gap: 6 }}>
-                        <View style={styles.articleMeta}>
-                          <Text style={[styles.eyebrow, { color: palette.accent, fontSize: 11 }]}>{a.category}</Text>
-                          <View style={[styles.soonPill, { backgroundColor: palette.backgroundElement }]}>
-                            <Text style={{ fontFamily: Type.bodyMedium, fontSize: 10.5, color: palette.textSecondary }}>Coming soon</Text>
-                          </View>
-                        </View>
-                        <Text style={[styles.articleTitle, { color: palette.text }]}>{a.title}</Text>
-                        <Text style={[styles.cardBody, { color: palette.textSecondary }]} numberOfLines={2}>
-                          {a.excerpt}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  ))}
-            </View>
           </Center>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            decelerationRate="fast"
+            snapToInterval={ARTICLE_CARD_W + Spacing.three}
+            snapToAlignment="start"
+            contentContainerStyle={{ gap: Spacing.three, paddingHorizontal: pad }}
+          >
+            {latestArticles
+              ? latestArticles.map((a) => (
+                  <Pressable
+                    key={a.slug}
+                    onPress={() => Linking.openURL(a.url)}
+                    style={(s) => [
+                      styles.article,
+                      { width: ARTICLE_CARD_W, backgroundColor: palette.card, borderColor: palette.border },
+                      isHovered(s) && { transform: [{ translateY: -3 }], borderColor: palette.accent },
+                    ]}
+                  >
+                    <Image source={{ uri: a.heroImage }} alt={a.heroImageAlt} resizeMode="cover" style={styles.articleImg} />
+                    <View style={{ padding: Spacing.three, gap: 6 }}>
+                      <View style={styles.articleMeta}>
+                        <Text style={[styles.eyebrow, { color: palette.accent, fontSize: 11 }]}>{a.category.toUpperCase()}</Text>
+                        <Text style={{ fontFamily: Type.bodyMedium, fontSize: 10.5, color: palette.textSecondary }}>
+                          {a.readingTime}
+                        </Text>
+                      </View>
+                      <Text style={[styles.articleTitle, { color: palette.text }]}>{a.title}</Text>
+                      <Text style={[styles.cardBody, { color: palette.textSecondary }]} numberOfLines={2}>
+                        {a.excerpt}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))
+              : ARTICLES.map((a) => (
+                  <Pressable
+                    key={a.title}
+                    style={(s) => [
+                      styles.article,
+                      { width: ARTICLE_CARD_W, backgroundColor: palette.card, borderColor: palette.border },
+                      isHovered(s) && { transform: [{ translateY: -3 }], borderColor: palette.accent },
+                    ]}
+                  >
+                    <FoodImage name={a.query} ingredients={[]} query={a.query} style={styles.articleImg} radius={0} emojiSize={40} />
+                    <View style={{ padding: Spacing.three, gap: 6 }}>
+                      <View style={styles.articleMeta}>
+                        <Text style={[styles.eyebrow, { color: palette.accent, fontSize: 11 }]}>{a.category}</Text>
+                        <View style={[styles.soonPill, { backgroundColor: palette.backgroundElement }]}>
+                          <Text style={{ fontFamily: Type.bodyMedium, fontSize: 10.5, color: palette.textSecondary }}>Coming soon</Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.articleTitle, { color: palette.text }]}>{a.title}</Text>
+                      <Text style={[styles.cardBody, { color: palette.textSecondary }]} numberOfLines={2}>
+                        {a.excerpt}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+          </ScrollView>
         </View>
 
         {/* WHO IT'S FOR */}
@@ -636,7 +644,7 @@ const styles = StyleSheet.create({
   review: { flex: 1, borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.four, gap: 10 },
   reviewerIcon: { width: 44, height: 44, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
 
-  article: { flex: 1, borderWidth: 1, borderRadius: Radius.lg, overflow: 'hidden' },
+  article: { flexShrink: 0, borderWidth: 1, borderRadius: Radius.lg, overflow: 'hidden' },
   articleImg: { width: '100%', height: 150 },
   articleMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   soonPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
