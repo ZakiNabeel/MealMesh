@@ -341,6 +341,36 @@ export function WebsiteLanding() {
           </Center>
         </View>
 
+        {/* PRICING */}
+        <View>
+          <Center style={sectionPad}>
+            <SectionHead kicker="PRICING" title="Free to start. Fair pricing wherever you live." />
+            <View style={cards3}>
+              <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
+                <Text style={[styles.eyebrow, { color: palette.accent }]}>FREE</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 6 }}>
+                  <Text style={{ fontFamily: Type.displayBold, fontSize: 34, color: palette.text }}>$0</Text>
+                </View>
+                <Text style={[styles.cardBody, { color: palette.textSecondary, marginTop: 6 }]}>
+                  1 member profile · 3 AI plans a week · basic grocery list
+                </Text>
+              </View>
+              <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.accent, borderWidth: 1.5 }]}>
+                <Text style={[styles.eyebrow, { color: palette.accent }]}>PRO · RECOMMENDED MONTHLY</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 6 }}>
+                  <Text style={{ fontFamily: Type.displayBold, fontSize: 34, color: palette.text }}>from $2.99</Text>
+                  <Text style={[styles.cardBody, { color: palette.textSecondary }]}>/month</Text>
+                </View>
+                <Text style={[styles.cardBody, { color: palette.textSecondary, marginTop: 6 }]}>
+                  Unlimited plans & profiles · all 40+ diets · regional cuisines · grocery export. Your exact price
+                  adapts to where you live — see it on the next screen, before you pay anything.
+                </Text>
+              </View>
+            </View>
+            <CTA label="See your price" onPress={() => router.push('/paywall')} />
+          </Center>
+        </View>
+
         {/* CTA BAND */}
         <Center style={{ paddingVertical: 24, paddingHorizontal: pad }}>
           <View style={[styles.band, { backgroundColor: palette.accent, paddingVertical: narrow ? 40 : 56, paddingHorizontal: pad }]}>

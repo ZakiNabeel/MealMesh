@@ -1,12 +1,15 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Art } from '@/components/art';
 import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
+import { getDraftHousehold } from '@/lib/draft';
 import { isFreemiusConfigured, openCheckout } from '@/lib/freemius';
+import { TIER_PRICES, tierForCountry, type PriceTier } from '@/lib/pricing';
+import { loadHousehold } from '@/lib/store';
 import { usePalette } from '@/theme/use-theme';
 
 const FEATURES = [
@@ -21,17 +24,27 @@ export default function Paywall() {
   const router = useRouter();
   const palette = usePalette();
   const { user } = useAuth();
-  const [billing, setBilling] = useState<'monthly' | 'yearly'>('yearly');
+  // Monthly is the promoted default; yearly is still available but not pushed.
+  const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
+  const [tier, setTier] = useState<PriceTier>(() => tierForCountry(getDraftHousehold()?.country));
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const price = billing === 'monthly' ? '$2.99' : '$24.99';
+  useEffect(() => {
+    if (getDraftHousehold()?.country) return; // already resolved synchronously above
+    loadHousehold().then((h) => {
+      if (h?.country) setTier(tierForCountry(h.country));
+    });
+  }, []);
+
+  const prices = TIER_PRICES[tier];
+  const price = billing === 'monthly' ? prices.monthly : prices.yearly;
   const per = billing === 'monthly' ? '/month' : '/year';
 
   async function goPro() {
     setNote(null);
     setBusy(true);
-    const { error } = await openCheckout(billing === 'yearly' ? 'annual' : 'monthly', {
+    const { error } = await openCheckout(billing === 'yearly' ? 'annual' : 'monthly', tier, {
       email: user?.email ?? undefined,
       onSuccess: () => router.replace('/plan'),
     });
@@ -83,7 +96,7 @@ export default function Paywall() {
                 <PressableScale key={b} onPress={() => setBilling(b)} to={0.97} style={{ flex: 1 }}>
                   <View style={[styles.bTab, active && { backgroundColor: palette.card }]}>
                     <Text style={{ fontFamily: active ? Type.bodySemibold : Type.bodyMedium, fontSize: 14, color: active ? palette.accent : palette.textSecondary }}>
-                      {b === 'monthly' ? 'Monthly' : 'Yearly · save 30%'}
+                      {b === 'monthly' ? 'Monthly · recommended' : 'Yearly'}
                     </Text>
                   </View>
                 </PressableScale>

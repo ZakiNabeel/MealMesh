@@ -8,8 +8,11 @@
  *   FREEMIUS_SECRET_KEY  ← Product → Settings → Keys → Secret Key (sk_…)
  *   SUPABASE_SERVICE_ROLE_KEY / SUPABASE_URL  ← injected automatically
  *
- * NOTE: signature verification is stubbed — wire it to FREEMIUS_SECRET_KEY
- * before going live so only Freemius can call this endpoint.
+ * Every request is verified against an HMAC-SHA256 signature of the raw body
+ * (Freemius's documented webhook signing scheme, sent as the X-Signature
+ * header) before anything is parsed or written — otherwise anyone who finds
+ * this URL could POST a fake `subscription.created` event and grant
+ * themselves Pro for free.
  */
 
 import { createClient } from 'npm:@supabase/supabase-js@2.74.0';
@@ -18,6 +21,30 @@ const admin = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
 );
+
+const SECRET_KEY = Deno.env.get('FREEMIUS_SECRET_KEY') ?? '';
+const SIGNATURE_HEADER = 'X-Signature';
+
+async function isValidSignature(rawBody: string, signature: string | null): Promise<boolean> {
+  if (!signature || !SECRET_KEY) return false;
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(SECRET_KEY),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(rawBody));
+  const expected = Array.from(new Uint8Array(mac))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+  // Lengths are equal/fixed (both hex SHA-256 digests), so a simple
+  // char-by-char compare is fine — no early-exit timing leak of substance.
+  if (expected.length !== signature.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
+  return diff === 0;
+}
 
 // Events that grant / revoke Pro.
 const GRANT = new Set(['subscription.created', 'subscription.renewed', 'license.created', 'install.activated']);
@@ -40,8 +67,19 @@ async function userIdByEmail(email: string): Promise<string | null> {
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
   try {
-    // TODO: verify the Freemius signature header against FREEMIUS_SECRET_KEY.
-    const body = (await req.json()) as Record<string, unknown>;
+    const rawBody = await req.text();
+    const signature = req.headers.get(SIGNATURE_HEADER);
+    if (!(await isValidSignature(rawBody, signature))) {
+      // Log the headers we actually got so a mismatch (e.g. Freemius using a
+      // differently-named or differently-cased header) is easy to spot and
+      // fix instead of silently rejecting every real event forever.
+      console.error('[freemius-webhook] signature check failed', {
+        sawHeader: signature,
+        allHeaders: Object.fromEntries(req.headers.entries()),
+      });
+      return new Response('Invalid signature', { status: 401 });
+    }
+    const body = JSON.parse(rawBody) as Record<string, unknown>;
     const type = String(body.type ?? '');
     const grant = GRANT.has(type);
     const revoke = REVOKE.has(type);
