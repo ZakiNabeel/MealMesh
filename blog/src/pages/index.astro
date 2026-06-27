@@ -5,6 +5,9 @@ import { getArticlesWithImages } from '../lib/articles';
 
 const resolved = await getArticlesWithImages();
 const latest = resolved.slice(0, 8);
+// Tripled so the auto-drift carousel below can loop seamlessly — the visible
+// window only ever looks into the middle copy, so the wraparound never shows.
+const tripledLatest = [...latest, ...latest, ...latest];
 
 const categories = ['All', 'Guides', 'Nutrition', 'Budget', 'Cultural'] as const;
 ---
@@ -20,14 +23,16 @@ const categories = ['All', 'Guides', 'Nutrition', 'Budget', 'Cultural'] as const
 
   <section class="carousel-wrap">
     <p class="wrap carousel-label">Latest</p>
-    <div class="carousel" tabindex="0" aria-label="Latest articles, scroll horizontally">
-      {
-        latest.map(({ article, image }) => (
-          <div class="carousel-item">
-            <ArticleCard article={article} image={image} />
-          </div>
-        ))
-      }
+    <div class="carousel-clip" id="carousel-clip" aria-label="Latest articles">
+      <div class="carousel-track" id="carousel-track">
+        {
+          tripledLatest.map(({ article, image }, i) => (
+            <div class="carousel-item" data-idx={i}>
+              <ArticleCard article={article} image={image} />
+            </div>
+          ))
+        }
+      </div>
     </div>
   </section>
 
@@ -78,25 +83,32 @@ const categories = ['All', 'Guides', 'Nutrition', 'Budget', 'Cultural'] as const
     color: var(--text-secondary);
     margin-bottom: 12px;
   }
-  .carousel {
-    display: flex;
-    gap: 20px;
+  .carousel-clip {
+    overflow: hidden;
+    width: 100%;
+  }
+  .carousel-clip.is-reduced-motion {
     overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scroll-padding-left: max(24px, calc((100vw - 1080px) / 2));
-    padding: 4px max(24px, calc((100vw - 1080px) / 2)) 12px;
     -webkit-overflow-scrolling: touch;
   }
-  .carousel::-webkit-scrollbar {
-    height: 6px;
-  }
-  .carousel::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 999px;
+  .carousel-track {
+    display: flex;
+    gap: 20px;
+    padding: 4px max(24px, calc((100vw - 1080px) / 2)) 12px;
+    will-change: transform;
   }
   .carousel-item {
     flex: 0 0 300px;
-    scroll-snap-align: start;
+    transition: transform 0.26s ease, opacity 0.26s ease, filter 0.26s ease;
+  }
+  .carousel-track.any-hovered .carousel-item:not(.is-hovered) {
+    opacity: 0.55;
+    filter: blur(1.5px);
+    transform: scale(0.97);
+  }
+  .carousel-item.is-hovered {
+    transform: scale(1.06);
+    z-index: 2;
   }
   .filters {
     display: flex;
@@ -139,6 +151,54 @@ const categories = ['All', 'Guides', 'Nutrition', 'Budget', 'Cultural'] as const
 </style>
 
 <script>
+  // Slow, smooth auto-drift carousel. Hovering a card pauses the drift, pops
+  // that card, and dims/blurs its neighbors. Tripled server-side so the loop
+  // wraps invisibly; respects prefers-reduced-motion by falling back to a
+  // plain manually-scrollable row instead of animating.
+  const clip = document.getElementById('carousel-clip');
+  const track = document.getElementById('carousel-track');
+
+  if (clip && track) {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) {
+      clip.classList.add('is-reduced-motion');
+    } else {
+      const items = Array.from(track.querySelectorAll<HTMLElement>('.carousel-item'));
+      const PX_PER_SEC = 20;
+      const setWidth = track.scrollWidth / 3;
+      let x = -setWidth;
+      let running = true;
+      let last = performance.now();
+
+      const tick = (now: number) => {
+        const dt = (now - last) / 1000;
+        last = now;
+        if (running && setWidth > 0) {
+          // Increasing x slides the track right, so cards drift left-to-right.
+          x += PX_PER_SEC * dt;
+          if (x >= 0) x -= setWidth;
+          track.style.transform = `translateX(${x}px)`;
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+
+      items.forEach((item) => {
+        item.addEventListener('mouseenter', () => {
+          running = false;
+          track.classList.add('any-hovered');
+          items.forEach((it) => it.classList.remove('is-hovered'));
+          item.classList.add('is-hovered');
+        });
+        item.addEventListener('mouseleave', () => {
+          running = true;
+          track.classList.remove('any-hovered');
+          item.classList.remove('is-hovered');
+        });
+      });
+    }
+  }
+
   const buttons = document.querySelectorAll<HTMLButtonElement>('.filter-btn');
   const items = document.querySelectorAll<HTMLElement>('.grid-item');
 
