@@ -4,15 +4,18 @@ import type { CollectionEntry } from 'astro:content';
 interface Props {
   article: CollectionEntry<'articles'>;
   compact?: boolean;
+  /** Resolved hero image (Pexels photo or local fallback). Defaults to the article's own placeholder. */
+  image?: { url: string; alt: string };
 }
 
-const { article, compact = false } = Astro.props;
+const { article, compact = false, image } = Astro.props;
 const { title, category, excerpt, heroImage, heroImageAlt, readingTime, publishedAt } = article.data;
+const resolvedImage = image ?? { url: heroImage, alt: heroImageAlt };
 const dateLabel = publishedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 ---
 
 <a href={`/articles/${article.id}`} class={`card ${compact ? 'compact' : ''}`}>
-  <img src={heroImage} alt={heroImageAlt} class="hero" loading="lazy" />
+  <img src={resolvedImage.url} alt={resolvedImage.alt} class="hero" loading="lazy" />
   <div class="body">
     <span class="category">{category}</span>
     <h3 class="title">{title}</h3>

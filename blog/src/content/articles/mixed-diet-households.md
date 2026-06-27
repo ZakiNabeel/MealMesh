@@ -4,6 +4,7 @@ category: 'Guides'
 excerpt: 'Most meal planners assume everyone at the table eats the same way. Real households rarely work like that — here is how to plan one week that genuinely works for all of them.'
 heroImage: '/images/articles/mixed-diet-households.svg'
 heroImageAlt: 'Three overlapping circles in green, blue, and maroon, representing three different diets meeting around one table.'
+imageQuery: 'family dinner table sharing food'
 author: 'The MealMesh Team'
 publishedAt: 2026-05-04
 readingTime: '5 min read'

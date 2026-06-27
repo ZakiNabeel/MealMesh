@@ -4,6 +4,7 @@ category: 'Cultural'
 excerpt: 'Two constraints that seem unrelated actually overlap on more ingredients than you would expect. Here is how to plan a week that honors both without anyone eating a separate meal.'
 heroImage: '/images/articles/gluten-free-halal-same-table.svg'
 heroImageAlt: 'Two overlapping circles, one green and one blue, meeting in the middle with a small shield icon at the intersection.'
+imageQuery: 'halal grilled meat platter rice'
 author: 'The MealMesh Team'
 publishedAt: 2026-05-18
 readingTime: '4 min read'

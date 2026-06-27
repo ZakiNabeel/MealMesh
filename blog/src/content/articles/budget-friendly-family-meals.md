@@ -4,6 +4,7 @@ category: 'Budget'
 excerpt: 'Budget pressure and dietary variety usually fight each other. Here is how to plan a week that respects both your grocery budget and everyone''s constraints — with one list, not three.'
 heroImage: '/images/articles/budget-friendly-family-meals.svg'
 heroImageAlt: 'An abstract illustration of a grocery basket with three colored circles inside it, representing a shared shopping list.'
+imageQuery: 'grocery shopping basket vegetables'
 author: 'The MealMesh Team'
 publishedAt: 2026-06-02
 readingTime: '5 min read'

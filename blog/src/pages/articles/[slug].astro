@@ -1,25 +1,35 @@
 ---
-import { getCollection, getEntry, render } from 'astro:content';
+import { getEntry, render } from 'astro:content';
 import ArticleCard from '../../components/ArticleCard.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getArticlesWithImages } from '../../lib/articles';
+import { resolvePexelsImage } from '../../lib/pexels';
 import { APP_URL } from '../../lib/site';
 
 export async function getStaticPaths() {
-  const articles = await getCollection('articles');
-  return articles.map((article) => ({
+  const resolved = await getArticlesWithImages();
+  return resolved.map(({ article, image }) => ({
     params: { slug: article.id },
-    props: { article },
+    props: { article, image },
   }));
 }
 
-const { article } = Astro.props;
+const { article, image } = Astro.props;
 const { Content } = await render(article);
-const { title, excerpt, heroImage, heroImageAlt, author, publishedAt, readingTime, metaTitle, metaDescription, relatedSlugs } =
-  article.data;
+const { title, excerpt, author, publishedAt, readingTime, metaTitle, metaDescription, relatedSlugs } = article.data;
 
-const related = (
+const relatedEntries = (
   await Promise.all(relatedSlugs.map((slug: string) => getEntry('articles', slug)))
 ).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+const related = await Promise.all(
+  relatedEntries.map(async (entry) => ({
+    article: entry,
+    image: (await resolvePexelsImage(entry.data.imageQuery)) ?? {
+      url: entry.data.heroImage,
+      alt: entry.data.heroImageAlt,
+    },
+  })),
+);
 
 const dateLabel = publishedAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
@@ -28,18 +38,21 @@ const jsonLd = {
   '@type': 'Article',
   headline: title,
   description: excerpt,
-  image: new URL(heroImage, Astro.site).toString(),
+  image: image.url.startsWith('http') ? image.url : new URL(image.url, Astro.site).toString(),
   author: { '@type': 'Organization', name: author },
+  publisher: { '@type': 'Organization', name: 'MealMesh' },
   datePublished: publishedAt.toISOString(),
+  dateModified: publishedAt.toISOString(),
+  mainEntityOfPage: new URL(Astro.url.pathname, Astro.site).toString(),
 };
 ---
 
-<BaseLayout title={metaTitle} description={metaDescription} image={heroImage} jsonLd={jsonLd}>
+<BaseLayout title={metaTitle} description={metaDescription} image={image.url} jsonLd={jsonLd}>
   <article class="wrap article">
     <p class="category">{article.data.category}</p>
     <h1>{title}</h1>
     <p class="meta">{author} · {dateLabel} · {readingTime}</p>
-    <img src={heroImage} alt={heroImageAlt} class="hero" />
+    <img src={image.url} alt={image.alt} class="hero" />
 
     <div class="body">
       <Content />
@@ -52,8 +65,8 @@ const jsonLd = {
         <section class="related">
           <h2>Related reads</h2>
           <div class="related-grid">
-            {related.map((entry) => (
-              <ArticleCard article={entry} compact />
+            {related.map(({ article: relatedArticle, image: relatedImage }) => (
+              <ArticleCard article={relatedArticle} image={relatedImage} compact />
             ))}
           </div>
         </section>

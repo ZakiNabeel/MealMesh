@@ -1,11 +1,10 @@
 ---
-import { getCollection } from 'astro:content';
 import ArticleCard from '../components/ArticleCard.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { getArticlesWithImages } from '../lib/articles';
 
-const articles = (await getCollection('articles')).sort(
-  (a, b) => b.data.publishedAt.valueOf() - a.data.publishedAt.valueOf(),
-);
+const resolved = await getArticlesWithImages();
+const latest = resolved.slice(0, 8);
 
 const categories = ['All', 'Guides', 'Nutrition', 'Budget', 'Cultural'] as const;
 ---
@@ -17,6 +16,19 @@ const categories = ['All', 'Guides', 'Nutrition', 'Budget', 'Cultural'] as const
   <section class="hero wrap">
     <h1>Kitchen notes</h1>
     <p class="lead">Practical guides for cooking one week that actually works for everyone at your table.</p>
+  </section>
+
+  <section class="carousel-wrap">
+    <p class="wrap carousel-label">Latest</p>
+    <div class="carousel" tabindex="0" aria-label="Latest articles, scroll horizontally">
+      {
+        latest.map(({ article, image }) => (
+          <div class="carousel-item">
+            <ArticleCard article={article} image={image} />
+          </div>
+        ))
+      }
+    </div>
   </section>
 
   <section class="wrap filters" role="tablist" aria-label="Filter by category">
@@ -31,9 +43,9 @@ const categories = ['All', 'Guides', 'Nutrition', 'Budget', 'Cultural'] as const
 
   <section class="wrap grid" id="grid">
     {
-      articles.map((article) => (
+      resolved.map(({ article, image }) => (
         <div class="grid-item" data-category={article.data.category}>
-          <ArticleCard article={article} />
+          <ArticleCard article={article} image={image} />
         </div>
       ))
     }
@@ -53,6 +65,38 @@ const categories = ['All', 'Guides', 'Nutrition', 'Budget', 'Cultural'] as const
     font-size: 17px;
     margin-top: 10px;
     max-width: 520px;
+  }
+  .carousel-wrap {
+    position: relative;
+    padding-bottom: 36px;
+  }
+  .carousel-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+  }
+  .carousel {
+    display: flex;
+    gap: 20px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: max(24px, calc((100vw - 1080px) / 2));
+    padding: 4px max(24px, calc((100vw - 1080px) / 2)) 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .carousel::-webkit-scrollbar {
+    height: 6px;
+  }
+  .carousel::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 999px;
+  }
+  .carousel-item {
+    flex: 0 0 300px;
+    scroll-snap-align: start;
   }
   .filters {
     display: flex;

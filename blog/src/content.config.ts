@@ -12,6 +12,10 @@ const articles = defineCollection({
     excerpt: z.string(),
     heroImage: z.string(),
     heroImageAlt: z.string(),
+    // Pexels search term used to fetch a real photo at build time; heroImage
+    // above is the fallback when no Pexels key is configured or the lookup
+    // comes up empty.
+    imageQuery: z.string(),
     author: z.string(),
     publishedAt: z.coerce.date(),
     readingTime: z.string(),
