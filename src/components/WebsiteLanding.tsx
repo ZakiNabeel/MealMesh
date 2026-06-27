@@ -170,7 +170,7 @@ export function WebsiteLanding() {
     const y = e.nativeEvent.contentOffset.y;
     setScrolled(y > 8);
     let current: string | null = null;
-    for (const key of ['how', 'why', 'articles']) {
+    for (const key of ['how', 'why', 'community', 'articles']) {
       if (y >= (anchors.current[key] ?? Infinity) - 120) current = key;
     }
     setActiveKey(current);
@@ -215,6 +215,7 @@ export function WebsiteLanding() {
               <View style={styles.navRight}>
                 <NavLink label="How it works" onPress={() => goTo('how')} active={activeKey === 'how'} />
                 <NavLink label="Why MealMesh" onPress={() => goTo('why')} active={activeKey === 'why'} />
+                <NavLink label="Community" onPress={() => goTo('community')} active={activeKey === 'community'} />
                 <NavLink
                   label="Articles"
                   onPress={() => (BLOG_URL ? Linking.openURL(BLOG_URL) : goTo('articles'))}
@@ -323,8 +324,27 @@ export function WebsiteLanding() {
           <ArticleMarquee liveArticles={latestArticles} placeholders={ARTICLES} pad={pad} />
         </View>
 
+        {/* COMMUNITY */}
+        <View onLayout={onAnchor('community')} style={[{ backgroundColor: palette.backgroundElement }, styles.divider, { borderTopColor: palette.border }]}>
+          <Center style={sectionPad}>
+            <SectionHead kicker="COOK TOGETHER" title="A community that cooks with you" />
+            <View style={cards3}>
+              {COMMUNITY.map((c) => (
+                <View key={c.title} style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
+                  <View style={[styles.valueIconWrap, { backgroundColor: palette.accentMuted }]}>
+                    <Text style={{ fontSize: 22 }}>{c.emoji}</Text>
+                  </View>
+                  <Text style={[styles.cardTitle, { color: palette.text }]}>{c.title}</Text>
+                  <Text style={[styles.cardBody, { color: palette.textSecondary }]}>{c.body}</Text>
+                </View>
+              ))}
+            </View>
+            <CTA label="Explore the community" onPress={() => router.push('/community')} />
+          </Center>
+        </View>
+
         {/* WHO IT'S FOR */}
-        <View style={[{ backgroundColor: palette.backgroundElement }, styles.divider, { borderTopColor: palette.border }]}>
+        <View style={[styles.divider, { borderTopColor: palette.border }]}>
           <Center style={sectionPad}>
             <SectionHead kicker="WHO IT'S FOR" title="Built for the table you actually have" />
             <View style={cards3}>
@@ -550,6 +570,12 @@ const STEPS = [
   { title: 'Add your household', body: 'Each person, each diet — halal, gluten-free, diabetic, allergies, the lot. Tap a few chips and you’re done.' },
   { title: 'We merge every diet', body: 'Our engine computes what’s safe for everyone, then asks our AI for real, culturally-aware dishes.' },
   { title: 'One plan, one list', body: 'Get a 7-day plan plus a single consolidated grocery list. Shared dishes where possible, simple swaps where needed.' },
+];
+
+const COMMUNITY: { emoji: string; title: string; body: string }[] = [
+  { emoji: '📸', title: 'Share what you cook', body: 'Post a photo of tonight’s dinner, swap recipes, and get ideas from other home cooks juggling the same diets.' },
+  { emoji: '🔥', title: 'Build streaks & climb', body: 'Mark meals cooked to earn points and badges, keep a daily streak, and see where you rank on the leaderboard.' },
+  { emoji: '👥', title: 'Follow other cooks', body: 'Find people cooking for a table like yours, follow them, and cook their recipes in one tap.' },
 ];
 
 const VALUES: { icon: keyof typeof LINE_ICONS; title: string; body: string }[] = [

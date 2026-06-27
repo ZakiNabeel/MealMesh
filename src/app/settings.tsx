@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
 import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small, useIsDesktop } from '@/components/ui';
 import { Radius, Spacing, THEME_META, Type } from '@/constants/theme';
@@ -21,13 +22,8 @@ export default function Settings() {
   const col = isDesktop ? styles.col : undefined;
 
   return (
-    <Screen art={Art.tacos} wide>
+    <Screen art={Art.tacos} wide header={<AppHeader />}>
       <View style={styles.top}>
-        <PressableScale onPress={() => router.back()} to={0.9}>
-          <View style={[styles.back, { borderColor: palette.border, backgroundColor: palette.card }]}>
-            <Text style={{ fontFamily: Type.bodySemibold, fontSize: 18, color: palette.text }}>‹</Text>
-          </View>
-        </PressableScale>
         <Heading>Settings</Heading>
       </View>
 

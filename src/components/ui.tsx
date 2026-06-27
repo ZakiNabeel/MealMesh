@@ -92,6 +92,7 @@ export function Screen({
   style,
   rail = false,
   wide = false,
+  header,
 }: {
   children: ReactNode;
   art?: ImageSourcePropType;
@@ -102,6 +103,9 @@ export function Screen({
   /** Use the roomier desktop content width (for grid/dashboard screens) so the
    *  page doesn't read as a thin phone-width strip floating in empty space. */
   wide?: boolean;
+  /** Persistent chrome pinned above the (scrolling) content — e.g. AppHeader.
+   *  Rendered as a sibling above the content column so it never scrolls away. */
+  header?: ReactNode;
 }) {
   const palette = usePalette();
   const isDesktop = useIsDesktop();
@@ -120,6 +124,7 @@ export function Screen({
         </View>
       )}
       <SafeAreaView style={{ flex: 1 }}>
+        {header}
         {showRail ? (
           <View style={styles.desktopRow}>
             <View style={styles.desktopContent}>

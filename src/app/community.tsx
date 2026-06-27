@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
 import { Avatar, Body, Button, Chip, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
 import { Spacing, Type } from '@/constants/theme';
@@ -66,13 +67,8 @@ export default function CommunityScreen() {
   }, [session]);
 
   return (
-    <Screen art={Art.sandwich} wide>
+    <Screen art={Art.sandwich} wide header={<AppHeader active="community" />}>
       <View style={styles.top}>
-        <PressableScale onPress={() => router.back()} to={0.9}>
-          <View style={[styles.back, { borderColor: palette.border, backgroundColor: palette.card }]}>
-            <Text style={{ fontFamily: Type.bodySemibold, fontSize: 18, color: palette.text }}>‹</Text>
-          </View>
-        </PressableScale>
         <Heading style={{ flex: 1 }}>Community</Heading>
         <PressableScale
           onPress={() => {

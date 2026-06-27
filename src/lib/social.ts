@@ -371,6 +371,43 @@ export async function getLeaderboard(scope: LeaderboardScope): Promise<Leaderboa
   return rankProfiles((data ?? []) as ProfileRow[]);
 }
 
+/**
+ * Public profiles to suggest following on the Home dashboard — excludes the
+ * viewer and anyone they already follow, ranked by points (most active cooks
+ * first). Same profiles→user_stats two-step as the leaderboard.
+ */
+export async function getSuggestedProfiles(limit = 8): Promise<Profile[]> {
+  const userId = await currentUserId();
+  const { data } = await supabase.from('profiles').select('*').eq('is_public', true).limit(100);
+  let rows = (data ?? []) as ProfileRow[];
+  if (userId) {
+    const { data: followingRows } = await supabase.from('follows').select('following_id').eq('follower_id', userId);
+    const following = new Set((followingRows ?? []).map((r) => (r as { following_id: string }).following_id));
+    rows = rows.filter((r) => r.user_id !== userId && !following.has(r.user_id));
+  }
+  if (rows.length === 0) return [];
+  const ids = rows.map((r) => r.user_id);
+  const { data: stats } = await supabase.from('user_stats').select('user_id, total_points').in('user_id', ids);
+  const points = new Map((stats ?? []).map((s) => [(s as StatsRow).user_id, (s as { total_points: number }).total_points]));
+  rows.sort((a, b) => (points.get(b.user_id) ?? 0) - (points.get(a.user_id) ?? 0));
+  return rows.slice(0, limit).map(toProfile);
+}
+
+/**
+ * The signed-in user's global standing for the Home card. `rank` is 1-based, or
+ * 0 when they're not on the public board (private profile / no points) but we
+ * still know their points. Returns null only when signed out or statless.
+ */
+export async function getMyRank(): Promise<{ rank: number; totalPoints: number } | null> {
+  const userId = await currentUserId();
+  if (!userId) return null;
+  const board = await getLeaderboard('global');
+  const idx = board.findIndex((e) => e.userId === userId);
+  if (idx >= 0) return { rank: idx + 1, totalPoints: board[idx].totalPoints };
+  const stats = await getUserStats(userId);
+  return stats ? { rank: 0, totalPoints: stats.totalPoints } : null;
+}
+
 /* ------------------------------------------------------------------ */
 /* Crews (Pro perk: create; free: join)                                */
 /* ------------------------------------------------------------------ */

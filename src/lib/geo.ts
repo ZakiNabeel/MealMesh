@@ -57,13 +57,50 @@ export function usdToLocalNumber(usd: number, code: string | undefined): number 
   return usd * (CURRENCY[country.currency]?.usdRate ?? 1);
 }
 
-/** Format a raw local-currency amount with the country's symbol. */
+/**
+ * How many decimals to show for a currency. Weak currencies (rate ≥ 20 per USD)
+ * read better as whole numbers; the three Gulf dinars are conventionally quoted
+ * to 3 places (fils); everything else to 2. This also feeds the Intl fallback.
+ */
+function fractionDigits(currency: string, usdRate: number): number {
+  if (currency === 'BHD' || currency === 'KWD' || currency === 'OMR') return 3;
+  if (usdRate >= 20) return 0;
+  return 2;
+}
+
+/**
+ * Format a raw LOCAL-currency amount for display. Uses `Intl.NumberFormat` with
+ * the ISO currency code, which places the symbol on the correct side, groups
+ * thousands, applies the right number of decimals, AND wraps the symbol in the
+ * proper Unicode bidi isolates — so RTL/Arabic symbols (BHD `.د.ب`, KWD, AED…)
+ * no longer reorder against Latin digits (the old `${symbol}${number}` bug).
+ *
+ * Hermes (native) ships without Intl currency data, so we fall back to the
+ * historical symbol-prefix output if `Intl` throws. Web — the only live
+ * surface — has full Intl, so this is correct everywhere it currently runs.
+ */
+export function formatCurrency(localAmount: number, currency: string): string {
+  const rate = CURRENCY[currency] ?? CURRENCY.USD;
+  const digits = fractionDigits(currency, rate.usdRate);
+  const rounded = digits === 0 ? Math.round(localAmount / 10) * 10 : localAmount;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency,
+      currencyDisplay: 'narrowSymbol',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: digits,
+    }).format(rounded);
+  } catch {
+    // Native fallback — keep the symbol but space it off the number.
+    const formatted = rounded.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: digits });
+    return `${rate.symbol} ${formatted}`;
+  }
+}
+
+/** Format a raw local-currency amount for the given country. */
 export function formatMoney(localAmount: number, code: string | undefined): string {
-  const country = countryByCode(code);
-  const rate = CURRENCY[country.currency] ?? CURRENCY.USD;
-  const big = rate.usdRate >= 20;
-  const rounded = big ? Math.round(localAmount / 10) * 10 : Math.round(localAmount * 100) / 100;
-  return `${rate.symbol}${rounded.toLocaleString(undefined, { maximumFractionDigits: big ? 0 : 2 })}`;
+  return formatCurrency(localAmount, countryByCode(code).currency);
 }
 
 /** Convert an amount in the country's local currency back to USD. */
@@ -73,22 +110,24 @@ export function localToUsd(local: number, code: string | undefined): number {
   return rate ? local / rate : local;
 }
 
-/** The currency symbol for a country (for input prefixes etc.). */
+/**
+ * The currency symbol for a country (for input prefixes etc.). Derived from
+ * `Intl` so it matches what `formatCurrency` renders; falls back to the table.
+ */
 export function currencySymbol(code: string | undefined): string {
   const country = countryByCode(code);
+  try {
+    const part = new Intl.NumberFormat(undefined, { style: 'currency', currency: country.currency, currencyDisplay: 'narrowSymbol' })
+      .formatToParts(0)
+      .find((p) => p.type === 'currency');
+    if (part) return part.value;
+  } catch {
+    // fall through to the static table
+  }
   return CURRENCY[country.currency]?.symbol ?? '$';
 }
 
 /** Convert a USD amount to the country's currency and format it with the symbol. */
 export function formatLocal(usd: number, code: string | undefined): string {
-  const country = countryByCode(code);
-  const rate = CURRENCY[country.currency] ?? CURRENCY.USD;
-  const value = usd * rate.usdRate;
-  const big = rate.usdRate >= 20; // weak currency → no decimals, round to 10s
-  const rounded = big ? Math.round(value / 10) * 10 : Math.round(value * 100) / 100;
-  const formatted = rounded.toLocaleString(undefined, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: big ? 0 : 2,
-  });
-  return `${rate.symbol}${formatted}`;
+  return formatCurrency(usdToLocalNumber(usd, code), countryByCode(code).currency);
 }

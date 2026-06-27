@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Linking, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
 import { FoodImage } from '@/components/FoodImage';
 import { MeshMark } from '@/components/MeshMark';
@@ -13,7 +14,7 @@ import { weeklyLocal } from '@/lib/budget';
 import { localizeName, youtubeSearchUrl } from '@/lib/cuisine';
 import { getDraftHousehold, setDraftHousehold } from '@/lib/draft';
 import { computeStreak, summarizeWeek, type WeekSummary } from '@/lib/gamification';
-import { currencySymbol, formatMoney } from '@/lib/geo';
+import { formatMoney } from '@/lib/geo';
 import { generatePlan } from '@/lib/generatePlan';
 import { pickAndUploadImage } from '@/lib/imageUpload';
 import { getAllLogs, logMeal, unlogMeal } from '@/lib/social';
@@ -188,7 +189,7 @@ export default function Plan() {
   const centerCol = isDesktop ? styles.centerCol : undefined;
 
   return (
-    <Screen art={Art.ramen} wide style={isDesktop ? { maxWidth: 1180 } : undefined}>
+    <Screen art={Art.ramen} wide header={<AppHeader active="plan" />} style={isDesktop ? { maxWidth: 1180 } : undefined}>
       {/* header + tabs — kept to a comfortable width even on a wide desktop */}
       <View style={centerCol}>
         <View style={styles.header}>
@@ -196,11 +197,6 @@ export default function Plan() {
             <Eyebrow>This week</Eyebrow>
             <Heading numberOfLines={1}>{household.name}</Heading>
           </View>
-          <PressableScale onPress={() => router.push('/settings')} to={0.9}>
-            <View style={[styles.iconBtn, { borderColor: palette.border, backgroundColor: palette.card }]}>
-              <Text style={{ fontSize: 16 }}>⚙︎</Text>
-            </View>
-          </PressableScale>
         </View>
 
         <View style={[styles.tabs, { backgroundColor: palette.backgroundElement }]}>
@@ -324,41 +320,32 @@ export default function Plan() {
   );
 }
 
-/** Compact gamification strip: this week's points, badge progress, and streak. */
+/** This week's cooking progress: points, badges, and streak — gives the
+ *  numbers room to breathe (nav to leaderboard/community lives in the header). */
 function CookProgress({ summary, streak }: { summary: WeekSummary; streak: number }) {
   const palette = usePalette();
-  const router = useRouter();
   const total = DAY_ORDER.length * MEAL_SLOTS.length; // 28
   const pct = total > 0 ? summary.mealsCooked / total : 0;
   return (
-    <GlassCard style={{ gap: Spacing.two }}>
+    <GlassCard style={{ gap: Spacing.three }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Eyebrow>Your week</Eyebrow>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three }}>
-          <Text style={{ fontFamily: Type.bodySemibold, fontSize: 12, color: palette.accent }}>
+        <View style={[styles.streakPill, { backgroundColor: streak > 0 ? palette.accentMuted : palette.backgroundElement }]}>
+          <Text style={{ fontFamily: Type.bodySemibold, fontSize: 12, color: streak > 0 ? palette.accent : palette.textSecondary }}>
             {streak > 0 ? `🔥 ${streak}-day streak` : 'Start a streak today'}
           </Text>
-          <PressableScale onPress={() => router.push('/leaderboard')} to={0.94}>
-            <Text style={{ fontFamily: Type.bodySemibold, fontSize: 12, color: palette.textSecondary }}>
-              Leaderboard ›
-            </Text>
-          </PressableScale>
-          <PressableScale onPress={() => router.push('/community')} to={0.94}>
-            <Text style={{ fontFamily: Type.bodySemibold, fontSize: 12, color: palette.textSecondary }}>
-              Community ›
-            </Text>
-          </PressableScale>
         </View>
       </View>
 
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-        <Text style={{ fontFamily: Type.displayBold, fontSize: 28, color: palette.text }}>
-          {summary.points}
-          <Text style={{ fontFamily: Type.bodyMedium, fontSize: 13, color: palette.textSecondary }}> pts</Text>
-        </Text>
-        <Small color={palette.textSecondary}>
-          {summary.mealsCooked}/{total} meals · {summary.cleanPlateDays.length}/7 clean plates
-        </Small>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: Spacing.three }}>
+        <View>
+          <Text style={{ fontFamily: Type.displayBold, fontSize: 32, color: palette.text }}>{summary.points}</Text>
+          <Small color={palette.textSecondary}>points this week</Small>
+        </View>
+        <View style={{ alignItems: 'flex-end', gap: 2 }}>
+          <Small color={palette.textSecondary}>{summary.mealsCooked}/{total} meals cooked</Small>
+          <Small color={palette.textSecondary}>{summary.cleanPlateDays.length}/7 clean plates</Small>
+        </View>
       </View>
 
       {/* progress bar */}
@@ -608,31 +595,31 @@ function BudgetBanner({ plan, country, budgetWeekly }: { plan: MealPlan; country
   const estLocal = weeklyLocal(plan, country);
   const within = budgetWeekly != null ? estLocal <= budgetWeekly : null;
   return (
-    <GlassCard style={{ gap: Spacing.two }}>
+    <GlassCard style={{ gap: Spacing.three }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three }}>
         <View style={[styles.budgetIcon, { backgroundColor: palette.accentMuted }]}>
           <Text style={{ fontSize: 20 }}>🧾</Text>
         </View>
         <View style={{ flex: 1 }}>
           <Eyebrow>Est. weekly groceries</Eyebrow>
-          <Text
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            style={{ fontFamily: Type.displayBold, fontSize: 26, color: palette.text }}
-          >
-            {formatMoney(estLocal, country)}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: Spacing.two, flexWrap: 'wrap' }}>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              style={{ fontFamily: Type.displayBold, fontSize: 26, color: palette.text }}
+            >
+              {formatMoney(estLocal, country)}
+            </Text>
+            <Small color={palette.textSecondary}>approx / week</Small>
+          </View>
         </View>
-        <Small color={palette.textSecondary} style={{ maxWidth: 64, textAlign: 'right' }}>
-          approx{'\n'}/ week
-        </Small>
       </View>
       {budgetWeekly != null && (
         <View style={[styles.budgetTag, { backgroundColor: within ? palette.accentMuted : palette.blueMuted }]}>
           <Text style={{ fontFamily: Type.bodySemibold, fontSize: 12, color: within ? palette.accent : palette.blue }}>
             {within
-              ? `✓ Within your ${currencySymbol(country)}${budgetWeekly.toLocaleString()} budget`
-              : `Just over your ${currencySymbol(country)}${budgetWeekly.toLocaleString()} budget — Regenerate for cheaper picks`}
+              ? `✓ Within your ${formatMoney(budgetWeekly, country)} budget`
+              : `Just over your ${formatMoney(budgetWeekly, country)} budget — Regenerate for cheaper picks`}
           </Text>
         </View>
       )}
@@ -956,6 +943,7 @@ const styles = StyleSheet.create({
   dayProgress: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   progressTrack: { height: 8, borderRadius: 999, overflow: 'hidden', width: '100%' },
   progressFill: { height: '100%', borderRadius: 999 },
+  streakPill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
   cookPhoto: { width: '100%', height: 200, borderRadius: Radius.md },
   photoDrop: { height: 120, borderRadius: Radius.md, borderWidth: 1.5, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: Spacing.two },
   captionInput: { minHeight: 64, borderWidth: 1, borderRadius: Radius.md, padding: Spacing.three, fontFamily: Type.body, fontSize: 15, textAlignVertical: 'top' },

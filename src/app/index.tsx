@@ -18,12 +18,12 @@ export default function Welcome() {
   const router = useRouter();
   const { session, loading } = useAuth();
 
-  // A signed-in browser visitor landing on "/" (e.g. right after Google OAuth,
-  // or just revisiting the bare domain) should land in the app, not see the
-  // marketing site again with no sign anything happened.
+  // A signed-in visitor landing on "/" (e.g. right after Google OAuth, or just
+  // revisiting the bare domain) should land on the Home dashboard, not the
+  // marketing site / welcome screen with no sign anything happened.
   useEffect(() => {
-    if (!isApp && !loading && session) router.replace('/plan');
-  }, [isApp, loading, session, router]);
+    if (!loading && session) router.replace('/home');
+  }, [loading, session, router]);
 
   if (!isApp) return session ? null : <WebsiteLanding />;
   return <MobileWelcome />;
@@ -60,7 +60,7 @@ function MobileWelcome() {
         <Reveal delay={460} style={styles.actions}>
           {session ? (
             <>
-              <Button title="View this week's plan" onPress={() => router.push('/plan')} />
+              <Button title="Go to my home" onPress={() => router.push('/home')} />
               <Button title="Set up a new household" variant="secondary" onPress={() => router.push('/onboarding')} />
             </>
           ) : (

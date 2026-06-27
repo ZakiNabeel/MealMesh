@@ -78,9 +78,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async signInWithGoogle() {
         if (!isSupabaseConfigured) return { error: NOT_CONFIGURED };
         // Web does a full-page redirect through Google and back, landing
-        // wherever redirectTo points — straight to /plan, not the marketing
-        // site's "/" (which would otherwise strand a just-signed-in user).
-        const redirectTo = redirectUrl('/plan');
+        // wherever redirectTo points — straight to the Home dashboard, not the
+        // marketing site's "/" (which would otherwise strand a signed-in user).
+        const redirectTo = redirectUrl('/home');
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: { redirectTo, skipBrowserRedirect: Platform.OS !== 'web' },
