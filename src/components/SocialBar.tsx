@@ -18,7 +18,7 @@ const GLYPHS: { key: string; label: string; url: string; svg: (c: string) => str
   {
     key: 'instagram',
     label: 'Instagram',
-    url: 'https://instagram.com/mealmesh',
+    url: 'https://www.instagram.com/get.meal.mesh/',
     svg: (c) =>
       `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='${c}' stroke-width='2'><rect x='3' y='3' width='18' height='18' rx='5'/><circle cx='12' cy='12' r='4'/><circle cx='17.4' cy='6.6' r='1.1' fill='${c}' stroke='none'/></svg>`,
   },
@@ -32,7 +32,7 @@ const GLYPHS: { key: string; label: string; url: string; svg: (c: string) => str
   {
     key: 'linkedin',
     label: 'LinkedIn',
-    url: 'https://linkedin.com/company/mealmesh',
+    url: 'https://www.linkedin.com/company/getmealmesh',
     svg: (c) =>
       `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='${c}'><path d='M6.94 7.4a1.94 1.94 0 110-3.88 1.94 1.94 0 010 3.88zM5.4 8.9h3.1v9.6H5.4V8.9zm5 0h2.97v1.3h.04c.41-.78 1.42-1.6 2.93-1.6 3.13 0 3.71 2.06 3.71 4.74v5.16h-3.1V14c0-1.07-.02-2.45-1.49-2.45-1.5 0-1.72 1.17-1.72 2.37v4.58h-3.1V8.9z'/></svg>`,
   },

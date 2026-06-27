@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Art } from '@/components/art';
@@ -14,7 +15,17 @@ export default function Welcome() {
   // Browser visitors (phone or laptop) see the marketing website; the installed
   // PWA and the native app get the focused app experience.
   const isApp = useIsInstalledApp();
-  if (!isApp) return <WebsiteLanding />;
+  const router = useRouter();
+  const { session, loading } = useAuth();
+
+  // A signed-in browser visitor landing on "/" (e.g. right after Google OAuth,
+  // or just revisiting the bare domain) should land in the app, not see the
+  // marketing site again with no sign anything happened.
+  useEffect(() => {
+    if (!isApp && !loading && session) router.replace('/plan');
+  }, [isApp, loading, session, router]);
+
+  if (!isApp) return session ? null : <WebsiteLanding />;
   return <MobileWelcome />;
 }
 

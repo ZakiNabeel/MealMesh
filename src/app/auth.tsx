@@ -3,11 +3,12 @@ import { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Art } from '@/components/art';
-import { MeshMark } from '@/components/MeshMark';
 import { Body, Button, Eyebrow, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { usePalette } from '@/theme/use-theme';
+
+const LOGO = require('../../assets/logo.svg');
 
 function dataUri(svg: string): string {
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
@@ -64,7 +65,7 @@ export default function Auth() {
 
       <View style={styles.body}>
         <Reveal style={{ alignItems: 'center', marginBottom: Spacing.three }}>
-          <MeshMark size={84} />
+          <Image source={LOGO} alt="" style={{ width: 84, height: 84, borderRadius: 84 * 0.28 }} />
         </Reveal>
 
         <Reveal delay={100}>
