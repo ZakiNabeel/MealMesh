@@ -57,6 +57,7 @@ export default function Settings() {
               </Body>
               <Button title="View my profile" variant="secondary" onPress={() => router.push('/profile')} />
               <Button title="Leaderboard" variant="secondary" onPress={() => router.push('/leaderboard')} />
+              <Button title="Community" variant="secondary" onPress={() => router.push('/community')} />
             </Section>
           </Reveal>
         )}

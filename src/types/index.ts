@@ -365,3 +365,68 @@ export interface MealLog {
   caption: string | null;
   createdAt: string;
 }
+
+/* ------------------------------------------------------------------ */
+/* Social: community feed + recipe sharing (Milestone 3)              */
+/* ------------------------------------------------------------------ */
+
+export type PostType = 'text' | 'photo' | 'recipe';
+
+export type FeedSort = 'hot' | 'new' | 'top' | 'following';
+
+export type VoteTargetType = 'post' | 'comment';
+
+/**
+ * A user-submitted recipe shared to the community. Free-text content —
+ * unlike `PlannedMeal`/`Recipe` (the engine's output), this is NEVER run
+ * through `validatePlan`. The UI must make that distinction clear: a
+ * household's hard constraints are not checked against community recipes.
+ */
+export interface CommunityRecipe {
+  id: string;
+  authorId: string;
+  title: string;
+  description: string | null;
+  imageUrl: string | null;
+  ingredients: string[];
+  steps: string[];
+  cuisine: string | null;
+  dietTags: string[];
+  isPublic: boolean;
+  createdAt: string;
+}
+
+/** Public-safe author projection embedded in feed/post/comment rows. */
+export interface AuthorSummary {
+  userId: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  isPro: boolean;
+}
+
+export interface Post {
+  id: string;
+  author: AuthorSummary;
+  type: PostType;
+  body: string | null;
+  imageUrl: string | null;
+  recipeId: string | null;
+  recipeTitle: string | null;
+  score: number;
+  myVote: -1 | 0 | 1;
+  commentCount: number;
+  createdAt: string;
+}
+
+export interface Comment {
+  id: string;
+  postId: string;
+  author: AuthorSummary;
+  parentCommentId: string | null;
+  body: string;
+  score: number;
+  myVote: -1 | 0 | 1;
+  createdAt: string;
+  replies: Comment[];
+}

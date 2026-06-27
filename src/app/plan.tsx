@@ -343,6 +343,11 @@ function CookProgress({ summary, streak }: { summary: WeekSummary; streak: numbe
               Leaderboard ›
             </Text>
           </PressableScale>
+          <PressableScale onPress={() => router.push('/community')} to={0.94}>
+            <Text style={{ fontFamily: Type.bodySemibold, fontSize: 12, color: palette.textSecondary }}>
+              Community ›
+            </Text>
+          </PressableScale>
         </View>
       </View>
 
