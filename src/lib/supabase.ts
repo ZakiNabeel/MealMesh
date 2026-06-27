@@ -2,7 +2,7 @@
  * Supabase client (client-side, anon/publishable key only).
  *
  * The anon/publishable key is safe to ship — Row Level Security protects data.
- * The Anthropic key and the service-role key are NEVER here.
+ * The Gemini key and the service-role key are NEVER here.
  *
  * Hardened so a missing or malformed URL can never crash the app (important
  * because `web.output: "static"` constructs this during server prerender). If

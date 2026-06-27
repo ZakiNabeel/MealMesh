@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Image, Linking, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Art } from '@/components/art';
 import { FoodImage } from '@/components/FoodImage';
@@ -12,12 +12,19 @@ import { useAuth } from '@/lib/auth';
 import { weeklyLocal } from '@/lib/budget';
 import { localizeName, youtubeSearchUrl } from '@/lib/cuisine';
 import { getDraftHousehold, setDraftHousehold } from '@/lib/draft';
+import { computeStreak, summarizeWeek, type WeekSummary } from '@/lib/gamification';
 import { currencySymbol, formatMoney } from '@/lib/geo';
 import { generatePlan } from '@/lib/generatePlan';
+import { pickAndUploadImage } from '@/lib/imageUpload';
+import { getAllLogs, logMeal, unlogMeal } from '@/lib/social';
 import { currentWeekStart, loadHousehold, loadPlan, savePlan, saveHousehold } from '@/lib/store';
 import { bumpGenerations, FREE_WEEKLY_PLANS, generationsThisWeek, useSubscription } from '@/lib/subscription';
 import { usePalette } from '@/theme/use-theme';
-import { MEAL_SLOTS, type DayOfWeek, type Household, type MealPlan, type MealSlot, type PlannedMeal, type Region } from '@/types';
+import { MEAL_SLOTS, type DayOfWeek, type Household, type MealLog, type MealPlan, type MealSlot, type PlannedMeal, type Region } from '@/types';
+
+/** Key a cooking log by its plan coordinates (day + slot within the week). */
+const cookKey = (day: DayOfWeek, slot: MealSlot) => `${day}|${slot}`;
+const todayIso = () => new Date().toISOString().slice(0, 10);
 
 const DAY_ORDER: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -46,9 +53,61 @@ export default function Plan() {
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<PlannedMeal | null>(null);
 
+  // Cooking logs (the gamification loop). Loaded once per session; `cooked`
+  // (this week's keys) drives the per-meal checks, while the full history feeds
+  // the cross-week streak. Only signed-in users can log — guests see no checks.
+  const [logs, setLogs] = useState<MealLog[]>([]);
+  const [cookTarget, setCookTarget] = useState<PlannedMeal | null>(null);
+  const week = currentWeekStart();
+
+  const refreshLogs = useCallback(async () => {
+    if (!session) {
+      setLogs([]);
+      return;
+    }
+    setLogs(await getAllLogs());
+  }, [session]);
+
+  useEffect(() => {
+    void refreshLogs();
+  }, [refreshLogs]);
+
+  const cooked = useMemo(() => {
+    const set = new Set<string>();
+    for (const l of logs) if (l.weekStart === week) set.add(cookKey(l.dayOfWeek, l.slot));
+    return set;
+  }, [logs, week]);
+
+  const weekSummary = useMemo<WeekSummary>(() => summarizeWeek(logs, week), [logs, week]);
+  const streak = useMemo(() => computeStreak(logs, todayIso()), [logs]);
+
+  // Optimistically reflect a just-logged/unlogged meal, then persist.
+  const toggleCooked = useCallback(
+    async (meal: PlannedMeal, photoUrl: string | null, caption: string | null) => {
+      const saved = await logMeal({
+        weekStart: week,
+        dayOfWeek: meal.dayOfWeek,
+        slot: meal.slot,
+        mealName: meal.name,
+        photoUrl,
+        caption,
+      });
+      if (saved) await refreshLogs();
+    },
+    [week, refreshLogs],
+  );
+
+  const removeCooked = useCallback(
+    async (meal: PlannedMeal) => {
+      await unlogMeal({ weekStart: week, dayOfWeek: meal.dayOfWeek, slot: meal.slot });
+      await refreshLogs();
+    },
+    [week, refreshLogs],
+  );
+
   // Resolve the working household: persist a guest's draft once signed in, or
-  // load the saved one on return. Runs before generation so we never call Claude
-  // twice (once as a draft, once after persisting).
+  // load the saved one on return. Runs before generation so we never call the
+  // AI twice (once as a draft, once after persisting).
   useEffect(() => {
     if (authLoading) return;
     let cancelled = false;
@@ -82,7 +141,7 @@ export default function Plan() {
       const week = currentWeekStart();
       const persisted = Boolean(session) && household.id !== 'draft';
       let result: MealPlan | null = null;
-      // On first view, prefer the saved plan (no Claude call / no cost). A
+      // On first view, prefer the saved plan (no AI call / no cost). A
       // regenerate (seed > 0) always asks for a fresh one and overwrites it.
       if (persisted && seed === 0) result = await loadPlan(household.id, week);
       if (!result) {
@@ -177,19 +236,37 @@ export default function Plan() {
             {isDesktop ? (
               <View style={styles.dashboardRow}>
                 <View style={styles.rail}>
+                  {session && <CookProgress summary={weekSummary} streak={streak.current} />}
                   <PlanSummaryRail plan={plan} household={household} />
                 </View>
-                <DayCards plan={plan} isDesktop={isDesktop} onSelect={setSelected} />
+                <DayCards
+                  plan={plan}
+                  isDesktop={isDesktop}
+                  onSelect={setSelected}
+                  cooked={cooked}
+                  canCook={Boolean(session)}
+                  onCook={setCookTarget}
+                  onUncook={removeCooked}
+                />
               </View>
             ) : (
               <>
                 <View style={{ gap: Spacing.three }}>
                   <BudgetBanner plan={plan} country={household.country} budgetWeekly={household.budgetWeekly} />
+                  {session && <CookProgress summary={weekSummary} streak={streak.current} />}
                   <Small color={palette.accent} style={{ fontFamily: Type.bodyMedium }}>
                     ✓ Every dish checked against your household&apos;s rules
                   </Small>
                 </View>
-                <DayCards plan={plan} isDesktop={isDesktop} onSelect={setSelected} />
+                <DayCards
+                  plan={plan}
+                  isDesktop={isDesktop}
+                  onSelect={setSelected}
+                  cooked={cooked}
+                  canCook={Boolean(session)}
+                  onCook={setCookTarget}
+                  onUncook={removeCooked}
+                />
               </>
             )}
             {!session && (
@@ -235,7 +312,150 @@ export default function Plan() {
       </View>
 
       <RecipeModal meal={selected} region={household.region} onClose={() => setSelected(null)} />
+      <CookSheet
+        meal={cookTarget}
+        onClose={() => setCookTarget(null)}
+        onConfirm={async (photoUrl, caption) => {
+          if (cookTarget) await toggleCooked(cookTarget, photoUrl, caption);
+          setCookTarget(null);
+        }}
+      />
     </Screen>
+  );
+}
+
+/** Compact gamification strip: this week's points, badge progress, and streak. */
+function CookProgress({ summary, streak }: { summary: WeekSummary; streak: number }) {
+  const palette = usePalette();
+  const router = useRouter();
+  const total = DAY_ORDER.length * MEAL_SLOTS.length; // 28
+  const pct = total > 0 ? summary.mealsCooked / total : 0;
+  return (
+    <GlassCard style={{ gap: Spacing.two }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Eyebrow>Your week</Eyebrow>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three }}>
+          <Text style={{ fontFamily: Type.bodySemibold, fontSize: 12, color: palette.accent }}>
+            {streak > 0 ? `🔥 ${streak}-day streak` : 'Start a streak today'}
+          </Text>
+          <PressableScale onPress={() => router.push('/leaderboard')} to={0.94}>
+            <Text style={{ fontFamily: Type.bodySemibold, fontSize: 12, color: palette.textSecondary }}>
+              Leaderboard ›
+            </Text>
+          </PressableScale>
+        </View>
+      </View>
+
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+        <Text style={{ fontFamily: Type.displayBold, fontSize: 28, color: palette.text }}>
+          {summary.points}
+          <Text style={{ fontFamily: Type.bodyMedium, fontSize: 13, color: palette.textSecondary }}> pts</Text>
+        </Text>
+        <Small color={palette.textSecondary}>
+          {summary.mealsCooked}/{total} meals · {summary.cleanPlateDays.length}/7 clean plates
+        </Small>
+      </View>
+
+      {/* progress bar */}
+      <View style={[styles.progressTrack, { backgroundColor: palette.backgroundElement }]}>
+        <View style={[styles.progressFill, { width: `${Math.round(pct * 100)}%`, backgroundColor: palette.accent }]} />
+      </View>
+
+      {summary.perfectWeek ? (
+        <Small color={palette.accent} style={{ fontFamily: Type.bodySemibold }}>🏆 Perfect Week — every meal cooked!</Small>
+      ) : (
+        <Small color={palette.textSecondary}>Tap ✓ on a meal once you&apos;ve cooked it.</Small>
+      )}
+    </GlassCard>
+  );
+}
+
+/** Bottom sheet to log a cooked meal with an optional photo + caption. */
+function CookSheet({
+  meal,
+  onClose,
+  onConfirm,
+}: {
+  meal: PlannedMeal | null;
+  onClose: () => void;
+  onConfirm: (photoUrl: string | null, caption: string | null) => Promise<void>;
+}) {
+  const palette = usePalette();
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [caption, setCaption] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Reset local state whenever a new meal is targeted.
+  useEffect(() => {
+    if (meal) {
+      setPhotoUrl(null);
+      setCaption('');
+      setError(null);
+    }
+  }, [meal]);
+
+  const addPhoto = async () => {
+    setUploading(true);
+    setError(null);
+    const res = await pickAndUploadImage('meal-photos');
+    setUploading(false);
+    if ('url' in res) setPhotoUrl(res.url);
+    else if ('error' in res) setError(res.error);
+  };
+
+  return (
+    <SheetModal visible={Boolean(meal)} onClose={onClose} maxWidth={460}>
+      {meal && (
+        <View style={{ padding: Spacing.four, gap: Spacing.three }}>
+          <View style={{ gap: 2 }}>
+            <Eyebrow>{SLOT_LABEL[meal.slot]} · I made this</Eyebrow>
+            <Heading numberOfLines={2}>{meal.name}</Heading>
+          </View>
+
+          {photoUrl ? (
+            <Image source={{ uri: photoUrl }} resizeMode="cover" style={styles.cookPhoto} />
+          ) : (
+            <PressableScale onPress={addPhoto} to={0.98} disabled={uploading}>
+              <View style={[styles.photoDrop, { borderColor: palette.border, backgroundColor: palette.backgroundElement }]}>
+                {uploading ? (
+                  <ActivityIndicator color={palette.accent} />
+                ) : (
+                  <>
+                    <Text style={{ fontSize: 26 }}>📸</Text>
+                    <Small color={palette.textSecondary} style={{ fontFamily: Type.bodySemibold }}>
+                      Add a photo (optional)
+                    </Small>
+                  </>
+                )}
+              </View>
+            </PressableScale>
+          )}
+
+          <TextInput
+            value={caption}
+            onChangeText={setCaption}
+            placeholder="How did it turn out? (optional)"
+            placeholderTextColor={palette.textSecondary}
+            multiline
+            style={[styles.captionInput, { borderColor: palette.border, color: palette.text, backgroundColor: palette.card }]}
+          />
+
+          {error && <Small color={palette.blue}>{error}</Small>}
+
+          <Button
+            title={saving ? 'Saving…' : 'Mark as cooked'}
+            disabled={saving}
+            onPress={async () => {
+              setSaving(true);
+              await onConfirm(photoUrl, caption.trim() || null);
+              setSaving(false);
+            }}
+          />
+        </View>
+      )}
+    </SheetModal>
   );
 }
 
@@ -244,10 +464,18 @@ function DayCards({
   plan,
   isDesktop,
   onSelect,
+  cooked,
+  canCook,
+  onCook,
+  onUncook,
 }: {
   plan: MealPlan;
   isDesktop: boolean;
   onSelect: (m: PlannedMeal) => void;
+  cooked: Set<string>;
+  canCook: boolean;
+  onCook: (m: PlannedMeal) => void;
+  onUncook: (m: PlannedMeal) => void;
 }) {
   return (
     <View style={isDesktop ? styles.dayGrid : { gap: Spacing.three }}>
@@ -257,7 +485,15 @@ function DayCards({
         return (
           <View key={day} style={isDesktop ? styles.dayCol : undefined}>
             <Reveal delay={i * 40}>
-              <DayGroup day={day} meals={meals} onSelect={onSelect} />
+              <DayGroup
+                day={day}
+                meals={meals}
+                onSelect={onSelect}
+                cooked={cooked}
+                canCook={canCook}
+                onCook={onCook}
+                onUncook={onUncook}
+              />
             </Reveal>
           </View>
         );
@@ -404,16 +640,41 @@ function DayGroup({
   day,
   meals,
   onSelect,
+  cooked,
+  canCook,
+  onCook,
+  onUncook,
 }: {
   day: DayOfWeek;
   meals: PlannedMeal[];
   onSelect: (m: PlannedMeal) => void;
+  cooked: Set<string>;
+  canCook: boolean;
+  onCook: (m: PlannedMeal) => void;
+  onUncook: (m: PlannedMeal) => void;
 }) {
   const palette = usePalette();
   const ordered = MEAL_SLOTS.map((slot) => meals.find((m) => m.slot === slot)).filter(Boolean) as PlannedMeal[];
+  const doneCount = canCook ? ordered.filter((m) => cooked.has(cookKey(m.dayOfWeek, m.slot))).length : 0;
+  const allDone = canCook && doneCount === ordered.length && ordered.length > 0;
   return (
     <View style={{ gap: Spacing.two }}>
-      <Eyebrow>{DAY_FULL[day]}</Eyebrow>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Eyebrow>{DAY_FULL[day]}</Eyebrow>
+        {canCook && (
+          <View style={[styles.dayProgress, allDone && { backgroundColor: palette.accentMuted }]}>
+            <Text
+              style={{
+                fontFamily: Type.bodySemibold,
+                fontSize: 11,
+                color: allDone ? palette.accent : palette.textSecondary,
+              }}
+            >
+              {allDone ? '✓ Clean plate' : `${doneCount}/${ordered.length} cooked`}
+            </Text>
+          </View>
+        )}
+      </View>
       <GlassCard style={{ gap: 0, paddingVertical: Spacing.one, paddingHorizontal: Spacing.one }}>
         {ordered.map((meal, i) => (
           <MealRow
@@ -421,6 +682,10 @@ function DayGroup({
             meal={meal}
             divider={i > 0}
             onPress={() => onSelect(meal)}
+            canCook={canCook}
+            isCooked={cooked.has(cookKey(meal.dayOfWeek, meal.slot))}
+            onCook={() => onCook(meal)}
+            onUncook={() => onUncook(meal)}
           />
         ))}
       </GlassCard>
@@ -428,12 +693,28 @@ function DayGroup({
   );
 }
 
-function MealRow({ meal, divider, onPress }: { meal: PlannedMeal; divider: boolean; onPress: () => void }) {
+function MealRow({
+  meal,
+  divider,
+  onPress,
+  canCook,
+  isCooked,
+  onCook,
+  onUncook,
+}: {
+  meal: PlannedMeal;
+  divider: boolean;
+  onPress: () => void;
+  canCook: boolean;
+  isCooked: boolean;
+  onCook: () => void;
+  onUncook: () => void;
+}) {
   const palette = usePalette();
   const shared = meal.sharedOrVariant === 'shared';
   return (
-    <PressableScale onPress={onPress} to={0.99}>
-      <View style={[styles.mealRow, divider && { borderTopWidth: 1, borderTopColor: palette.border }]}>
+    <View style={[styles.mealRow, divider && { borderTopWidth: 1, borderTopColor: palette.border }]}>
+      <PressableScale onPress={onPress} to={0.99} style={styles.mealMain}>
         <FoodTile meal={meal} size={46} />
         <View style={{ flex: 1, gap: 2 }}>
           <Small color={palette.textSecondary} style={{ fontFamily: Type.bodySemibold }}>
@@ -444,8 +725,24 @@ function MealRow({ meal, divider, onPress }: { meal: PlannedMeal; divider: boole
           </Text>
         </View>
         <View style={[styles.dot, { backgroundColor: shared ? palette.accent : palette.blue }]} />
-      </View>
-    </PressableScale>
+      </PressableScale>
+      {canCook && (
+        <PressableScale onPress={isCooked ? onUncook : onCook} to={0.85}>
+          <View
+            style={[
+              styles.cookCheck,
+              { borderColor: isCooked ? palette.accent : palette.border, backgroundColor: isCooked ? palette.accent : 'transparent' },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={isCooked ? `Mark ${meal.name} as not cooked` : `I made ${meal.name}`}
+          >
+            <Text style={{ fontSize: 15, color: isCooked ? palette.card : palette.textSecondary, fontFamily: Type.bodySemibold }}>
+              {isCooked ? '✓' : '+'}
+            </Text>
+          </View>
+        </PressableScale>
+      )}
+    </View>
   );
 }
 
@@ -647,8 +944,16 @@ const styles = StyleSheet.create({
   footer: { paddingVertical: Spacing.three },
   budgetIcon: { width: 44, height: 44, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' },
   budgetTag: { alignSelf: 'flex-start', paddingHorizontal: Spacing.three, paddingVertical: 6, borderRadius: Radius.pill },
-  mealRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.two, paddingHorizontal: Spacing.two },
+  mealRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.two, paddingHorizontal: Spacing.two },
+  mealMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   dot: { width: 8, height: 8, borderRadius: 8 },
+  cookCheck: { width: 34, height: 34, borderRadius: 999, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  dayProgress: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  progressTrack: { height: 8, borderRadius: 999, overflow: 'hidden', width: '100%' },
+  progressFill: { height: '100%', borderRadius: 999 },
+  cookPhoto: { width: '100%', height: 200, borderRadius: Radius.md },
+  photoDrop: { height: 120, borderRadius: Radius.md, borderWidth: 1.5, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: Spacing.two },
+  captionInput: { minHeight: 64, borderWidth: 1, borderRadius: Radius.md, padding: Spacing.three, fontFamily: Type.body, fontSize: 15, textAlignVertical: 'top' },
   scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
   sheet: {
     position: 'absolute',

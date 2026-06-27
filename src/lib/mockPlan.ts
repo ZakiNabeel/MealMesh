@@ -1,6 +1,6 @@
 /**
  * Placeholder plan generator — builds a 7-day plan locally so the whole flow
- * works before the Anthropic Edge Function is deployed. It composes meals from
+ * works before the Gemini Edge Function is deployed. It composes meals from
  * the engine's ALLOW pantry and region-appropriate flavors (see cuisine.ts),
  * so a South Asian household gets karahi / daal / biryani rather than generic
  * Western templates.

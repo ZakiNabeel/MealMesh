@@ -40,18 +40,18 @@ export default function Privacy() {
         <Section title="How we use it">
           <Body color={palette.textSecondary}>
             Your household's constraints are merged into a hard-exclude list, a soft-avoid list, and an allow-list,
-            which are sent to Anthropic's Claude API to generate a plan. Every plan is then re-checked deterministically
-            in our own code against your hard-exclude list before it is ever shown to you — this check does not rely on
-            the model alone.
+            which are sent to Google's Gemini API to generate a plan — labeled only as "member 1", "member 2", etc.,
+            never by the name you gave them. Every plan is then re-checked deterministically in our own code against
+            your hard-exclude list before it is ever shown to you — this check does not rely on the model alone.
           </Body>
         </Section>
 
         <Section title="Who we share it with">
           <Body color={palette.textSecondary}>
-            Supabase hosts our database and authentication. Anthropic's Claude API generates plan content from your
-            structured constraints (never your name or account details). Freemius processes web subscription payments;
-            RevenueCat will process mobile subscriptions once mobile apps ship. Mixpanel receives anonymous product
-            usage events only. We do not sell your data.
+            Supabase hosts our database and authentication. Google's Gemini API generates plan content from your
+            structured dietary constraints only (no names, emails, or account details). Freemius processes web
+            subscription payments; RevenueCat will process mobile subscriptions once mobile apps ship. Mixpanel
+            receives anonymous product usage events only. We do not sell your data.
           </Body>
         </Section>
 

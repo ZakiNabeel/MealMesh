@@ -376,6 +376,29 @@ export function Chip({
   );
 }
 
+/** Circular avatar: the user's photo, or an initial on a tinted disc. */
+export function Avatar({ name, uri, size = 40 }: { name: string; uri?: string | null; size?: number }) {
+  const palette = usePalette();
+  const initial = (name || '?').charAt(0).toUpperCase();
+  if (uri) {
+    return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} />;
+  }
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: palette.accentMuted,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Text style={{ fontFamily: Type.displayBold, fontSize: size * 0.42, color: palette.accent }}>{initial}</Text>
+    </View>
+  );
+}
+
 /** Slim progress track with a green→blue "weave" fill. */
 export function ProgressBar({ value }: { value: number }) {
   const palette = usePalette();

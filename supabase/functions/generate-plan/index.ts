@@ -1,27 +1,32 @@
 /**
- * Edge Function: proxies the Claude API to generate a household's weekly meal
- * plan. The Anthropic API key lives only in this function's secrets — it is
- * never sent to or readable by the client.
+ * Edge Function: proxies the Gemini API to generate a household's weekly meal
+ * plan. The Gemini API key lives only in this function's secrets — it is
+ * never sent to or readable by the client. We call Gemini over plain REST
+ * (no SDK) so there's no extra npm dependency to resolve in the Deno runtime.
  *
  * Mirrors docs/MealMesh-context.md §4: HARD_EXCLUDE / SOFT_AVOID / ALLOW are
  * derived by the SAME constraint engine the app uses (imported straight from
- * src/lib, see ./deno.json for the path-alias mapping), sent to Claude as
- * structured JSON (never raw user text), and the response is run back through
- * the engine's deterministic `validatePlan` safety pass before it ever reaches
- * a client. If a violation slips through, we ask Claude to fix it once more;
- * if it still fails, we return the engine-scrubbed safe plan rather than an
- * unsafe one.
+ * src/lib, see ./deno.json for the path-alias mapping), sent to Gemini as
+ * structured JSON (never raw user text — member names are stripped too, see
+ * `requestPlan`, since the output schema never needs them), and the response
+ * is run back through the engine's deterministic `validatePlan` safety pass
+ * before it ever reaches a client. If a violation slips through, we ask
+ * Gemini to fix it once more; if it still fails, we return the
+ * engine-scrubbed safe plan rather than an unsafe one.
  *
  * CACHING: two households with an identical merged constraint profile (same
  * HARD_EXCLUDE/SOFT_AVOID/ALLOW/region/budget/currency — member names don't
- * affect what Claude generates) reuse one validated plan from `plan_cache`
- * instead of paying for a second Claude call. A first-time generation
+ * affect what Gemini generates) reuse one validated plan from `plan_cache`
+ * instead of paying for a second Gemini call. A first-time generation
  * (`seed === 0`) checks the cache first; an explicit regenerate (`seed > 0`)
- * always calls Claude fresh and refreshes the cache entry, so repeat
+ * always calls Gemini fresh and refreshes the cache entry, so repeat
  * regenerate requests for the same profile still see fresh variety over time.
+ * This caching matters even more here than it did with Claude: Gemini's free
+ * tier has a small, account-specific daily request quota (see
+ * docs/MealMesh-context.md §2), so reusing cached plans for repeat/shared
+ * constraint profiles is what keeps the app inside that quota.
  */
 
-import Anthropic from 'npm:@anthropic-ai/sdk@0.70.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.74.0';
 
 import { deriveAllowList, unionHardExclusions, unionSoftAvoid, validatePlan } from '../../../src/lib/constraints.ts';
@@ -33,7 +38,11 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
+const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') ?? '';
+// Configurable without a redeploy in case a newer/cheaper free-tier model
+// shows up — check what your key gets in https://aistudio.google.com/.
+const GEMINI_MODEL = Deno.env.get('GEMINI_MODEL') ?? 'gemini-2.5-flash';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 // Service-role client for the shared, content-addressable plan cache — RLS
 // has no policies for it, so only this (server-side, bypasses RLS) client
@@ -57,8 +66,6 @@ async function constraintHash(household: Household, hardExclude: string[], softA
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
-
-const MODEL = 'claude-haiku-4-5';
 
 const SYSTEM_PROMPT =
   'You are a culturally-aware household meal planner. You MUST respect halal, kosher, ' +
@@ -96,7 +103,10 @@ async function requestPlan(household: Household, retryNote?: string): Promise<Me
   const allow = deriveAllowList(household.members, household.region);
 
   const payload = {
-    members: household.members.map((m) => ({ name: m.name, constraints: m.constraints })),
+    // Anonymized on purpose — the output schema (below) never references a
+    // member by name, only by constraint, so the model never needs real
+    // names to do its job. One less thing leaving the building.
+    members: household.members.map((m, i) => ({ member: `member_${i + 1}`, constraints: m.constraints })),
     HARD_EXCLUDE: hardExclude,
     SOFT_AVOID: softAvoid,
     ALLOW: allow,
@@ -113,16 +123,28 @@ async function requestPlan(household: Household, retryNote?: string): Promise<Me
     ...(retryNote ? { correction: retryNote } : {}),
   };
 
-  const resp = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 8000,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+  const resp = await fetch(GEMINI_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY },
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: JSON.stringify(payload) }] }],
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      // 28 meals × a 5-8 step recipe each, plus a grocery list, easily runs
+      // past 8000 tokens and gets truncated mid-JSON — raise the ceiling well
+      // above what a full week's worth of output actually needs.
+      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 16000 },
+    }),
   });
 
-  const text = resp.content.find((b) => b.type === 'text')?.text ?? '';
+  if (!resp.ok) {
+    const errText = await resp.text();
+    throw new Error(`Gemini request failed (${resp.status}): ${errText}`);
+  }
+
+  const body = (await resp.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+  const text = (body.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('');
   const parsed = safeParseJSON(text);
-  if (!isMealPlan(parsed)) throw new Error('Claude response was not a valid MealPlan shape.');
+  if (!isMealPlan(parsed)) throw new Error('Gemini response was not a valid MealPlan shape.');
   return parsed;
 }
 
@@ -195,9 +217,16 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     console.error('[generate-plan]', err);
-    return new Response(JSON.stringify({ error: 'Plan generation failed. Please try again.' }), {
-      status: 500,
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-    });
+    // Gemini's free tier has a small daily quota — surface a distinct,
+    // honest message for it rather than a generic failure.
+    const rateLimited = err instanceof Error && /\(429\)/.test(err.message);
+    return new Response(
+      JSON.stringify({
+        error: rateLimited
+          ? 'Plan generation is at capacity right now — please try again in a few minutes.'
+          : 'Plan generation failed. Please try again.',
+      }),
+      { status: rateLimited ? 429 : 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } },
+    );
   }
 });

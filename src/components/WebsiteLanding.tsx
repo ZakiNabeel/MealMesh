@@ -548,7 +548,7 @@ const PERSONAS = [
 
 const STEPS = [
   { title: 'Add your household', body: 'Each person, each diet — halal, gluten-free, diabetic, allergies, the lot. Tap a few chips and you’re done.' },
-  { title: 'We merge every diet', body: 'Our engine computes what’s safe for everyone, then asks Claude for real, culturally-aware dishes.' },
+  { title: 'We merge every diet', body: 'Our engine computes what’s safe for everyone, then asks our AI for real, culturally-aware dishes.' },
   { title: 'One plan, one list', body: 'Get a 7-day plan plus a single consolidated grocery list. Shared dishes where possible, simple swaps where needed.' },
 ];
 

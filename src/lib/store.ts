@@ -56,31 +56,45 @@ async function currentUserId(): Promise<string | null> {
 
 /**
  * Persist a household for the signed-in user. There is one household per user,
- * so we replace any existing one (the cascade clears its members, constraints
- * and plans). Returns the reloaded household with real DB ids, or null if not
+ * so we update it in place when one already exists — preserving its id is
+ * what matters: meal_plans is keyed on household_id, and an earlier
+ * delete+recreate here used to cascade those plans away on every edit.
+ * Members carry no foreign keys from elsewhere, so they're still a clean
+ * replace. Returns the reloaded household with real DB ids, or null if not
  * signed in.
  */
 export async function saveHousehold(h: Household): Promise<Household | null> {
   const userId = await currentUserId();
   if (!userId) return null;
 
-  // Replace any existing household (cascade clears children).
-  await supabase.from('households').delete().eq('owner_user_id', userId);
-
-  const { data: hData, error: hErr } = await supabase
+  const { data: existing } = await supabase
     .from('households')
-    .insert({
-      owner_user_id: userId,
-      name: h.name,
-      region_preference: h.region,
-      country: h.country ?? null,
-      currency: h.currency ?? null,
-      budget_weekly: h.budgetWeekly ?? null,
-    })
     .select('id')
-    .single();
-  if (hErr || !hData) return null;
-  const householdId = (hData as { id: string }).id;
+    .eq('owner_user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const payload = {
+    owner_user_id: userId,
+    name: h.name,
+    region_preference: h.region,
+    country: h.country ?? null,
+    currency: h.currency ?? null,
+    budget_weekly: h.budgetWeekly ?? null,
+  };
+
+  let householdId: string;
+  if (existing) {
+    householdId = (existing as { id: string }).id;
+    const { error: uErr } = await supabase.from('households').update(payload).eq('id', householdId);
+    if (uErr) return null;
+    await supabase.from('members').delete().eq('household_id', householdId);
+  } else {
+    const { data: hData, error: hErr } = await supabase.from('households').insert(payload).select('id').single();
+    if (hErr || !hData) return null;
+    householdId = (hData as { id: string }).id;
+  }
 
   for (const m of h.members) {
     const { data: mData } = await supabase

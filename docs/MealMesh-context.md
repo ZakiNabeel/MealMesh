@@ -25,7 +25,7 @@ The core problem: most meal apps are built for a solo dieter. Real households mi
 | Routing | **Expo Router** | File-based routing; gives web build for free. |
 | Language | **TypeScript** | Strict mode. Dietary logic must be type-safe — a wrong type here is a user safety bug. |
 | Backend / DB / Auth | **Supabase** | Postgres + Auth + Row Level Security. |
-| AI engine | **Anthropic Claude API** | Model: `claude-haiku-4-5` for plan generation (cheapest, fast, good enough). Use `claude-sonnet-4-6` only if quality needs it. NEVER call the API directly from the client — proxy through a Supabase Edge Function so the API key stays secret. |
+| AI engine | **Google Gemini API (free tier)** | Model: `gemini-2.5-flash` for plan generation, called over plain REST from the Edge Function (no SDK). Free tier has a small, account-specific daily request quota that changes without notice — check the real number for your key at aistudio.google.com. The `plan_cache` table (see §3) is what keeps real usage well under that quota: most repeat/shared constraint profiles are served from cache, not a fresh call. NEVER call the API directly from the client — proxy through a Supabase Edge Function so the API key stays secret. Note: Gemini's free tier terms allow Google to use prompts/outputs to improve their products (the paid tier opts out of this); since only dietary-constraint data and no real names are sent (see §4), this is an acceptable trade for $0 cost, but it's a real difference from a paid LLM API and worth revisiting if the data sent ever expands. |
 | Web subscriptions | **Freemius** (Merchant of Record) | Founder is in Pakistan; Freemius handles payments + payouts via Payoneer/wire. Web/PWA is the FIRST launch surface. |
 | Mobile subscriptions | **RevenueCat** (later) | Wraps App Store + Play billing. Added after web launch once store accounts are funded. |
 | Hosting (web) | **Vercel** or Expo hosting | Deploy the web/PWA build. |
@@ -97,10 +97,10 @@ Generic AI meal planners FAIL because they send only NEGATIVE rules ("no pork, n
    - `HARD_EXCLUDE` = union of all allergens + all religious "haram/forbidden" ingredients across ALL members (severity = hard).
    - `SOFT_AVOID` = union of soft preferences.
    - `ALLOW_LIST` = explicit allowed proteins / grains / oils derived from the active constraints (POSITIVE guidance, not just exclusions).
-2. Send ALL THREE to Claude as structured JSON, not raw user text.
-3. After Claude responds, run a **deterministic safety-validation pass** in code: reject/regenerate any meal whose ingredients intersect `HARD_EXCLUDE`. Never show a plan that fails this check.
+2. Send ALL THREE to Gemini as structured JSON, not raw user text — and never the member's real name (the output schema never needs it; see `member: "member_1"` below).
+3. After Gemini responds, run a **deterministic safety-validation pass** in code: reject/regenerate any meal whose ingredients intersect `HARD_EXCLUDE`. Never show a plan that fails this check.
 
-This positive-allow-list + post-validation is what competitors can't easily copy. Treat it as the product's core IP.
+This positive-allow-list + post-validation is what competitors can't easily copy. Treat it as the product's core IP — and it's provider-agnostic: the safety guarantee comes from our own code, not from which LLM generated the plan.
 
 ### AI call shape (proxy via Supabase Edge Function)
 ```ts
@@ -111,20 +111,23 @@ async function generatePlan(household) {
   const SOFT_AVOID   = unionSoftAvoid(members);
   const ALLOW        = deriveAllowList(members, household.region_preference);
 
-  const resp = await anthropic.messages.create({
-    model: "claude-haiku-4-5",
-    max_tokens: 2000,
-    system: "You are a culturally-aware household meal planner. You MUST respect halal, kosher, and all medical/allergen rules exactly. Use ONLY ingredients consistent with the ALLOW list and never any item in HARD_EXCLUDE. Return ONLY valid JSON, no prose.",
-    messages: [{
-      role: "user",
-      content: JSON.stringify({
-        members: members.map(m => ({ name: m.name, constraints: m.constraints })),
-        HARD_EXCLUDE, SOFT_AVOID, ALLOW,
-        region: household.region_preference,
-        days: 7,
-        format: "{days:[{dayOfWeek, meal, sharedOrVariant, ingredients:[...], satisfies:[...]}], grocery:[...]}"
-      })
-    }]
+  const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: "You are a culturally-aware household meal planner. You MUST respect halal, kosher, and all medical/allergen rules exactly. Use ONLY ingredients consistent with the ALLOW list and never any item in HARD_EXCLUDE. Return ONLY valid JSON, no prose." }] },
+      generationConfig: { responseMimeType: "application/json", maxOutputTokens: 8000 },
+      contents: [{
+        role: "user",
+        parts: [{ text: JSON.stringify({
+          members: members.map((m, i) => ({ member: `member_${i + 1}`, constraints: m.constraints })),  // no real names sent
+          HARD_EXCLUDE, SOFT_AVOID, ALLOW,
+          region: household.region_preference,
+          days: 7,
+          format: "{days:[{dayOfWeek, meal, sharedOrVariant, ingredients:[...], satisfies:[...]}], grocery:[...]}"
+        }) }]
+      }]
+    })
   });
 
   const plan = safeParseJSON(resp);              // strip code fences, parse

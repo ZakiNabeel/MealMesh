@@ -49,6 +49,18 @@ export default function Settings() {
           </Section>
         </Reveal>
 
+        {user && (
+          <Reveal delay={40} style={col}>
+            <Section title="Profile & community">
+              <Body color={palette.textSecondary}>
+                Your public cooking profile, badges and streak — separate from your private household.
+              </Body>
+              <Button title="View my profile" variant="secondary" onPress={() => router.push('/profile')} />
+              <Button title="Leaderboard" variant="secondary" onPress={() => router.push('/leaderboard')} />
+            </Section>
+          </Reveal>
+        )}
+
         <Reveal delay={80} style={col}>
           <Section title="Household">
             <Row label="Name" value={household?.name ?? 'Not set up yet'} />

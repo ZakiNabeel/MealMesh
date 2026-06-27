@@ -15,8 +15,8 @@ have **different** dietary needs, plus a single consolidated grocery list. The
 multi-profile constraint-merging engine is the moat and has been built first.
 
 **Stack:** Expo SDK 56 · React Native 0.85 · React 19 · Expo Router (file-based)
-· TypeScript (strict) · Supabase (Postgres + Auth + RLS) · Anthropic Claude
-(via Edge Function) · web/PWA-first launch.
+· TypeScript (strict) · Supabase (Postgres + Auth + RLS) · Google Gemini
+free tier (via Edge Function) · web/PWA-first launch.
 
 **Health:** `npm run typecheck` ✅ green · `npm test` ✅ 16/16 · web build
 (`expo export --platform web`) ✅ compiles.
@@ -122,8 +122,8 @@ npx expo start --web  # run the app in a browser
    (build step 5). User will share it.
 2. **Supabase** — Project URL + anon key (→ `.env`), and run
    `0001_init.sql` in the SQL Editor.
-3. **Anthropic API key** — set as `ANTHROPIC_API_KEY` in Supabase Edge Function
-   secrets (never client-side / never committed).
+3. **Gemini API key** — free at aistudio.google.com/apikey, set as `GEMINI_API_KEY`
+   in Supabase Edge Function secrets (never client-side / never committed).
 4. *Later:* Freemius (paywall) + Mixpanel (analytics) credentials.
 
 ---
@@ -132,7 +132,7 @@ npx expo start --web  # run the app in a browser
 
 | Step | Needs | Work |
 |---|---|---|
-| 4. Claude proxy Edge Function | Supabase + Anthropic key | `supabase/functions/generate-plan`: shape HARD_EXCLUDE/SOFT_AVOID/ALLOW, call Claude, run `validatePlan`, persist. Decide engine code-sharing between the RN app and the Deno function (likely relocate the pure engine to a `_shared` path importable by both). |
+| 4. Gemini proxy Edge Function | Supabase + Gemini key | `supabase/functions/generate-plan`: shape HARD_EXCLUDE/SOFT_AVOID/ALLOW, call Gemini, run `validatePlan`, persist. Decide engine code-sharing between the RN app and the Deno function (likely relocate the pure engine to a `_shared` path importable by both). |
 | 5. Screens | Prototype | Auth (magic link) → onboarding/household → plan generation → weekly plan → grocery → paywall → settings. Mobile-first, minimalist. Mock data until the Edge Function is live. |
 | 6. Paywall | Freemius keys | Free vs. Pro gating (server-checked) + Freemius checkout. |
 | 7. Ship | — | Deploy web/PWA build to Vercel/Expo hosting. |

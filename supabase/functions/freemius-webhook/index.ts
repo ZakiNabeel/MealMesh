@@ -95,6 +95,9 @@ Deno.serve(async (req) => {
       { user_id: userId, tier: grant ? 'pro' : 'free', source: 'freemius' },
       { onConflict: 'user_id' },
     );
+    // Keep the public-readable flair flag in sync (subscription_status itself
+    // is owner-private, but the leaderboard needs to show Pro on other rows).
+    await admin.from('profiles').update({ is_pro: grant }).eq('user_id', userId);
     return new Response(JSON.stringify({ ok: true, user: userId, tier: grant ? 'pro' : 'free' }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },

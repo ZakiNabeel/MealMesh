@@ -197,7 +197,7 @@ export interface AllowList {
   notes: string[];
 }
 
-/** The full structured input the Edge Function sends to Claude. */
+/** The full structured input the Edge Function sends to the AI provider. */
 export interface PlanRequest {
   members: Array<{ name: string; constraints: MemberConstraint[] }>;
   hardExclude: Token[];
@@ -279,4 +279,89 @@ export interface ValidationResult {
   violations: Violation[];
   /** The plan with violating meals removed — never contains a violation. */
   safePlan: MealPlan;
+}
+
+/* ------------------------------------------------------------------ */
+/* Social: public identity + cooking logs (Milestone 1)               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A user's PUBLIC identity. Deliberately separate from `Household`/`Member`:
+ * a public profile must NEVER carry dietary/medical constraints (context doc
+ * §10). `isPublic` is opt-in and defaults to false — a profile is invisible to
+ * others until the user turns it on.
+ */
+export interface Profile {
+  userId: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  isPublic: boolean;
+  /** Optional, for regional leaderboards — never a member's constraint data. */
+  region: string | null;
+  /** Denormalized from subscription_status so OTHER users' rows can show flair. */
+  isPro: boolean;
+  createdAt: string;
+}
+
+/* ------------------------------------------------------------------ */
+/* Social: follow graph + leaderboard + crews (Milestone 2)           */
+/* ------------------------------------------------------------------ */
+
+export type LeaderboardScope = 'global' | 'friends' | 'region' | 'crew';
+
+/** One ranked row — a public-safe projection, never dietary data. */
+export interface LeaderboardEntry {
+  userId: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  isPro: boolean;
+  totalPoints: number;
+  currentStreak: number;
+}
+
+export interface FollowCounts {
+  followers: number;
+  following: number;
+}
+
+/** A Pro-only private group with its own leaderboard. */
+export interface Crew {
+  id: string;
+  name: string;
+  ownerId: string;
+  inviteCode: string;
+  memberCount: number;
+}
+
+/** The cached cooking totals behind a leaderboard row / public profile — read from `user_stats`. */
+export interface CookingStats {
+  totalPoints: number;
+  currentStreak: number;
+  longestStreak: number;
+  mealsLogged: number;
+  cleanPlateDays: number;
+  perfectWeeks: number;
+}
+
+/**
+ * A record that the signed-in user cooked one meal of their plan. Keyed by
+ * plan COORDINATES (week + day + slot), since plans are opaque JSONB with no
+ * per-meal rows. Tied to `userId` (stable), not `householdId`, so editing a
+ * household never wipes cooking history. The photo is the honor-system proof.
+ */
+export interface MealLog {
+  id: string;
+  userId: string;
+  /** ISO date of the plan week's Monday (matches `meal_plans.week_start`). */
+  weekStart: string;
+  dayOfWeek: DayOfWeek;
+  slot: MealSlot;
+  /** Snapshot of the meal name at log time (the plan can regenerate). */
+  mealName: string;
+  photoUrl: string | null;
+  caption: string | null;
+  createdAt: string;
 }

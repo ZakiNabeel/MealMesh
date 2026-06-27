@@ -1,5 +1,5 @@
 /**
- * Client entry point for plan generation. Prefers the real Anthropic-backed
+ * Client entry point for plan generation. Prefers the real Gemini-backed
  * Edge Function (`supabase/functions/generate-plan`) when the user is signed
  * in and Supabase is configured; falls back to the local mock generator
  * otherwise (offline, signed out, or the function isn't deployed yet) so the

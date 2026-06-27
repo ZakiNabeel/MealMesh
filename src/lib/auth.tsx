@@ -3,7 +3,7 @@
  *
  * Web uses Supabase's redirect flow (the session is parsed from the return URL
  * by `detectSessionInUrl`). Native opens the provider in an in-app browser and
- * sets the session from the returned deep link. The Anthropic/plan work doesn't
+ * sets the session from the returned deep link. The Gemini/plan work doesn't
  * depend on this — it's the account layer for saving households and gating Pro.
  */
 
