@@ -20,6 +20,10 @@ export default function Root({ children }: { children: ReactNode }) {
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <link rel="apple-touch-icon" href="/favicon.svg" />
 
+        {/* Real food photos come from Pexels — warm the connection before the first request. */}
+        <link rel="preconnect" href="https://api.pexels.com" crossOrigin="" />
+        <link rel="preconnect" href="https://images.pexels.com" crossOrigin="" />
+
         <title>MealMesh — one household, many diets, one plan</title>
 
         {/* Disable body scrolling on native-feeling app screens; the website

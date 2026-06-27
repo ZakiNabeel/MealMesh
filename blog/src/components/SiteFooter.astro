@@ -1,0 +1,59 @@
+---
+import { APP_URL, SITE_NAME, SITE_TAGLINE } from '../lib/site';
+const year = new Date().getFullYear();
+---
+
+<footer class="footer">
+  <div class="wrap row">
+    <div>
+      <p class="word">{SITE_NAME}</p>
+      <p class="tagline">{SITE_TAGLINE}</p>
+    </div>
+    <nav class="links">
+      <a href={APP_URL}>Main site</a>
+      <a href={`${APP_URL}/privacy`}>Privacy</a>
+      <a href={`${APP_URL}/terms`}>Terms</a>
+    </nav>
+  </div>
+  <p class="wrap copy">© {year} {SITE_NAME}.</p>
+</footer>
+
+<style>
+  .footer {
+    border-top: 1px solid var(--border);
+    margin-top: 64px;
+    padding-top: 32px;
+    padding-bottom: 24px;
+  }
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+  .word {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 17px;
+  }
+  .tagline {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-top: 4px;
+  }
+  .links {
+    display: flex;
+    gap: 18px;
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+  .links a:hover {
+    color: var(--accent);
+  }
+  .copy {
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin-top: 24px;
+  }
+</style>

@@ -129,7 +129,7 @@ export default function Plan() {
   const centerCol = isDesktop ? styles.centerCol : undefined;
 
   return (
-    <Screen art={Art.ramen} wide>
+    <Screen art={Art.ramen} wide style={isDesktop ? { maxWidth: 1180 } : undefined}>
       {/* header + tabs — kept to a comfortable width even on a wide desktop */}
       <View style={centerCol}>
         <View style={styles.header}>
@@ -174,25 +174,24 @@ export default function Plan() {
           </View>
         ) : tab === 'plan' ? (
           <>
-            <View style={[centerCol, { gap: Spacing.three }]}>
-              <BudgetBanner plan={plan} country={household.country} budgetWeekly={household.budgetWeekly} />
-              <Small color={palette.accent} style={{ fontFamily: Type.bodyMedium }}>
-                ✓ Every dish checked against your household&apos;s rules
-              </Small>
-            </View>
-            <View style={isDesktop ? styles.dayGrid : { gap: Spacing.three }}>
-              {DAY_ORDER.map((day, i) => {
-                const meals = plan.days.filter((m) => m.dayOfWeek === day);
-                if (!meals.length) return null;
-                return (
-                  <View key={day} style={isDesktop ? styles.dayCol : undefined}>
-                    <Reveal delay={i * 40}>
-                      <DayGroup day={day} meals={meals} onSelect={setSelected} />
-                    </Reveal>
-                  </View>
-                );
-              })}
-            </View>
+            {isDesktop ? (
+              <View style={styles.dashboardRow}>
+                <View style={styles.rail}>
+                  <PlanSummaryRail plan={plan} household={household} />
+                </View>
+                <DayCards plan={plan} isDesktop={isDesktop} onSelect={setSelected} />
+              </View>
+            ) : (
+              <>
+                <View style={{ gap: Spacing.three }}>
+                  <BudgetBanner plan={plan} country={household.country} budgetWeekly={household.budgetWeekly} />
+                  <Small color={palette.accent} style={{ fontFamily: Type.bodyMedium }}>
+                    ✓ Every dish checked against your household&apos;s rules
+                  </Small>
+                </View>
+                <DayCards plan={plan} isDesktop={isDesktop} onSelect={setSelected} />
+              </>
+            )}
             {!session && (
               <View style={[centerCol, { marginTop: Spacing.one }]}>
                 <GlassCard style={{ gap: Spacing.two }}>
@@ -237,6 +236,115 @@ export default function Plan() {
 
       <RecipeModal meal={selected} region={household.region} onClose={() => setSelected(null)} />
     </Screen>
+  );
+}
+
+/** The 7 day-cards, as a wrapping grid on desktop or a single stacked column on mobile. */
+function DayCards({
+  plan,
+  isDesktop,
+  onSelect,
+}: {
+  plan: MealPlan;
+  isDesktop: boolean;
+  onSelect: (m: PlannedMeal) => void;
+}) {
+  return (
+    <View style={isDesktop ? styles.dayGrid : { gap: Spacing.three }}>
+      {DAY_ORDER.map((day, i) => {
+        const meals = plan.days.filter((m) => m.dayOfWeek === day);
+        if (!meals.length) return null;
+        return (
+          <View key={day} style={isDesktop ? styles.dayCol : undefined}>
+            <Reveal delay={i * 40}>
+              <DayGroup day={day} meals={meals} onSelect={onSelect} />
+            </Reveal>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+const PROTEIN_KEYWORDS = [
+  'chicken', 'beef', 'lamb', 'mutton', 'turkey', 'fish', 'salmon', 'shrimp', 'prawn',
+  'tofu', 'paneer', 'lentil', 'chickpea', 'bean', 'egg', 'yogurt',
+];
+
+/** Tally the household's most-used proteins this week, for the "at a glance" rail. */
+function proteinMix(plan: MealPlan): { label: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const meal of plan.days) {
+    const seen = new Set<string>();
+    for (const ing of meal.ingredients) {
+      const lower = ing.toLowerCase();
+      const hit = PROTEIN_KEYWORDS.find((k) => lower.includes(k));
+      if (hit && !seen.has(hit)) {
+        seen.add(hit);
+        counts.set(hit, (counts.get(hit) ?? 0) + 1);
+      }
+    }
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([label, count]) => ({ label: cap(label), count }));
+}
+
+/** Desktop-only left rail: budget gauge + a "this week at a glance" summary,
+ *  so a wide viewport reads as a dashboard instead of two day-cards in empty space. */
+function PlanSummaryRail({ plan, household }: { plan: MealPlan; household: Household }) {
+  const palette = usePalette();
+  const total = plan.days.length;
+  const shared = plan.days.filter((m) => m.sharedOrVariant === 'shared').length;
+  const variants = total - shared;
+  const sharedPct = total > 0 ? shared / total : 0;
+  const proteins = proteinMix(plan);
+
+  return (
+    <View style={{ gap: Spacing.three }}>
+      <BudgetBanner plan={plan} country={household.country} budgetWeekly={household.budgetWeekly} />
+
+      <GlassCard style={{ gap: Spacing.three }}>
+        <Eyebrow>This week at a glance</Eyebrow>
+
+        <View style={styles.glanceRow}>
+          <Small color={palette.textSecondary}>Meals planned</Small>
+          <Text style={{ fontFamily: Type.bodySemibold, fontSize: 15, color: palette.text }}>{total}</Text>
+        </View>
+
+        <View style={{ gap: 6 }}>
+          <View style={styles.glanceRow}>
+            <Small color={palette.textSecondary}>Shared vs. personalized</Small>
+            <Small style={{ fontFamily: Type.bodyMedium }}>
+              {shared} shared · {variants} variant{variants === 1 ? '' : 's'}
+            </Small>
+          </View>
+          <View style={[styles.splitTrack, { backgroundColor: palette.blueMuted }]}>
+            <View style={[styles.splitFill, { width: `${sharedPct * 100}%`, backgroundColor: palette.accent }]} />
+          </View>
+        </View>
+
+        {proteins.length > 0 && (
+          <View style={{ gap: Spacing.two }}>
+            <Small color={palette.textSecondary}>Protein mix</Small>
+            <View style={styles.tagRow}>
+              {proteins.map((p) => (
+                <View key={p.label} style={[styles.tag, { borderColor: palette.border, backgroundColor: palette.backgroundElement }]}>
+                  <Text style={{ fontFamily: Type.bodyMedium, fontSize: 12, color: palette.text }}>
+                    {p.label} · {p.count}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+      </GlassCard>
+
+      <Small color={palette.accent} style={{ fontFamily: Type.bodyMedium }}>
+        ✓ Every dish checked against your household&apos;s rules
+      </Small>
+    </View>
   );
 }
 
@@ -518,8 +626,13 @@ function GroceryList({
 const styles = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.three },
   centerCol: { width: '100%', maxWidth: 560, alignSelf: 'center' },
-  dayGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three },
-  dayCol: { flexGrow: 1, flexBasis: '45%', minWidth: 300 },
+  dashboardRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.four },
+  rail: { width: 300, flexShrink: 0 },
+  dayGrid: { flex: 1, minWidth: 0, flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three },
+  dayCol: { flexGrow: 1, flexBasis: '31%', minWidth: 260 },
+  glanceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  splitTrack: { height: 8, borderRadius: 999, overflow: 'hidden', width: '100%' },
+  splitFill: { height: '100%', borderRadius: 999 },
   header: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingTop: Spacing.three },
   iconBtn: { width: 44, height: 44, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   tabs: { flexDirection: 'row', padding: 4, borderRadius: Radius.pill, gap: 4, marginTop: Spacing.three },

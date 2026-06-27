@@ -63,7 +63,7 @@ export function FoodImage({
   }, [name, query]);
 
   if (uri) {
-    return <Image source={{ uri }} resizeMode="cover" style={[{ borderRadius: radius }, style] as StyleProp<ImageStyle>} />;
+    return <Image source={{ uri }} alt={name} resizeMode="cover" style={[{ borderRadius: radius }, style] as StyleProp<ImageStyle>} />;
   }
   return (
     <LinearGradient

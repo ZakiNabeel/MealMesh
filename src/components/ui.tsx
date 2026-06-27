@@ -305,8 +305,19 @@ export function Button({
       <View
         style={[
           styles.button,
+          // RN-web only renders a coherent box-shadow when shadowColor and the
+          // other shadow* props share one style object — split across two
+          // objects in the array, the dynamic one's missing fields default to
+          // 0 and silently zero the shadow out. Keep them together here.
           primary
-            ? { backgroundColor: palette.accent, shadowColor: palette.accent }
+            ? {
+                backgroundColor: palette.accent,
+                shadowColor: palette.accent,
+                shadowOpacity: 0.28,
+                shadowRadius: 18,
+                shadowOffset: { width: 0, height: 10 },
+                elevation: 6,
+              }
             : { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: palette.border },
           disabled && { opacity: 0.5 },
         ]}
@@ -428,10 +439,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowOpacity: 0.28,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 6,
   },
   chip: {
     flexDirection: 'row',

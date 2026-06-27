@@ -21,6 +21,7 @@
     "node_modules",
     "**/*.test.ts",
     "**/*.test.tsx",
-    "supabase/functions/**/*"
+    "supabase/functions/**/*",
+    "blog/**/*"
   ]
 }

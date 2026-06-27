@@ -1,0 +1,75 @@
+/* MealMesh blog — shares the main app's "Woven" palette (Garden theme) and
+   type pair (Fraunces display / Space Grotesk body) so the two properties
+   read as one brand, without sharing any code. */
+
+:root {
+  --text: #0b2b26;
+  --text-secondary: #5b7771;
+  --background: #f1faf5;
+  --background-element: #e7f5ee;
+  --card: #ffffff;
+  --border: #dbede4;
+  --accent: #0e9f6e;
+  --accent-muted: #dcf4ea;
+  --blue: #2596ce;
+
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-body: 'Space Grotesk', Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.wrap {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

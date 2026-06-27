@@ -1,0 +1,73 @@
+---
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  article: CollectionEntry<'articles'>;
+  compact?: boolean;
+}
+
+const { article, compact = false } = Astro.props;
+const { title, category, excerpt, heroImage, heroImageAlt, readingTime, publishedAt } = article.data;
+const dateLabel = publishedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+---
+
+<a href={`/articles/${article.id}`} class={`card ${compact ? 'compact' : ''}`}>
+  <img src={heroImage} alt={heroImageAlt} class="hero" loading="lazy" />
+  <div class="body">
+    <span class="category">{category}</span>
+    <h3 class="title">{title}</h3>
+    {!compact && <p class="excerpt">{excerpt}</p>}
+    <p class="meta">{dateLabel} · {readingTime}</p>
+  </div>
+</a>
+
+<style>
+  .card {
+    display: flex;
+    flex-direction: column;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    overflow: hidden;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px rgba(14, 159, 110, 0.14);
+  }
+  .hero {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    background: var(--background-element);
+  }
+  .body {
+    padding: 18px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .category {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .title {
+    font-size: 19px;
+  }
+  .compact .title {
+    font-size: 16px;
+  }
+  .excerpt {
+    color: var(--text-secondary);
+    font-size: 14.5px;
+    line-height: 1.5;
+  }
+  .meta {
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    margin-top: 4px;
+  }
+</style>

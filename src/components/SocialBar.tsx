@@ -78,7 +78,7 @@ export function SocialBar({ palette, size = 40 }: { palette: Palette; size?: num
             { width: size, height: size, borderRadius: size, backgroundColor: palette.text, opacity: hovered ? 0.82 : 1 },
           ]}
         >
-          <Image source={{ uri: dataUri(g.svg(glyph)) }} style={{ width: size * 0.5, height: size * 0.5 }} />
+          <Image source={{ uri: dataUri(g.svg(glyph)) }} alt="" style={{ width: size * 0.5, height: size * 0.5 }} />
         </Pressable>
       ))}
     </View>
@@ -99,7 +99,7 @@ export function BrandLockup({
 }) {
   return (
     <View style={styles.lockup}>
-      <Image source={LOGO} style={[{ width: size, height: size, borderRadius: size * 0.28 }, style]} />
+      <Image source={LOGO} alt="" style={[{ width: size, height: size, borderRadius: size * 0.28 }, style]} />
       <Text style={{ fontFamily: Type.displayBold, fontSize: size * 0.62, color: color ?? palette.text, letterSpacing: 0.2 }}>
         MealMesh
       </Text>
