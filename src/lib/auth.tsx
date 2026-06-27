@@ -32,9 +32,9 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
-function redirectUrl(): string | undefined {
+function redirectUrl(path = ''): string | undefined {
   if (Platform.OS === 'web') {
-    return typeof window !== 'undefined' ? window.location.origin : undefined;
+    return typeof window !== 'undefined' ? `${window.location.origin}${path}` : undefined;
   }
   return Linking.createURL('auth-callback');
 }
@@ -77,7 +77,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async signInWithGoogle() {
         if (!isSupabaseConfigured) return { error: NOT_CONFIGURED };
-        const redirectTo = redirectUrl();
+        // Web does a full-page redirect through Google and back, landing
+        // wherever redirectTo points — straight to /plan, not the marketing
+        // site's "/" (which would otherwise strand a just-signed-in user).
+        const redirectTo = redirectUrl('/plan');
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: { redirectTo, skipBrowserRedirect: Platform.OS !== 'web' },
