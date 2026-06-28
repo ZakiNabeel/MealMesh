@@ -133,6 +133,29 @@ function dedupe(items: string[]): string[] {
   return out;
 }
 
+/** Trim a trailing ".0" off a one-decimal amount, e.g. 1.0 -> "1", 1.5 -> "1.5". */
+const trimDecimal = (n: number) => (n % 1 === 0 ? String(n) : n.toFixed(1));
+
+/** A real shopping amount for the whole week, scaled by how many meals call
+ * for the ingredient — never an occurrence count (the bug this replaces). */
+function quantityFor(category: string, name: string, timesUsed: number): string {
+  if (name.includes('egg')) {
+    const count = timesUsed * 2;
+    return count >= 12 ? `${trimDecimal(count / 12)} dozen` : `${count} pcs`;
+  }
+  if (category === 'Oils & pantry') {
+    const ml = timesUsed * 30;
+    return ml >= 1000 ? `${trimDecimal(ml / 1000)} L` : `${ml} ml`;
+  }
+  const gramsPerUse: Record<string, number> = { Protein: 300, Legumes: 150, Grains: 200 };
+  const perUse = gramsPerUse[category];
+  if (perUse) {
+    const grams = timesUsed * perUse;
+    return grams >= 1000 ? `${trimDecimal(grams / 1000)} kg` : `${grams} g`;
+  }
+  return `${timesUsed} pcs`; // produce — countable items
+}
+
 function buildGrocery(
   days: PlannedMeal[],
   groups: { proteinPool: string[]; grains: string[]; veg: string[]; oil: string[]; legumes: string[] },
@@ -149,6 +172,9 @@ function buildGrocery(
   };
 
   return [...counts.entries()]
-    .map(([name, n]) => ({ name: cap(name), category: categoryOf(name), quantity: `×${n}` }))
+    .map(([name, n]) => {
+      const category = categoryOf(name);
+      return { name: cap(name), category, quantity: quantityFor(category, name, n) };
+    })
     .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
 }

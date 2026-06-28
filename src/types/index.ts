@@ -328,6 +328,15 @@ export interface FollowCounts {
   following: number;
 }
 
+/** One row in a followers/following list — a public-safe profile projection. */
+export interface FollowListEntry {
+  userId: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  isPro: boolean;
+}
+
 /** A Pro-only private group with its own leaderboard. */
 export interface Crew {
   id: string;

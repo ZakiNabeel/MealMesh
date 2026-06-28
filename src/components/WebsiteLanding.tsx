@@ -38,6 +38,7 @@ import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { Atmosphere, Reveal } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
+import { getLatestArticles, type FeedArticle } from '@/lib/articles';
 import { usePalette } from '@/theme/use-theme';
 
 const MAXW = 1180;
@@ -46,17 +47,6 @@ const MAXW = 1180;
 // it's live, EXPO_PUBLIC_BLOG_URL is unset and the page falls back to the
 // in-page "coming soon" placeholder below instead of linking somewhere dead.
 const BLOG_URL = process.env.EXPO_PUBLIC_BLOG_URL;
-
-type FeedArticle = {
-  slug: string;
-  title: string;
-  excerpt: string;
-  category: string;
-  heroImage: string;
-  heroImageAlt: string;
-  readingTime: string;
-  url: string;
-};
 
 const isHovered = (s: PressableStateCallbackType) => Boolean((s as { hovered?: boolean }).hovered);
 
@@ -150,14 +140,10 @@ export function WebsiteLanding() {
   const dark = palette.glassTint === 'dark';
 
   useEffect(() => {
-    if (!BLOG_URL) return;
     let cancelled = false;
-    fetch(`${BLOG_URL}/feed.json`)
-      .then((res) => res.json())
-      .then((json: { articles?: FeedArticle[] }) => {
-        if (!cancelled && json.articles?.length) setLatestArticles(json.articles);
-      })
-      .catch(() => {});
+    void getLatestArticles().then((articles) => {
+      if (!cancelled && articles.length) setLatestArticles(articles);
+    });
     return () => {
       cancelled = true;
     };

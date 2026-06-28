@@ -13,22 +13,25 @@ import { ActivityIndicator, Image, ScrollView, StyleSheet, Switch, Text, TextInp
 
 import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
-import { Avatar, Body, Button, Chip, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
+import { ArticlesRail } from '@/components/ArticlesRail';
+import { CommunityCard, LeaderboardCard } from '@/components/DashboardCards';
+import { Avatar, Body, Button, Chip, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small, useIsDesktop } from '@/components/ui';
 import { ProfileHeader } from '@/components/ProfileHeader';
 import { ProfileTabs } from '@/components/ProfileTabs';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
-import { getPostsByAuthor } from '@/lib/community';
+import { getFeed, getPostsByAuthor } from '@/lib/community';
 import { REGIONS } from '@/lib/dietLibrary';
 import { lifetimeStats } from '@/lib/gamification';
 import { pickAndUploadImage } from '@/lib/imageUpload';
-import { getAllLogs, getFollowCounts, getMyProfile, isValidUsername, updateProfile } from '@/lib/social';
+import { getAllLogs, getFollowCounts, getMyProfile, getMyRank, isValidUsername, updateProfile } from '@/lib/social';
 import { usePalette } from '@/theme/use-theme';
 import type { CookingStats, FollowCounts, Post, Profile, Region } from '@/types';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const palette = usePalette();
+  const isDesktop = useIsDesktop();
   const { session, loading: authLoading } = useAuth();
 
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -38,11 +41,15 @@ export default function ProfileScreen() {
   const [postsLoading, setPostsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [rank, setRank] = useState<{ rank: number; totalPoints: number } | null>(null);
+  const [recentPosts, setRecentPosts] = useState<Post[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [p, logs] = await Promise.all([getMyProfile(), getAllLogs()]);
+    const [p, logs, myRank, recent] = await Promise.all([getMyProfile(), getAllLogs(), getMyRank(), getFeed('new')]);
     setProfile(p);
+    setRank(myRank);
+    setRecentPosts(recent.slice(0, 3));
     const lifetime = lifetimeStats(logs, new Date().toISOString().slice(0, 10));
     setStats({
       totalPoints: lifetime.totalPoints,
@@ -95,6 +102,59 @@ export default function ProfileScreen() {
     );
   }
 
+  const mainContent = (
+    <>
+      <Reveal>
+        <GlassCard style={{ padding: 0 }}>
+          <ProfileHeader
+            profile={profile}
+            counts={counts}
+            actions={
+              <View style={{ flexDirection: 'row', gap: Spacing.three }}>
+                <View style={{ flex: 1 }}>
+                  <Button title="Edit profile" variant="secondary" onPress={() => setEditing(true)} />
+                </View>
+                {!profile.isPro && (
+                  <View style={{ flex: 1 }}>
+                    <Button title="Go Pro ✦" onPress={() => router.push('/paywall')} />
+                  </View>
+                )}
+              </View>
+            }
+          >
+            <View style={[styles.visibility, { borderColor: palette.border }]}>
+              <Text style={{ fontFamily: Type.bodyMedium, fontSize: 12, color: palette.textSecondary }}>
+                {profile.isPublic ? '🌐 Public profile' : '🔒 Private — only you can see this'}
+              </Text>
+            </View>
+          </ProfileHeader>
+        </GlassCard>
+      </Reveal>
+
+      <Reveal delay={80}>
+        <ProfileTabs
+          posts={posts}
+          postsLoading={postsLoading}
+          stats={stats}
+          onOpenPost={(post) => router.push({ pathname: '/post/[id]', params: { id: post.id } })}
+        />
+      </Reveal>
+
+      {!profile.isPublic && (
+        <Reveal delay={240}>
+          <GlassCard style={{ gap: Spacing.two }}>
+            <Body style={{ fontFamily: Type.bodySemibold }}>Join the community</Body>
+            <Small>
+              Make your profile public to share cooked meals, follow other home cooks, and climb the leaderboard
+              (coming soon). Your dietary settings always stay private.
+            </Small>
+            <Button title="Edit profile to go public" variant="secondary" onPress={() => setEditing(true)} />
+          </GlassCard>
+        </Reveal>
+      )}
+    </>
+  );
+
   return (
     <Screen art={Art.tacos} wide header={<AppHeader />}>
       <View style={styles.top}>
@@ -111,46 +171,29 @@ export default function ProfileScreen() {
               setEditing(false);
             }}
           />
-        ) : (
-          <>
-            <Reveal>
-              <GlassCard style={{ padding: 0 }}>
-                <ProfileHeader
-                  profile={profile}
-                  counts={counts}
-                  actions={<Button title="Edit profile" variant="secondary" onPress={() => setEditing(true)} />}
-                >
-                  <View style={[styles.visibility, { borderColor: palette.border }]}>
-                    <Text style={{ fontFamily: Type.bodyMedium, fontSize: 12, color: palette.textSecondary }}>
-                      {profile.isPublic ? '🌐 Public profile' : '🔒 Private — only you can see this'}
-                    </Text>
-                  </View>
-                </ProfileHeader>
-              </GlassCard>
-            </Reveal>
-
-            <Reveal delay={80}>
-              <ProfileTabs
-                posts={posts}
-                postsLoading={postsLoading}
-                stats={stats}
-                onOpenPost={(post) => router.push({ pathname: '/post/[id]', params: { id: post.id } })}
-              />
-            </Reveal>
-
-            {!profile.isPublic && (
-              <Reveal delay={240}>
-                <GlassCard style={{ gap: Spacing.two }}>
-                  <Body style={{ fontFamily: Type.bodySemibold }}>Join the community</Body>
-                  <Small>
-                    Make your profile public to share cooked meals, follow other home cooks, and climb the leaderboard
-                    (coming soon). Your dietary settings always stay private.
-                  </Small>
-                  <Button title="Edit profile to go public" variant="secondary" onPress={() => setEditing(true)} />
-                </GlassCard>
+        ) : isDesktop ? (
+          <View style={styles.triRow}>
+            <View style={styles.triRail}>
+              <Reveal delay={60}>
+                <LeaderboardCard rank={rank} onOpen={() => router.push('/leaderboard')} />
               </Reveal>
-            )}
-          </>
+              <Reveal delay={100}>
+                <CommunityCard
+                  posts={recentPosts}
+                  onOpenPost={(id) => router.push({ pathname: '/post/[id]', params: { id } })}
+                  onOpenAll={() => router.push('/community')}
+                />
+              </Reveal>
+            </View>
+            <View style={styles.triMain}>{mainContent}</View>
+            <View style={styles.triRail}>
+              <Reveal delay={140}>
+                <ArticlesRail />
+              </Reveal>
+            </View>
+          </View>
+        ) : (
+          mainContent
         )}
       </ScrollView>
     </Screen>
@@ -302,6 +345,9 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.three, padding: Spacing.four },
   top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingTop: Spacing.three },
   back: { width: 40, height: 40, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  triRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.four },
+  triRail: { width: 280, flexShrink: 0, gap: Spacing.four },
+  triMain: { flex: 1, minWidth: 0, gap: Spacing.four },
   visibility: { alignSelf: 'flex-start', marginTop: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderWidth: 1, borderRadius: Radius.md },
   editorBanner: { height: 110 },

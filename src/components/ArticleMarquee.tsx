@@ -12,19 +12,10 @@ import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanima
 
 import { FoodImage } from '@/components/FoodImage';
 import { Radius, Spacing, Type } from '@/constants/theme';
+import type { FeedArticle } from '@/lib/articles';
 import { usePalette, useReduced } from '@/theme/use-theme';
 
-export type FeedArticle = {
-  slug: string;
-  title: string;
-  excerpt: string;
-  category: string;
-  heroImage: string;
-  heroImageAlt: string;
-  readingTime: string;
-  url: string;
-};
-
+export type { FeedArticle };
 export type PlaceholderArticle = { category: string; title: string; excerpt: string; query: string };
 
 const CARD_W = 320;

@@ -11,13 +11,16 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from
 
 import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
-import { Avatar, Body, Button, Chip, Eyebrow, GlassCard, Heading, PressableScale, ProBadge, Reveal, Screen, Small } from '@/components/ui';
+import { ArticlesRail } from '@/components/ArticlesRail';
+import { CommunityCard } from '@/components/DashboardCards';
+import { Avatar, Body, Button, Chip, Eyebrow, GlassCard, Heading, PressableScale, ProBadge, Reveal, Screen, Small, useIsDesktop } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
+import { getFeed } from '@/lib/community';
 import { getMyCrew, getLeaderboard, createCrew, joinCrewByCode, leaveCrew } from '@/lib/social';
 import { useSubscription } from '@/lib/subscription';
 import { usePalette } from '@/theme/use-theme';
-import type { Crew, LeaderboardEntry, LeaderboardScope } from '@/types';
+import type { Crew, LeaderboardEntry, LeaderboardScope, Post } from '@/types';
 
 const SCOPES: { key: LeaderboardScope; label: string }[] = [
   { key: 'global', label: 'Global' },
@@ -29,6 +32,7 @@ const SCOPES: { key: LeaderboardScope; label: string }[] = [
 export default function LeaderboardScreen() {
   const router = useRouter();
   const palette = usePalette();
+  const isDesktop = useIsDesktop();
   const { session, loading: authLoading } = useAuth();
   const { isPro } = useSubscription();
 
@@ -36,6 +40,7 @@ export default function LeaderboardScreen() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [crew, setCrew] = useState<Crew | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recentPosts, setRecentPosts] = useState<Post[]>([]);
 
   const load = useCallback(async (s: LeaderboardScope) => {
     setLoading(true);
@@ -49,6 +54,67 @@ export default function LeaderboardScreen() {
     void load(scope);
   }, [scope, load]);
 
+  useEffect(() => {
+    void getFeed('new').then((p) => setRecentPosts(p.slice(0, 3)));
+  }, []);
+
+  const mainContent = (
+    <>
+      <Reveal>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two }}>
+          {SCOPES.map((s) => (
+            <Chip
+              key={s.key}
+              label={s.label}
+              selected={scope === s.key}
+              onPress={() => {
+                if (!session && s.key !== 'global') {
+                  router.push('/auth');
+                  return;
+                }
+                setScope(s.key);
+              }}
+            />
+          ))}
+        </View>
+      </Reveal>
+
+      {!authLoading && !session && scope === 'global' && (
+        <Reveal delay={40}>
+          <GlassCard style={{ gap: Spacing.two }}>
+            <Small color={palette.textSecondary}>Sign in to follow friends, set a region, and join a Crew.</Small>
+            <Button title="Sign in" variant="secondary" onPress={() => router.push('/auth')} />
+          </GlassCard>
+        </Reveal>
+      )}
+
+      {scope === 'crew' && session && (
+        <Reveal delay={40}>
+          <CrewPanel
+            crew={crew}
+            isPro={isPro}
+            onChanged={() => load('crew')}
+          />
+        </Reveal>
+      )}
+
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={palette.accent} />
+          <Small color={palette.textSecondary}>Loading rankings…</Small>
+        </View>
+      ) : scope === 'crew' && session && !crew ? null : (
+        <Reveal delay={80}>
+          <RankedList
+            entries={entries}
+            scope={scope}
+            onOpen={(username) => router.push({ pathname: '/u/[username]', params: { username } })}
+          />
+        </Reveal>
+      )}
+    </>
+  );
+
   return (
     <Screen art={Art.steak} wide header={<AppHeader active="leaderboard" />}>
       <View style={styles.top}>
@@ -56,57 +122,26 @@ export default function LeaderboardScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: Spacing.four, gap: Spacing.four }}>
-        <Reveal>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two }}>
-            {SCOPES.map((s) => (
-              <Chip
-                key={s.key}
-                label={s.label}
-                selected={scope === s.key}
-                onPress={() => {
-                  if (!session && s.key !== 'global') {
-                    router.push('/auth');
-                    return;
-                  }
-                  setScope(s.key);
-                }}
-              />
-            ))}
+        {isDesktop ? (
+          <View style={styles.triRow}>
+            <View style={styles.triRail}>
+              <Reveal delay={40}>
+                <CommunityCard
+                  posts={recentPosts}
+                  onOpenPost={(id) => router.push({ pathname: '/post/[id]', params: { id } })}
+                  onOpenAll={() => router.push('/community')}
+                />
+              </Reveal>
+            </View>
+            <View style={styles.triMain}>{mainContent}</View>
+            <View style={styles.triRail}>
+              <Reveal delay={80}>
+                <ArticlesRail />
+              </Reveal>
+            </View>
           </View>
-        </Reveal>
-
-        {!authLoading && !session && scope === 'global' && (
-          <Reveal delay={40}>
-            <GlassCard style={{ gap: Spacing.two }}>
-              <Small color={palette.textSecondary}>Sign in to follow friends, set a region, and join a Crew.</Small>
-              <Button title="Sign in" variant="secondary" onPress={() => router.push('/auth')} />
-            </GlassCard>
-          </Reveal>
-        )}
-
-        {scope === 'crew' && session && (
-          <Reveal delay={40}>
-            <CrewPanel
-              crew={crew}
-              isPro={isPro}
-              onChanged={() => load('crew')}
-            />
-          </Reveal>
-        )}
-
-        {loading ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={palette.accent} />
-            <Small color={palette.textSecondary}>Loading rankings…</Small>
-          </View>
-        ) : scope === 'crew' && session && !crew ? null : (
-          <Reveal delay={80}>
-            <RankedList
-              entries={entries}
-              scope={scope}
-              onOpen={(username) => router.push({ pathname: '/u/[username]', params: { username } })}
-            />
-          </Reveal>
+        ) : (
+          mainContent
         )}
       </ScrollView>
     </Screen>
@@ -279,4 +314,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.three, paddingHorizontal: Spacing.two },
   divider: { height: 1, width: '100%' },
   input: { flex: 1, borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: Spacing.three, height: 44, fontFamily: Type.body, fontSize: 14 },
+  triRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.four },
+  triRail: { width: 280, flexShrink: 0, gap: Spacing.four },
+  triMain: { flex: 1, minWidth: 0, gap: Spacing.four },
 });

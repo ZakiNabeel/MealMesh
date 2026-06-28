@@ -84,6 +84,9 @@ const SYSTEM_PROMPT =
   'BUDGET: If `budgetWeekly` (in the local `currency`) is given, choose affordable, in-season, ' +
   'locally-common ingredients so the whole week fits roughly within that budget — lean on ' +
   'legumes, eggs and cheaper cuts before premium proteins.\n' +
+  'GROCERY: `quantity` must be a realistic total shopping amount for the WHOLE household for the ' +
+  'WHOLE week, with a real unit (e.g. "1.5 kg", "500 g", "1 dozen", "2 L", "250 ml", "6 pcs") — ' +
+  'never an occurrence count like "x3".\n' +
   'Return ONLY valid JSON, no prose, no markdown code fences.';
 
 function safeParseJSON(text: string): unknown {

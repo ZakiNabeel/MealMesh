@@ -12,6 +12,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
+import { CommunityCard, LeaderboardCard } from '@/components/DashboardCards';
 import { Avatar, Body, Button, Display, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small, useIsDesktop } from '@/components/ui';
 import { Spacing, Type } from '@/constants/theme';
 import { getFeed } from '@/lib/community';
@@ -204,56 +205,6 @@ function PlanCard({
         <View style={[styles.progressFill, { width: `${Math.round((cooked / TOTAL_SLOTS) * 100)}%`, backgroundColor: palette.accent }]} />
       </View>
       <Button title="Open plan" onPress={onOpen} />
-    </GlassCard>
-  );
-}
-
-function LeaderboardCard({ rank, onOpen }: { rank: { rank: number; totalPoints: number } | null; onOpen: () => void }) {
-  const palette = usePalette();
-  return (
-    <GlassCard style={{ gap: Spacing.three }}>
-      <Eyebrow>Leaderboard</Eyebrow>
-      {rank && rank.rank > 0 ? (
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: Spacing.two }}>
-          <Text style={{ fontFamily: Type.displayBold, fontSize: 30, color: palette.accent }}>#{rank.rank}</Text>
-          <Small color={palette.textSecondary}>{rank.totalPoints} pts globally</Small>
-        </View>
-      ) : rank ? (
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: Spacing.two }}>
-          <Text style={{ fontFamily: Type.displayBold, fontSize: 30, color: palette.text }}>{rank.totalPoints}</Text>
-          <Small color={palette.textSecondary}>pts · go public to rank</Small>
-        </View>
-      ) : (
-        <Body color={palette.textSecondary}>Cook meals to start climbing the board.</Body>
-      )}
-      <Button title="View leaderboard" variant="secondary" onPress={onOpen} />
-    </GlassCard>
-  );
-}
-
-function CommunityCard({ posts, onOpenPost, onOpenAll }: { posts: Post[]; onOpenPost: (id: string) => void; onOpenAll: () => void }) {
-  const palette = usePalette();
-  return (
-    <GlassCard style={{ gap: Spacing.three }}>
-      <Eyebrow>Community</Eyebrow>
-      {posts.length === 0 ? (
-        <Body color={palette.textSecondary}>Be the first to share what you cooked this week.</Body>
-      ) : (
-        <View style={{ gap: Spacing.two }}>
-          {posts.map((p) => (
-            <PressableScale key={p.id} onPress={() => onOpenPost(p.id)} to={0.98}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two }}>
-                <Avatar name={p.author.displayName || p.author.username} uri={p.author.avatarUrl} size={24} />
-                <Small color={palette.text} numberOfLines={1} style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: Type.bodySemibold }}>{p.author.displayName || p.author.username}</Text>
-                  {p.recipeTitle ? ` · ${p.recipeTitle}` : p.body ? ` · ${p.body}` : ''}
-                </Small>
-              </View>
-            </PressableScale>
-          ))}
-        </View>
-      )}
-      <Button title="Open community" variant="secondary" onPress={onOpenAll} />
     </GlassCard>
   );
 }

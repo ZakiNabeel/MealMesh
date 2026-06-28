@@ -5,11 +5,12 @@
  * (src/app/profile.tsx) and any public profile (src/app/u/[username].tsx).
  */
 
+import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 
-import { Avatar, Body, Heading, ProBadge, Small } from '@/components/ui';
+import { Avatar, Body, Heading, PressableScale, ProBadge, Small } from '@/components/ui';
 import { Spacing, Type } from '@/constants/theme';
 import { usePalette } from '@/theme/use-theme';
 import type { FollowCounts, Profile } from '@/types';
@@ -32,6 +33,7 @@ export function ProfileHeader({
   children?: ReactNode;
 }) {
   const palette = usePalette();
+  const router = useRouter();
   return (
     <View>
       {profile.coverUrl ? (
@@ -59,14 +61,18 @@ export function ProfileHeader({
         </Small>
 
         <View style={{ flexDirection: 'row', gap: Spacing.four, marginTop: Spacing.three }}>
-          <Text>
-            <Text style={{ fontFamily: Type.bodyBold, color: palette.text }}>{counts.following}</Text>
-            <Text style={{ fontFamily: Type.body, color: palette.textSecondary }}> Following</Text>
-          </Text>
-          <Text>
-            <Text style={{ fontFamily: Type.bodyBold, color: palette.text }}>{counts.followers}</Text>
-            <Text style={{ fontFamily: Type.body, color: palette.textSecondary }}> Followers</Text>
-          </Text>
+          <PressableScale onPress={() => router.push({ pathname: '/connections/[username]', params: { username: profile.username, tab: 'following' } })}>
+            <Text>
+              <Text style={{ fontFamily: Type.bodyBold, color: palette.text }}>{counts.following}</Text>
+              <Text style={{ fontFamily: Type.body, color: palette.textSecondary }}> Following</Text>
+            </Text>
+          </PressableScale>
+          <PressableScale onPress={() => router.push({ pathname: '/connections/[username]', params: { username: profile.username, tab: 'followers' } })}>
+            <Text>
+              <Text style={{ fontFamily: Type.bodyBold, color: palette.text }}>{counts.followers}</Text>
+              <Text style={{ fontFamily: Type.body, color: palette.textSecondary }}> Followers</Text>
+            </Text>
+          </PressableScale>
         </View>
 
         {children}

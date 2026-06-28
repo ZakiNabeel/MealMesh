@@ -15,6 +15,7 @@ import { getDraftHousehold, setDraftHousehold } from '@/lib/draft';
 import { computeStreak, summarizeWeek, type WeekSummary } from '@/lib/gamification';
 import { formatMoney } from '@/lib/geo';
 import { generatePlan } from '@/lib/generatePlan';
+import { buildGroceryPdf, groceryPdfFileName, shareOrDownloadGroceryPdf } from '@/lib/groceryPdf';
 import { pickAndUploadImage } from '@/lib/imageUpload';
 import { getAllLogs, logMeal, unlogMeal } from '@/lib/social';
 import { currentWeekStart, loadHousehold, loadPlan, savePlan, saveHousehold } from '@/lib/store';
@@ -27,6 +28,24 @@ const cookKey = (day: DayOfWeek, slot: MealSlot) => `${day}|${slot}`;
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 const DAY_ORDER: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+/** Rendering order only — rotates the canonical Monday-start list so today's
+ * weekday displays first and the rest wrap around. Generation, caching and
+ * the Gemini day labels all stay Monday-anchored; only what the user sees
+ * changes. */
+function displayDayOrder(): DayOfWeek[] {
+  const todayIdx = (new Date().getDay() + 6) % 7; // Sun=0 -> 6, Mon=1 -> 0, …
+  return [...DAY_ORDER.slice(todayIdx), ...DAY_ORDER.slice(0, todayIdx)];
+}
+
+/** Calendar date for the Nth card in the rotated display order (today + n). */
+function displayDate(n: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d;
+}
+
+const shortDateLabel = (d: Date) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
 const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
@@ -275,7 +294,8 @@ export default function Plan() {
             )}
           </>
         ) : (
-          <View style={centerCol}>
+          <View style={[centerCol, { gap: Spacing.three }]}>
+            <GroceryExportAction plan={plan} region={household.region} household={household} isPro={isPro} />
             <GroceryList plan={plan} region={household.region} checked={checked} setChecked={setChecked} />
           </View>
         )}
@@ -470,7 +490,7 @@ function DayCards({
 }) {
   return (
     <View style={isDesktop ? styles.dayGrid : { gap: Spacing.three }}>
-      {DAY_ORDER.map((day, i) => {
+      {displayDayOrder().map((day, i) => {
         const meals = plan.days.filter((m) => m.dayOfWeek === day);
         if (!meals.length) return null;
         return (
@@ -478,6 +498,7 @@ function DayCards({
             <Reveal delay={i * 40}>
               <DayGroup
                 day={day}
+                date={displayDate(i)}
                 meals={meals}
                 onSelect={onSelect}
                 cooked={cooked}
@@ -629,6 +650,7 @@ function BudgetBanner({ plan, country, budgetWeekly }: { plan: MealPlan; country
 /** One day with its four meals (breakfast → dinner) as tappable rows. */
 function DayGroup({
   day,
+  date,
   meals,
   onSelect,
   cooked,
@@ -637,6 +659,7 @@ function DayGroup({
   onUncook,
 }: {
   day: DayOfWeek;
+  date: Date;
   meals: PlannedMeal[];
   onSelect: (m: PlannedMeal) => void;
   cooked: Set<string>;
@@ -651,7 +674,9 @@ function DayGroup({
   return (
     <View style={{ gap: Spacing.two }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Eyebrow>{DAY_FULL[day]}</Eyebrow>
+        <Eyebrow>
+          {DAY_FULL[day]} · {shortDateLabel(date)}
+        </Eyebrow>
         {canCook && (
           <View style={[styles.dayProgress, allDone && { backgroundColor: palette.accentMuted }]}>
             <Text
@@ -841,6 +866,60 @@ function MetaPill({ label, value }: { label: string; value: string }) {
   );
 }
 
+function GroceryExportAction({
+  plan,
+  region,
+  household,
+  isPro,
+}: {
+  plan: MealPlan;
+  region: Region;
+  household: Household;
+  isPro: boolean;
+}) {
+  const router = useRouter();
+  const palette = usePalette();
+  const [status, setStatus] = useState<'idle' | 'working' | 'shared' | 'downloaded'>('idle');
+
+  const onPress = async () => {
+    if (!isPro) {
+      router.push('/paywall');
+      return;
+    }
+    setStatus('working');
+    const blob = buildGroceryPdf(plan.grocery, region, household.name);
+    const fileName = groceryPdfFileName(household.name);
+    const { shared } = await shareOrDownloadGroceryPdf(blob, fileName);
+    setStatus(shared ? 'shared' : 'downloaded');
+    setTimeout(() => setStatus('idle'), 2500);
+  };
+
+  const label =
+    status === 'working'
+      ? 'Preparing…'
+      : status === 'shared'
+        ? 'Shared ✓'
+        : status === 'downloaded'
+          ? 'Downloaded ✓'
+          : isPro
+            ? '⬇ Export / Share PDF'
+            : '🔒 Export PDF — Pro';
+
+  return (
+    <PressableScale onPress={onPress} to={0.97} disabled={status === 'working'}>
+      <View
+        style={[
+          styles.exportRow,
+          { borderColor: palette.border, backgroundColor: isPro ? palette.accentMuted : palette.backgroundElement },
+        ]}
+      >
+        <Small style={{ fontFamily: Type.bodySemibold, color: isPro ? palette.accent : palette.textSecondary }}>{label}</Small>
+        {!isPro && <Small color={palette.textSecondary}>Upgrade to export</Small>}
+      </View>
+    </PressableScale>
+  );
+}
+
 function GroceryList({
   plan,
   region,
@@ -931,6 +1010,7 @@ const styles = StyleSheet.create({
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
   tag: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, borderWidth: 1 },
   groceryRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.three, paddingHorizontal: Spacing.three },
+  exportRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: Spacing.three, paddingHorizontal: Spacing.three, borderRadius: Radius.md, borderWidth: 1 },
   check: { width: 24, height: 24, borderRadius: 8, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   footer: { paddingVertical: Spacing.three },
   budgetIcon: { width: 44, height: 44, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' },

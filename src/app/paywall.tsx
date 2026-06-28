@@ -12,12 +12,17 @@ import { TIER_PRICES, tierForCountry, type PriceTier } from '@/lib/pricing';
 import { loadHousehold } from '@/lib/store';
 import { usePalette } from '@/theme/use-theme';
 
-const FEATURES = [
-  'Unlimited weekly plans',
-  'Unlimited member profiles',
-  'All 40+ diets & allergens',
-  'Regional cuisines',
-  'One-tap grocery export',
+type ComparisonRow = { label: string; free: string | boolean; pro: string | boolean };
+
+const COMPARISON: ComparisonRow[] = [
+  { label: 'Weekly AI meal plans', free: '3 / week', pro: 'Unlimited' },
+  { label: 'Member profiles', free: 'Unlimited', pro: 'Unlimited' },
+  { label: 'All 40+ diets & allergens', free: true, pro: true },
+  { label: 'Regional cuisines', free: true, pro: true },
+  { label: 'Grocery list', free: true, pro: true },
+  { label: 'Grocery PDF export & share', free: false, pro: true },
+  { label: 'Create a Crew (friends/family board)', free: false, pro: true },
+  { label: 'Pro badge ✦', free: false, pro: true },
 ];
 
 export default function Paywall() {
@@ -76,13 +81,21 @@ export default function Paywall() {
         </Reveal>
 
         <Reveal delay={120} style={{ marginTop: Spacing.four }}>
-          <GlassCard style={{ gap: Spacing.three }}>
-            {FEATURES.map((f) => (
-              <View key={f} style={styles.featureRow}>
-                <View style={[styles.tick, { backgroundColor: palette.accentMuted }]}>
-                  <Text style={{ color: palette.accent, fontSize: 12 }}>✓</Text>
+          <GlassCard style={{ gap: 0, paddingVertical: Spacing.one, paddingHorizontal: Spacing.one }}>
+            <View style={styles.compareHeader}>
+              <View style={{ flex: 1 }} />
+              <Text style={[styles.compareColHead, { color: palette.textSecondary }]}>Free</Text>
+              <Text style={[styles.compareColHead, { color: palette.accent }]}>Pro</Text>
+            </View>
+            {COMPARISON.map((row, i) => (
+              <View key={row.label} style={[styles.compareRow, i > 0 && { borderTopWidth: 1, borderTopColor: palette.border }]}>
+                <Small style={{ flex: 1 }}>{row.label}</Small>
+                <View style={styles.compareCol}>
+                  <ComparisonCell value={row.free} />
                 </View>
-                <Body>{f}</Body>
+                <View style={styles.compareCol}>
+                  <ComparisonCell value={row.pro} />
+                </View>
               </View>
             ))}
           </GlassCard>
@@ -124,12 +137,33 @@ export default function Paywall() {
   );
 }
 
+function ComparisonCell({ value }: { value: string | boolean }) {
+  const palette = usePalette();
+  if (typeof value === 'boolean') {
+    return value ? (
+      <View style={[styles.tick, { backgroundColor: palette.accentMuted }]}>
+        <Text style={{ color: palette.accent, fontSize: 12 }}>✓</Text>
+      </View>
+    ) : (
+      <Small color={palette.textSecondary}>—</Small>
+    );
+  }
+  return (
+    <Small style={{ fontFamily: Type.bodySemibold, textAlign: 'center' }} numberOfLines={2}>
+      {value}
+    </Small>
+  );
+}
+
 const styles = StyleSheet.create({
   top: { paddingTop: Spacing.two },
   back: { width: 40, height: 40, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   body: { flexGrow: 1, justifyContent: 'center', paddingTop: Spacing.three, paddingBottom: Spacing.five },
-  featureRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   tick: { width: 24, height: 24, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  compareHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.two },
+  compareColHead: { width: 64, textAlign: 'center', fontFamily: Type.bodySemibold, fontSize: 12 },
+  compareRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.three, paddingHorizontal: Spacing.three },
+  compareCol: { width: 64, alignItems: 'center' },
   billing: { flexDirection: 'row', padding: 4, borderRadius: Radius.pill, gap: 4 },
   bTab: { height: 42, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center' },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 6 },

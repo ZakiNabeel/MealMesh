@@ -11,7 +11,7 @@
 
 import { lifetimeStats } from '@/lib/gamification';
 import { supabase } from '@/lib/supabase';
-import type { CookingStats, Crew, DayOfWeek, FollowCounts, LeaderboardEntry, LeaderboardScope, MealLog, MealSlot, Profile } from '@/types';
+import type { CookingStats, Crew, DayOfWeek, FollowCounts, FollowListEntry, LeaderboardEntry, LeaderboardScope, MealLog, MealSlot, Profile } from '@/types';
 
 /* ------------------------------------------------------------------ */
 /* Row shapes                                                         */
@@ -304,6 +304,49 @@ export async function getFollowCounts(targetUserId: string): Promise<FollowCount
     supabase.from('follows').select('following_id', { count: 'exact', head: true }).eq('follower_id', targetUserId),
   ]);
   return { followers: followers.count ?? 0, following: following.count ?? 0 };
+}
+
+function toFollowListEntry(p: ProfileRow): FollowListEntry {
+  return { userId: p.user_id, username: p.username, displayName: p.display_name, avatarUrl: p.avatar_url, isPro: p.is_pro };
+}
+
+/**
+ * Profiles for a list of user ids, preserving that order — like the
+ * profiles→user_stats two-step elsewhere in this file, `follows` has no
+ * direct FK to `profiles` for PostgREST to embed through. Ids the viewer
+ * can't read under `profiles_read` RLS (a private, non-crewmate account)
+ * simply drop out of the list.
+ */
+async function profilesForIds(ids: string[]): Promise<FollowListEntry[]> {
+  if (ids.length === 0) return [];
+  const { data } = await supabase.from('profiles').select('*').in('user_id', ids);
+  const byId = new Map((data ?? []).map((p) => [(p as ProfileRow).user_id, p as ProfileRow]));
+  return ids
+    .map((id) => byId.get(id))
+    .filter((p): p is ProfileRow => Boolean(p))
+    .map(toFollowListEntry);
+}
+
+/** Accounts that follow `targetUserId`, most recently followed first. */
+export async function getFollowers(targetUserId: string, limit = 50): Promise<FollowListEntry[]> {
+  const { data } = await supabase
+    .from('follows')
+    .select('follower_id')
+    .eq('following_id', targetUserId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  return profilesForIds((data ?? []).map((r) => (r as { follower_id: string }).follower_id));
+}
+
+/** Accounts that `targetUserId` follows, most recently followed first. */
+export async function getFollowing(targetUserId: string, limit = 50): Promise<FollowListEntry[]> {
+  const { data } = await supabase
+    .from('follows')
+    .select('following_id')
+    .eq('follower_id', targetUserId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  return profilesForIds((data ?? []).map((r) => (r as { following_id: string }).following_id));
 }
 
 /* ------------------------------------------------------------------ */

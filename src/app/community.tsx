@@ -10,12 +10,13 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 
 import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
+import { LeaderboardCard } from '@/components/DashboardCards';
 import { Avatar, Body, Button, Chip, Eyebrow, GlassCard, Heading, PressableScale, ProBadge, Reveal, Screen, Small, useIsDesktop } from '@/components/ui';
 import { PostCard } from '@/components/PostCard';
 import { Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { getFeed } from '@/lib/community';
-import { getLeaderboard, getMyProfile } from '@/lib/social';
+import { getLeaderboard, getMyProfile, getMyRank } from '@/lib/social';
 import { usePalette } from '@/theme/use-theme';
 import type { FeedSort, LeaderboardEntry, Post } from '@/types';
 
@@ -37,6 +38,7 @@ export default function CommunityScreen() {
   const [loading, setLoading] = useState(true);
   const [canPost, setCanPost] = useState(false);
   const [topCooks, setTopCooks] = useState<LeaderboardEntry[]>([]);
+  const [rank, setRank] = useState<{ rank: number; totalPoints: number } | null>(null);
 
   const load = useCallback(async (s: FeedSort) => {
     setLoading(true);
@@ -56,9 +58,11 @@ export default function CommunityScreen() {
   useEffect(() => {
     if (!session) {
       setCanPost(false);
+      setRank(null);
       return;
     }
     void getMyProfile().then((p) => setCanPost(Boolean(p?.isPublic)));
+    void getMyRank().then(setRank);
   }, [session]);
 
   const composeButton = (
@@ -180,6 +184,13 @@ export default function CommunityScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: Spacing.four }}>
         {isDesktop ? (
           <View style={styles.row}>
+            {session && (
+              <View style={styles.leftRail}>
+                <Reveal delay={40}>
+                  <LeaderboardCard rank={rank} onOpen={() => router.push('/leaderboard')} />
+                </Reveal>
+              </View>
+            )}
             <View style={styles.main}>{feed}</View>
             <View style={styles.rail}>{rail}</View>
           </View>
@@ -196,6 +207,7 @@ const styles = StyleSheet.create({
   back: { width: 40, height: 40, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   center: { alignItems: 'center', justifyContent: 'center', gap: Spacing.three, padding: Spacing.four },
   row: { flexDirection: 'row', gap: Spacing.four, alignItems: 'flex-start' },
-  main: { flex: 1.6 },
+  leftRail: { width: 280, flexShrink: 0, gap: Spacing.four },
+  main: { flex: 1.6, minWidth: 0 },
   rail: { flex: 1, gap: Spacing.four, minWidth: 280 },
 });
