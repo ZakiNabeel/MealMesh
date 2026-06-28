@@ -92,6 +92,7 @@ export function Screen({
   style,
   rail = false,
   wide = false,
+  maxWidth,
   header,
 }: {
   children: ReactNode;
@@ -103,6 +104,9 @@ export function Screen({
   /** Use the roomier desktop content width (for grid/dashboard screens) so the
    *  page doesn't read as a thin phone-width strip floating in empty space. */
   wide?: boolean;
+  /** Override the desktop content budget (default DesktopContentWidth) — for
+   *  3-column rail layouts that need more room than a 2-column dashboard. */
+  maxWidth?: number;
   /** Persistent chrome pinned above the (scrolling) content — e.g. AppHeader.
    *  Rendered as a sibling above the content column so it never scrolls away. */
   header?: ReactNode;
@@ -110,7 +114,8 @@ export function Screen({
   const palette = usePalette();
   const isDesktop = useIsDesktop();
   const showRail = isDesktop && rail;
-  const columnStyle = isDesktop && wide && !rail ? [styles.column, { maxWidth: DesktopContentWidth }] : styles.column;
+  const columnStyle =
+    isDesktop && wide && !rail ? [styles.column, { maxWidth: maxWidth ?? DesktopContentWidth }] : styles.column;
   return (
     <View style={{ flex: 1, backgroundColor: palette.background, overflow: 'hidden' }}>
       <Atmosphere />

@@ -175,7 +175,7 @@ export default function CommunityScreen() {
   );
 
   return (
-    <Screen art={Art.sandwich} wide header={<AppHeader active="community" />}>
+    <Screen art={Art.sandwich} wide maxWidth={1280} header={<AppHeader active="community" />}>
       <View style={styles.top}>
         <Heading style={{ flex: 1 }}>Community</Heading>
         {composeButton}

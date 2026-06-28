@@ -156,7 +156,7 @@ export default function ProfileScreen() {
   );
 
   return (
-    <Screen art={Art.tacos} wide header={<AppHeader />}>
+    <Screen art={Art.tacos} wide maxWidth={1280} header={<AppHeader />}>
       <View style={styles.top}>
         <Heading>Profile</Heading>
       </View>

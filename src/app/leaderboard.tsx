@@ -116,7 +116,7 @@ export default function LeaderboardScreen() {
   );
 
   return (
-    <Screen art={Art.steak} wide header={<AppHeader active="leaderboard" />}>
+    <Screen art={Art.steak} wide maxWidth={1280} header={<AppHeader active="leaderboard" />}>
       <View style={styles.top}>
         <Heading>Leaderboard</Heading>
       </View>

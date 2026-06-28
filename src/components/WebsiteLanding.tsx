@@ -604,7 +604,7 @@ const ARTICLES = [
 ];
 
 const PREVIEW_DAYS = [
-  { day: 'Mon', meal: 'Chicken karahi + roti', note: 'One shared dish · halal · feeds all 4', ing: ['chicken', 'tomato'], query: 'chicken karahi' },
+  { day: 'Mon', meal: 'Chicken karahi + roti', note: 'One shared dish · halal · feeds all 4', ing: ['chicken', 'tomato'], query: 'chicken curry dish' },
   { day: 'Tue', meal: 'Daal & rice bowls', note: 'Vegan + gluten-free friendly', ing: ['lentils', 'rice'], query: 'daal rice' },
   { day: 'Wed', meal: 'Grilled fish, two ways', note: 'Simple swap for the low-carb member', ing: ['fish'], query: 'grilled fish plate' },
 ];
