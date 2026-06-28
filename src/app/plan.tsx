@@ -56,6 +56,30 @@ const SLOT_LABEL: Record<MealSlot, string> = {
   dinner: 'Dinner',
 };
 
+const LOADING_QUIPS = [
+  'Weaving this week’s plan…',
+  'Negotiating with a picky eater…',
+  'Asking the spice rack for ideas…',
+  'Untangling everyone’s diets…',
+  'Making sure nobody eats peanuts by accident…',
+  'Swapping pork for paneer, halal-style…',
+  'Counting calories so you don’t have to…',
+  'Sneaking some vegetables in…',
+  'Double-checking the grocery math…',
+  'Simmering a 7-day plan to perfection…',
+];
+
+/** Cycles through a playful line every few seconds while a plan generates. */
+function LoadingQuip() {
+  const palette = usePalette();
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setI((n) => (n + 1) % LOADING_QUIPS.length), 1800);
+    return () => clearInterval(id);
+  }, []);
+  return <Small color={palette.textSecondary}>{LOADING_QUIPS[i]}</Small>;
+}
+
 export default function Plan() {
   const router = useRouter();
   const palette = usePalette();
@@ -243,7 +267,7 @@ export default function Plan() {
         {!plan ? (
           <View style={styles.empty}>
             <ActivityIndicator color={palette.accent} />
-            <Small color={palette.textSecondary}>Weaving this week&apos;s plan…</Small>
+            <LoadingQuip />
           </View>
         ) : tab === 'plan' ? (
           <>
@@ -301,29 +325,32 @@ export default function Plan() {
         )}
       </ScrollView>
 
-      <View style={[styles.footer, centerCol]}>
-        <Button
-          title="Regenerate this week"
-          variant="secondary"
-          disabled={loading}
-          onPress={async () => {
-            if (!isPro) {
-              const used = await generationsThisWeek();
-              if (used >= FREE_WEEKLY_PLANS - 1) {
-                router.push('/paywall');
-                return;
+      <View style={isDesktop && tab === 'plan' ? styles.footerRow : undefined}>
+        {isDesktop && tab === 'plan' && <View style={styles.rail} />}
+        <View style={[styles.footer, centerCol, isDesktop && tab === 'plan' && { flex: 1, marginHorizontal: 0 }]}>
+          <Button
+            title="Regenerate this week"
+            variant="secondary"
+            disabled={loading}
+            onPress={async () => {
+              if (!isPro) {
+                const used = await generationsThisWeek();
+                if (used >= FREE_WEEKLY_PLANS - 1) {
+                  router.push('/paywall');
+                  return;
+                }
+                await bumpGenerations();
               }
-              await bumpGenerations();
-            }
-            setPlan(null);
-            setSeed((s) => s + 1);
-          }}
-        />
-        <PressableScale onPress={() => router.push('/pantry')} to={0.97}>
-          <Small color={palette.accent} style={{ textAlign: 'center', marginTop: Spacing.three, fontFamily: Type.bodySemibold }}>
-            🥘  Cook with what I have
-          </Small>
-        </PressableScale>
+              setPlan(null);
+              setSeed((s) => s + 1);
+            }}
+          />
+          <PressableScale onPress={() => router.push('/pantry')} to={0.97}>
+            <Small color={palette.accent} style={{ textAlign: 'center', marginTop: Spacing.three, fontFamily: Type.bodySemibold }}>
+              🥘  Cook with what I have
+            </Small>
+          </PressableScale>
+        </View>
       </View>
 
       <RecipeModal meal={selected} region={household.region} onClose={() => setSelected(null)} />
@@ -1013,6 +1040,7 @@ const styles = StyleSheet.create({
   exportRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: Spacing.three, paddingHorizontal: Spacing.three, borderRadius: Radius.md, borderWidth: 1 },
   check: { width: 24, height: 24, borderRadius: 8, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   footer: { paddingVertical: Spacing.three },
+  footerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.four },
   budgetIcon: { width: 44, height: 44, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' },
   budgetTag: { alignSelf: 'flex-start', paddingHorizontal: Spacing.three, paddingVertical: 6, borderRadius: Radius.pill },
   mealRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.two, paddingHorizontal: Spacing.two },

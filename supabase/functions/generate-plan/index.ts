@@ -100,7 +100,7 @@ function isMealPlan(value: unknown): value is MealPlan {
   return Array.isArray(v.days) && Array.isArray(v.grocery);
 }
 
-async function requestPlan(household: Household, retryNote?: string): Promise<MealPlan> {
+async function requestPlan(household: Household, retryNote?: string, attempt = 1): Promise<MealPlan> {
   const hardExclude = unionHardExclusions(household.members);
   const softAvoid = unionSoftAvoid(household.members);
   const allow = deriveAllowList(household.members, household.region);
@@ -144,9 +144,27 @@ async function requestPlan(household: Household, retryNote?: string): Promise<Me
     throw new Error(`Gemini request failed (${resp.status}): ${errText}`);
   }
 
-  const body = (await resp.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+  const body = (await resp.json()) as {
+    candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
+  };
+  const finishReason = body.candidates?.[0]?.finishReason;
   const text = (body.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('');
-  const parsed = safeParseJSON(text);
+
+  // Gemini occasionally returns a response cut short (hit an internal length
+  // limit before finishing the JSON) or, more rarely, malformed JSON despite
+  // responseMimeType. Both surface as a broken parse — retry the generation
+  // once before giving up, since a fresh call is usually clean.
+  let parsed: unknown;
+  try {
+    if (finishReason && finishReason !== 'STOP') throw new Error(`Gemini stopped early: ${finishReason}`);
+    parsed = safeParseJSON(text);
+  } catch (err) {
+    if (attempt < 2) {
+      console.error('[generate-plan] malformed/truncated response, retrying once', err);
+      return requestPlan(household, retryNote, attempt + 1);
+    }
+    throw err;
+  }
   if (!isMealPlan(parsed)) throw new Error('Gemini response was not a valid MealPlan shape.');
   return parsed;
 }
