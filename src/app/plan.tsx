@@ -18,14 +18,14 @@ import { generatePlan } from '@/lib/generatePlan';
 import { buildGroceryPdf, groceryPdfFileName, shareOrDownloadGroceryPdf } from '@/lib/groceryPdf';
 import { pickAndUploadImage } from '@/lib/imageUpload';
 import { getAllLogs, logMeal, unlogMeal } from '@/lib/social';
-import { currentWeekStart, loadHousehold, loadPlan, savePlan, saveHousehold } from '@/lib/store';
+import { currentWeekStart, loadHousehold, loadPlan, localDateKey, savePlan, saveHousehold } from '@/lib/store';
 import { bumpGenerations, FREE_WEEKLY_PLANS, generationsThisWeek, useSubscription } from '@/lib/subscription';
 import { usePalette } from '@/theme/use-theme';
-import { MEAL_SLOTS, type DayOfWeek, type Household, type MealLog, type MealPlan, type MealSlot, type PlannedMeal, type Region } from '@/types';
+import { MEAL_SLOTS, type DayOfWeek, type GroceryItem, type Household, type MealLog, type MealPlan, type MealSlot, type PlannedMeal, type Region } from '@/types';
 
 /** Key a cooking log by its plan coordinates (day + slot within the week). */
 const cookKey = (day: DayOfWeek, slot: MealSlot) => `${day}|${slot}`;
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = () => localDateKey();
 
 const DAY_ORDER: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -336,8 +336,15 @@ export default function Plan() {
           </>
         ) : (
           <View style={[centerCol, { gap: Spacing.three }]}>
-            <GroceryExportAction plan={plan} region={household.region} household={household} isPro={isPro} />
-            <GroceryList plan={plan} region={household.region} checked={checked} setChecked={setChecked} />
+            <GroceryView
+              plan={plan}
+              region={household.region}
+              household={household}
+              isPro={isPro}
+              checked={checked}
+              setChecked={setChecked}
+              dayOrder={dayOrder}
+            />
           </View>
         )}
       </ScrollView>
@@ -362,11 +369,14 @@ export default function Plan() {
               setSeed((s) => s + 1);
             }}
           />
-          <PressableScale onPress={() => router.push('/pantry')} to={0.97}>
-            <Small color={palette.accent} style={{ textAlign: 'center', marginTop: Spacing.three, fontFamily: Type.bodySemibold }}>
-              🥘  Cook with what I have
-            </Small>
-          </PressableScale>
+          <View style={styles.quickLinks}>
+            <PressableScale onPress={() => router.push('/pantry')} to={0.97}>
+              <Small color={palette.accent} style={{ fontFamily: Type.bodySemibold }}>🥘  Cook with what I have</Small>
+            </PressableScale>
+            <PressableScale onPress={() => router.push('/surprise')} to={0.97}>
+              <Small color={palette.accent} style={{ fontFamily: Type.bodySemibold }}>✨  Surprise me / Guests coming?</Small>
+            </PressableScale>
+          </View>
         </View>
       </View>
 
@@ -947,16 +957,135 @@ function MetaPill({ label, value }: { label: string; value: string }) {
   );
 }
 
-function GroceryExportAction({
+/** Grocery list with a scope selector — buy for the whole week, one day, or a
+ *  single meal. Day/meal views list just the ingredients those meals need. */
+type GroceryScope = 'week' | 'day' | 'meal';
+
+function GroceryView({
   plan,
   region,
   household,
   isPro,
+  checked,
+  setChecked,
+  dayOrder,
 }: {
   plan: MealPlan;
   region: Region;
   household: Household;
   isPro: boolean;
+  checked: Record<string, boolean>;
+  setChecked: (fn: (prev: Record<string, boolean>) => Record<string, boolean>) => void;
+  dayOrder: DayOfWeek[];
+}) {
+  const palette = usePalette();
+  const [scope, setScope] = useState<GroceryScope>('week');
+  const [dayI, setDayI] = useState(0);
+  const [slot, setSlot] = useState<MealSlot>('dinner');
+
+  // Category for any ingredient, learned from the whole-week list the engine
+  // already grouped — so day/meal views slot into the same headers.
+  const categoryOf = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const g of plan.grocery) m.set(g.name.toLowerCase(), g.category);
+    return (name: string) => m.get(name.toLowerCase()) ?? 'Other';
+  }, [plan]);
+
+  const selDay = dayOrder[dayI];
+
+  const items: GroceryItem[] = useMemo(() => {
+    if (scope === 'week') return plan.grocery;
+    const sortItems = (arr: GroceryItem[]) =>
+      arr.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
+    if (scope === 'day') {
+      const meals = plan.days.filter((m) => m.dayOfWeek === selDay);
+      const counts = new Map<string, number>();
+      for (const m of meals) for (const ing of new Set(m.ingredients)) counts.set(ing, (counts.get(ing) ?? 0) + 1);
+      return sortItems(
+        [...counts.entries()].map(([name, n]) => ({ name: cap(name), category: categoryOf(name), quantity: n > 1 ? `${n} meals` : '' })),
+      );
+    }
+    const meal = plan.days.find((m) => m.dayOfWeek === selDay && m.slot === slot);
+    if (!meal) return [];
+    return sortItems([...new Set(meal.ingredients)].map((name) => ({ name: cap(name), category: categoryOf(name), quantity: '' })));
+  }, [scope, selDay, slot, plan, categoryOf]);
+
+  const scopeLabel = scope === 'week' ? 'whole week' : scope === 'day' ? DAY_FULL[selDay] : `${DAY_FULL[selDay]} · ${SLOT_LABEL[slot]}`;
+
+  return (
+    <View style={{ gap: Spacing.three }}>
+      <View style={[styles.tabs, { backgroundColor: palette.backgroundElement, marginTop: 0 }]}>
+        {(
+          [
+            ['week', 'Whole week'],
+            ['day', 'By day'],
+            ['meal', 'By meal'],
+          ] as [GroceryScope, string][]
+        ).map(([k, label]) => {
+          const active = scope === k;
+          return (
+            <PressableScale key={k} onPress={() => setScope(k)} to={0.97} style={{ flex: 1 }}>
+              <View style={[styles.tab, active && { backgroundColor: palette.card }]}>
+                <Text style={{ fontFamily: active ? Type.bodySemibold : Type.bodyMedium, fontSize: 13, color: active ? palette.accent : palette.textSecondary }}>
+                  {label}
+                </Text>
+              </View>
+            </PressableScale>
+          );
+        })}
+      </View>
+
+      {scope !== 'week' && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scopeRow}>
+          {dayOrder.map((day, i) => {
+            const active = i === dayI;
+            const date = displayDate(i);
+            return (
+              <PressableScale key={day} onPress={() => setDayI(i)} to={0.95}>
+                <View style={[styles.scopeChip, active ? { backgroundColor: palette.accentMuted, borderColor: palette.accent } : { backgroundColor: palette.card, borderColor: palette.border }]}>
+                  <Text style={{ fontFamily: Type.bodyMedium, fontSize: 13, color: active ? palette.accent : palette.text }}>
+                    {i === 0 ? 'Today' : weekdayShort(date)} {date.getDate()}
+                  </Text>
+                </View>
+              </PressableScale>
+            );
+          })}
+        </ScrollView>
+      )}
+
+      {scope === 'meal' && (
+        <View style={styles.scopeWrap}>
+          {MEAL_SLOTS.map((s) => {
+            const active = slot === s;
+            return (
+              <PressableScale key={s} onPress={() => setSlot(s)} to={0.95}>
+                <View style={[styles.scopeChip, active ? { backgroundColor: palette.accentMuted, borderColor: palette.accent } : { backgroundColor: palette.card, borderColor: palette.border }]}>
+                  <Text style={{ fontFamily: Type.bodyMedium, fontSize: 13, color: active ? palette.accent : palette.text }}>{SLOT_LABEL[s]}</Text>
+                </View>
+              </PressableScale>
+            );
+          })}
+        </View>
+      )}
+
+      <GroceryExportAction items={items} region={region} household={household} isPro={isPro} scopeLabel={scopeLabel} />
+      <GroceryList items={items} region={region} checked={checked} setChecked={setChecked} />
+    </View>
+  );
+}
+
+function GroceryExportAction({
+  items,
+  region,
+  household,
+  isPro,
+  scopeLabel,
+}: {
+  items: GroceryItem[];
+  region: Region;
+  household: Household;
+  isPro: boolean;
+  scopeLabel: string;
 }) {
   const router = useRouter();
   const palette = usePalette();
@@ -968,7 +1097,7 @@ function GroceryExportAction({
       return;
     }
     setStatus('working');
-    const blob = buildGroceryPdf(plan.grocery, region, household.name);
+    const blob = buildGroceryPdf(items, region, `${household.name} — ${scopeLabel}`);
     const fileName = groceryPdfFileName(household.name);
     const { shared } = await shareOrDownloadGroceryPdf(blob, fileName);
     setStatus(shared ? 'shared' : 'downloaded');
@@ -1002,26 +1131,34 @@ function GroceryExportAction({
 }
 
 function GroceryList({
-  plan,
+  items,
   region,
   checked,
   setChecked,
 }: {
-  plan: MealPlan;
+  items: GroceryItem[];
   region: Region;
   checked: Record<string, boolean>;
   setChecked: (fn: (prev: Record<string, boolean>) => Record<string, boolean>) => void;
 }) {
   const palette = usePalette();
   const grouped = useMemo(() => {
-    const map = new Map<string, typeof plan.grocery>();
-    for (const item of plan.grocery) {
+    const map = new Map<string, GroceryItem[]>();
+    for (const item of items) {
       const arr = map.get(item.category) ?? [];
       arr.push(item);
       map.set(item.category, arr);
     }
     return [...map.entries()];
-  }, [plan]);
+  }, [items]);
+
+  if (items.length === 0) {
+    return (
+      <GlassCard>
+        <Small color={palette.textSecondary}>Nothing to buy for this selection.</Small>
+      </GlassCard>
+    );
+  }
 
   return (
     <View style={{ gap: Spacing.four }}>
@@ -1098,10 +1235,14 @@ const styles = StyleSheet.create({
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
   tag: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, borderWidth: 1 },
   groceryRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.three, paddingHorizontal: Spacing.three },
+  scopeRow: { flexDirection: 'row', gap: Spacing.two, paddingVertical: 2 },
+  scopeWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  scopeChip: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: Radius.pill, borderWidth: 1 },
   exportRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: Spacing.three, paddingHorizontal: Spacing.three, borderRadius: Radius.md, borderWidth: 1 },
   check: { width: 24, height: 24, borderRadius: 8, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   footer: { paddingVertical: Spacing.three },
   footerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.four },
+  quickLinks: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: Spacing.three, rowGap: Spacing.two, marginTop: Spacing.three },
   budgetIcon: { width: 44, height: 44, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' },
   budgetTag: { alignSelf: 'flex-start', paddingHorizontal: Spacing.three, paddingVertical: 6, borderRadius: Radius.pill },
   cookCheck: { width: 34, height: 34, borderRadius: 999, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },

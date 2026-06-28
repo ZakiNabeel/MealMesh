@@ -176,11 +176,24 @@ export async function loadHousehold(): Promise<Household | null> {
 /* ------------------------------------------------------------------ */
 
 /** ISO date (YYYY-MM-DD) for the Monday of the current week. */
+/**
+ * Format a Date as a LOCAL YYYY-MM-DD key. Deliberately NOT `toISOString()`:
+ * that converts to UTC, so in any non-UTC timezone the date can roll a day
+ * back/forward depending on the time, making a day/week key unstable across
+ * the same calendar day (a cooked meal would appear un-marked on return).
+ */
+export function localDateKey(d: Date = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export function currentWeekStart(): string {
   const d = new Date();
   const mondayOffset = (d.getDay() + 6) % 7; // Sun=0 -> 6, Mon=1 -> 0, …
   d.setDate(d.getDate() - mondayOffset);
-  return d.toISOString().slice(0, 10);
+  return localDateKey(d);
 }
 
 /** Upsert a generated plan for a household + week. No-op without a real id. */

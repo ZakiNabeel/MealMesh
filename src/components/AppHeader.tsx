@@ -19,6 +19,7 @@ import { Avatar, PressableScale, useIsDesktop } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { getMyProfile } from '@/lib/social';
+import { useSubscription } from '@/lib/subscription';
 import { usePalette } from '@/theme/use-theme';
 import type { Profile } from '@/types';
 
@@ -38,6 +39,7 @@ export function AppHeader({ active }: { active?: HeaderTab }) {
   const palette = usePalette();
   const isDesktop = useIsDesktop();
   const { session } = useAuth();
+  const { isPro, loading: subLoading } = useSubscription();
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -84,6 +86,16 @@ export function AppHeader({ active }: { active?: HeaderTab }) {
             );
           })}
         </View>
+
+        {session && !isPro && !subLoading && (
+          <PressableScale onPress={() => router.push('/paywall')} to={0.94}>
+            <View style={[styles.proPill, { backgroundColor: palette.accentMuted, borderColor: palette.accent }]}>
+              <Text style={{ fontFamily: Type.bodySemibold, fontSize: isDesktop ? 13 : 12, color: palette.accent }}>
+                {isDesktop ? '✦ Get unlimited plans — Go Pro' : '✦ Pro'}
+              </Text>
+            </View>
+          </PressableScale>
+        )}
 
         {session ? (
           <View>
@@ -187,6 +199,7 @@ const styles = StyleSheet.create({
   },
   links: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: Spacing.one, flexWrap: 'nowrap' },
   link: { paddingHorizontal: Spacing.three, paddingVertical: 6, borderRadius: Radius.pill },
+  proPill: { paddingHorizontal: Spacing.three, height: 34, borderRadius: Radius.pill, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   signIn: { paddingHorizontal: Spacing.three, height: 36, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center' },
   scrim: {
     position: (Platform.OS === 'web' ? 'fixed' : 'absolute') as 'absolute',
