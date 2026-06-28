@@ -11,9 +11,8 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from
 
 import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
-import { ArticlesRail } from '@/components/ArticlesRail';
 import { CommunityCard } from '@/components/DashboardCards';
-import { Avatar, Body, Button, Chip, Eyebrow, GlassCard, Heading, PressableScale, ProBadge, Reveal, Screen, Small, useIsDesktop } from '@/components/ui';
+import { Avatar, Body, Button, Chip, Eyebrow, GlassCard, Heading, PressableScale, ProBadge, Reveal, Screen, Small } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { getFeed } from '@/lib/community';
@@ -32,7 +31,6 @@ const SCOPES: { key: LeaderboardScope; label: string }[] = [
 export default function LeaderboardScreen() {
   const router = useRouter();
   const palette = usePalette();
-  const isDesktop = useIsDesktop();
   const { session, loading: authLoading } = useAuth();
   const { isPro } = useSubscription();
 
@@ -112,37 +110,26 @@ export default function LeaderboardScreen() {
           />
         </Reveal>
       )}
+
+      <Reveal delay={120}>
+        <CommunityCard
+          posts={recentPosts}
+          onOpenPost={(id) => router.push({ pathname: '/post/[id]', params: { id } })}
+          onOpenAll={() => router.push('/community')}
+        />
+      </Reveal>
     </>
   );
 
   return (
-    <Screen art={Art.steak} wide maxWidth={1280} header={<AppHeader active="leaderboard" />}>
+    <Screen art={Art.steak} rail header={<AppHeader active="leaderboard" />}>
       <View style={styles.top}>
         <Heading>Leaderboard</Heading>
+        <Small color={palette.textSecondary}>Cook, log meals, and climb the board.</Small>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: Spacing.four, gap: Spacing.four }}>
-        {isDesktop ? (
-          <View style={styles.triRow}>
-            <View style={styles.triRail}>
-              <Reveal delay={40}>
-                <CommunityCard
-                  posts={recentPosts}
-                  onOpenPost={(id) => router.push({ pathname: '/post/[id]', params: { id } })}
-                  onOpenAll={() => router.push('/community')}
-                />
-              </Reveal>
-            </View>
-            <View style={styles.triMain}>{mainContent}</View>
-            <View style={styles.triRail}>
-              <Reveal delay={80}>
-                <ArticlesRail />
-              </Reveal>
-            </View>
-          </View>
-        ) : (
-          mainContent
-        )}
+        {mainContent}
       </ScrollView>
     </Screen>
   );
@@ -308,13 +295,10 @@ function CrewPanel({ crew, isPro, onChanged }: { crew: Crew | null; isPro: boole
 }
 
 const styles = StyleSheet.create({
-  top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingTop: Spacing.three },
+  top: { gap: 4, paddingTop: Spacing.three },
   back: { width: 40, height: 40, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   center: { alignItems: 'center', justifyContent: 'center', gap: Spacing.three, padding: Spacing.four },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.three, paddingHorizontal: Spacing.two },
   divider: { height: 1, width: '100%' },
   input: { flex: 1, borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: Spacing.three, height: 44, fontFamily: Type.body, fontSize: 14 },
-  triRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.four },
-  triRail: { width: 280, flexShrink: 0, gap: Spacing.four },
-  triMain: { flex: 1, minWidth: 0, gap: Spacing.four },
 });

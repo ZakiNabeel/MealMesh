@@ -5,7 +5,7 @@ import { APP_URL, SITE_NAME } from '../lib/site';
 <header class="header">
   <div class="wrap row">
     <a href="/" class="brand" aria-label={`${SITE_NAME} blog home`}>
-      <span class="mark" aria-hidden="true"></span>
+      <img class="mark" src="/logo.svg" alt="" aria-hidden="true" width="28" height="28" />
       <span class="word">{SITE_NAME}</span>
       <span class="sub">kitchen notes</span>
     </a>
@@ -38,7 +38,6 @@ import { APP_URL, SITE_NAME } from '../lib/site';
     width: 28px;
     height: 28px;
     border-radius: 8px;
-    background: var(--accent);
     display: inline-block;
   }
   .word {

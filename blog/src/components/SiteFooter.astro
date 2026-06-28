@@ -6,7 +6,7 @@ const year = new Date().getFullYear();
 <footer class="footer">
   <div class="wrap row">
     <div>
-      <p class="word">{SITE_NAME}</p>
+      <p class="brand"><img class="mark" src="/logo.svg" alt="" width="24" height="24" /><span class="word">{SITE_NAME}</span></p>
       <p class="tagline">{SITE_TAGLINE}</p>
     </div>
     <nav class="links">
@@ -31,6 +31,14 @@ const year = new Date().getFullYear();
     gap: 24px;
     align-items: flex-start;
     justify-content: space-between;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .mark {
+    border-radius: 7px;
   }
   .word {
     font-family: var(--font-display);

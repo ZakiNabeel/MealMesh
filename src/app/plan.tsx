@@ -45,7 +45,8 @@ function displayDate(n: number): Date {
   return d;
 }
 
-const shortDateLabel = (d: Date) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+const longDateLabel = (d: Date) => d.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
+const weekdayShort = (d: Date) => d.toLocaleDateString(undefined, { weekday: 'short' });
 
 const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
@@ -91,6 +92,9 @@ export default function Plan() {
   const [resolving, setResolving] = useState(true);
   const [seed, setSeed] = useState(0);
   const [tab, setTab] = useState<'plan' | 'grocery'>('plan');
+  // Which day the plan tab is focused on. Today renders first (index 0).
+  const [dayIdx, setDayIdx] = useState(0);
+  const dayOrder = useMemo(() => displayDayOrder(), []);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [plan, setPlan] = useState<MealPlan | null>(null);
   const [loading, setLoading] = useState(false);
@@ -271,34 +275,47 @@ export default function Plan() {
           </View>
         ) : tab === 'plan' ? (
           <>
+            <DayStrip
+              order={dayOrder}
+              selectedIdx={dayIdx}
+              onSelect={setDayIdx}
+              plan={plan}
+              cooked={cooked}
+              canCook={Boolean(session)}
+            />
             {isDesktop ? (
               <View style={styles.dashboardRow}>
                 <View style={styles.rail}>
                   {session && <CookProgress summary={weekSummary} streak={streak.current} />}
                   <PlanSummaryRail plan={plan} household={household} />
                 </View>
-                <DayCards
-                  plan={plan}
-                  isDesktop={isDesktop}
-                  onSelect={setSelected}
-                  cooked={cooked}
-                  canCook={Boolean(session)}
-                  onCook={setCookTarget}
-                  onUncook={removeCooked}
-                />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <SelectedDayMeals
+                    day={dayOrder[dayIdx]}
+                    date={displayDate(dayIdx)}
+                    plan={plan}
+                    region={household.region}
+                    isDesktop
+                    onSelect={setSelected}
+                    cooked={cooked}
+                    canCook={Boolean(session)}
+                    onCook={setCookTarget}
+                    onUncook={removeCooked}
+                  />
+                </View>
               </View>
             ) : (
               <>
                 <View style={{ gap: Spacing.three }}>
                   <BudgetBanner plan={plan} country={household.country} budgetWeekly={household.budgetWeekly} />
                   {session && <CookProgress summary={weekSummary} streak={streak.current} />}
-                  <Small color={palette.accent} style={{ fontFamily: Type.bodyMedium }}>
-                    ✓ Every dish checked against your household&apos;s rules
-                  </Small>
                 </View>
-                <DayCards
+                <SelectedDayMeals
+                  day={dayOrder[dayIdx]}
+                  date={displayDate(dayIdx)}
                   plan={plan}
-                  isDesktop={isDesktop}
+                  region={household.region}
+                  isDesktop={false}
                   onSelect={setSelected}
                   cooked={cooked}
                   canCook={Boolean(session)}
@@ -497,9 +514,84 @@ function CookSheet({
   );
 }
 
-/** The 7 day-cards, as a wrapping grid on desktop or a single stacked column on mobile. */
-function DayCards({
+/** Horizontal week strip — a tappable pill per day with its cooked progress.
+ *  Keeps the whole week glanceable while the detail below stays focused. */
+function DayStrip({
+  order,
+  selectedIdx,
+  onSelect,
   plan,
+  cooked,
+  canCook,
+}: {
+  order: DayOfWeek[];
+  selectedIdx: number;
+  onSelect: (i: number) => void;
+  plan: MealPlan;
+  cooked: Set<string>;
+  canCook: boolean;
+}) {
+  const palette = usePalette();
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayStrip}>
+      {order.map((day, i) => {
+        const date = displayDate(i);
+        const meals = plan.days.filter((m) => m.dayOfWeek === day);
+        const total = meals.length || MEAL_SLOTS.length;
+        const done = canCook ? meals.filter((m) => cooked.has(cookKey(m.dayOfWeek, m.slot))).length : 0;
+        const active = i === selectedIdx;
+        return (
+          <PressableScale key={day} onPress={() => onSelect(i)} to={0.95}>
+            <View
+              style={[
+                styles.dayPill,
+                active
+                  ? { backgroundColor: palette.accent, borderColor: palette.accent }
+                  : { backgroundColor: palette.card, borderColor: palette.border },
+              ]}
+            >
+              <Text style={{ fontFamily: Type.bodySemibold, fontSize: 11, color: active ? palette.onAccent : palette.textSecondary }}>
+                {i === 0 ? 'Today' : weekdayShort(date)}
+              </Text>
+              <Text style={{ fontFamily: Type.displayBold, fontSize: 20, color: active ? palette.onAccent : palette.text }}>
+                {date.getDate()}
+              </Text>
+              <View style={styles.dayDots}>
+                {Array.from({ length: total }).map((_, k) => {
+                  const filled = canCook && k < done;
+                  return (
+                    <View
+                      key={k}
+                      style={[
+                        styles.dayDot,
+                        {
+                          backgroundColor: filled
+                            ? active
+                              ? palette.onAccent
+                              : palette.accent
+                            : active
+                              ? palette.onAccent + '55'
+                              : palette.border,
+                        },
+                      ]}
+                    />
+                  );
+                })}
+              </View>
+            </View>
+          </PressableScale>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
+/** The focused day: its four meals as rich, photo-forward cards. */
+function SelectedDayMeals({
+  day,
+  date,
+  plan,
+  region,
   isDesktop,
   onSelect,
   cooked,
@@ -507,7 +599,10 @@ function DayCards({
   onCook,
   onUncook,
 }: {
+  day: DayOfWeek;
+  date: Date;
   plan: MealPlan;
+  region: Region;
   isDesktop: boolean;
   onSelect: (m: PlannedMeal) => void;
   cooked: Set<string>;
@@ -515,29 +610,114 @@ function DayCards({
   onCook: (m: PlannedMeal) => void;
   onUncook: (m: PlannedMeal) => void;
 }) {
+  const palette = usePalette();
+  const meals = MEAL_SLOTS.map((slot) => plan.days.find((m) => m.dayOfWeek === day && m.slot === slot)).filter(Boolean) as PlannedMeal[];
+  const doneCount = canCook ? meals.filter((m) => cooked.has(cookKey(m.dayOfWeek, m.slot))).length : 0;
+  const allDone = canCook && doneCount === meals.length && meals.length > 0;
+
   return (
-    <View style={isDesktop ? styles.dayGrid : { gap: Spacing.three }}>
-      {displayDayOrder().map((day, i) => {
-        const meals = plan.days.filter((m) => m.dayOfWeek === day);
-        if (!meals.length) return null;
-        return (
-          <View key={day} style={isDesktop ? styles.dayCol : undefined}>
-            <Reveal delay={i * 40}>
-              <DayGroup
-                day={day}
-                date={displayDate(i)}
-                meals={meals}
-                onSelect={onSelect}
-                cooked={cooked}
+    <View style={{ gap: Spacing.three }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View>
+          <Eyebrow>{DAY_FULL[day]}</Eyebrow>
+          <Text style={{ fontFamily: Type.display, fontSize: 22, color: palette.text }}>{longDateLabel(date)}</Text>
+        </View>
+        {canCook && (
+          <View style={[styles.dayProgress, allDone && { backgroundColor: palette.accentMuted }]}>
+            <Text style={{ fontFamily: Type.bodySemibold, fontSize: 12, color: allDone ? palette.accent : palette.textSecondary }}>
+              {allDone ? '✓ Clean plate' : `${doneCount}/${meals.length} cooked`}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <View style={isDesktop ? styles.mealGrid : { gap: Spacing.three }}>
+        {meals.map((meal, i) => (
+          <View key={meal.slot} style={isDesktop ? styles.mealCardCol : undefined}>
+            <Reveal delay={i * 60}>
+              <MealCard
+                meal={meal}
+                region={region}
+                isCooked={cooked.has(cookKey(meal.dayOfWeek, meal.slot))}
                 canCook={canCook}
-                onCook={onCook}
-                onUncook={onUncook}
+                onPress={() => onSelect(meal)}
+                onCook={() => onCook(meal)}
+                onUncook={() => onUncook(meal)}
               />
             </Reveal>
           </View>
-        );
-      })}
+        ))}
+      </View>
     </View>
+  );
+}
+
+/** A single meal as a photo-forward card: image banner, dish name, and the
+ *  diet tags it satisfies, with a cook check overlaid on the photo. */
+function MealCard({
+  meal,
+  region,
+  isCooked,
+  canCook,
+  onPress,
+  onCook,
+  onUncook,
+}: {
+  meal: PlannedMeal;
+  region: Region;
+  isCooked: boolean;
+  canCook: boolean;
+  onPress: () => void;
+  onCook: () => void;
+  onUncook: () => void;
+}) {
+  const palette = usePalette();
+  const shared = meal.sharedOrVariant === 'shared';
+  const tags = meal.satisfies.slice(0, 2);
+  return (
+    <GlassCard style={{ padding: 0, overflow: 'hidden' }}>
+      <PressableScale onPress={onPress} to={0.99}>
+        <View>
+          <FoodImage name={meal.name} ingredients={meal.ingredients} style={styles.cardPhoto} radius={0} emojiSize={44} />
+          <View style={[styles.slotBadge, { backgroundColor: palette.background + 'E6', borderColor: palette.border }]}>
+            <Text style={{ fontFamily: Type.bodySemibold, fontSize: 11, color: palette.text }}>{SLOT_LABEL[meal.slot]}</Text>
+          </View>
+        </View>
+        <View style={{ padding: Spacing.three, gap: Spacing.two }}>
+          <Text numberOfLines={1} style={{ fontFamily: Type.display, fontSize: 17, color: palette.text }}>
+            {localizeName(meal.name, region)}
+          </Text>
+          <View style={styles.tagRow}>
+            <View style={[styles.tag, { borderColor: 'transparent', backgroundColor: shared ? palette.accentMuted : palette.blueMuted }]}>
+              <Text style={{ fontFamily: Type.bodyMedium, fontSize: 11, color: shared ? palette.accent : palette.blue }}>
+                {shared ? 'Shared dish' : 'Personalized'}
+              </Text>
+            </View>
+            {tags.map((k) => (
+              <View key={k} style={[styles.tag, { borderColor: palette.border, backgroundColor: palette.backgroundElement }]}>
+                <Text style={{ fontFamily: Type.bodyMedium, fontSize: 11, color: palette.textSecondary }}>✓ {k.replace(/_/g, ' ')}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </PressableScale>
+      {canCook && (
+        <PressableScale onPress={isCooked ? onUncook : onCook} to={0.85} style={styles.cardCook}>
+          <View
+            style={[
+              styles.cookCheck,
+              { borderColor: isCooked ? palette.accent : palette.border, backgroundColor: isCooked ? palette.accent : palette.background + 'E6' },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={isCooked ? `Mark ${meal.name} as not cooked` : `I made ${meal.name}`}
+          >
+            <Text style={{ fontSize: 15, color: isCooked ? palette.onAccent : palette.textSecondary, fontFamily: Type.bodySemibold }}>
+              {isCooked ? '✓' : '+'}
+            </Text>
+          </View>
+        </PressableScale>
+      )}
+    </GlassCard>
   );
 }
 
@@ -623,17 +803,6 @@ function PlanSummaryRail({ plan, household }: { plan: MealPlan; household: House
   );
 }
 
-/** Square dish thumbnail — real photo if a Pexels key is set, else emoji tile. */
-function FoodTile({ meal, size = 56 }: { meal: PlannedMeal; size?: number }) {
-  return (
-    <FoodImage
-      name={meal.name}
-      ingredients={meal.ingredients}
-      style={{ width: size, height: size }}
-      emojiSize={size * 0.5}
-    />
-  );
-}
 
 /** Estimated weekly grocery spend, shown in the household's local currency. */
 function BudgetBanner({ plan, country, budgetWeekly }: { plan: MealPlan; country?: string; budgetWeekly?: number }) {
@@ -671,121 +840,6 @@ function BudgetBanner({ plan, country, budgetWeekly }: { plan: MealPlan; country
         </View>
       )}
     </GlassCard>
-  );
-}
-
-/** One day with its four meals (breakfast → dinner) as tappable rows. */
-function DayGroup({
-  day,
-  date,
-  meals,
-  onSelect,
-  cooked,
-  canCook,
-  onCook,
-  onUncook,
-}: {
-  day: DayOfWeek;
-  date: Date;
-  meals: PlannedMeal[];
-  onSelect: (m: PlannedMeal) => void;
-  cooked: Set<string>;
-  canCook: boolean;
-  onCook: (m: PlannedMeal) => void;
-  onUncook: (m: PlannedMeal) => void;
-}) {
-  const palette = usePalette();
-  const ordered = MEAL_SLOTS.map((slot) => meals.find((m) => m.slot === slot)).filter(Boolean) as PlannedMeal[];
-  const doneCount = canCook ? ordered.filter((m) => cooked.has(cookKey(m.dayOfWeek, m.slot))).length : 0;
-  const allDone = canCook && doneCount === ordered.length && ordered.length > 0;
-  return (
-    <View style={{ gap: Spacing.two }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Eyebrow>
-          {DAY_FULL[day]} · {shortDateLabel(date)}
-        </Eyebrow>
-        {canCook && (
-          <View style={[styles.dayProgress, allDone && { backgroundColor: palette.accentMuted }]}>
-            <Text
-              style={{
-                fontFamily: Type.bodySemibold,
-                fontSize: 11,
-                color: allDone ? palette.accent : palette.textSecondary,
-              }}
-            >
-              {allDone ? '✓ Clean plate' : `${doneCount}/${ordered.length} cooked`}
-            </Text>
-          </View>
-        )}
-      </View>
-      <GlassCard style={{ gap: 0, paddingVertical: Spacing.one, paddingHorizontal: Spacing.one }}>
-        {ordered.map((meal, i) => (
-          <MealRow
-            key={meal.slot}
-            meal={meal}
-            divider={i > 0}
-            onPress={() => onSelect(meal)}
-            canCook={canCook}
-            isCooked={cooked.has(cookKey(meal.dayOfWeek, meal.slot))}
-            onCook={() => onCook(meal)}
-            onUncook={() => onUncook(meal)}
-          />
-        ))}
-      </GlassCard>
-    </View>
-  );
-}
-
-function MealRow({
-  meal,
-  divider,
-  onPress,
-  canCook,
-  isCooked,
-  onCook,
-  onUncook,
-}: {
-  meal: PlannedMeal;
-  divider: boolean;
-  onPress: () => void;
-  canCook: boolean;
-  isCooked: boolean;
-  onCook: () => void;
-  onUncook: () => void;
-}) {
-  const palette = usePalette();
-  const shared = meal.sharedOrVariant === 'shared';
-  return (
-    <View style={[styles.mealRow, divider && { borderTopWidth: 1, borderTopColor: palette.border }]}>
-      <PressableScale onPress={onPress} to={0.99} style={styles.mealMain}>
-        <FoodTile meal={meal} size={46} />
-        <View style={{ flex: 1, gap: 2 }}>
-          <Small color={palette.textSecondary} style={{ fontFamily: Type.bodySemibold }}>
-            {SLOT_LABEL[meal.slot]}
-          </Small>
-          <Text numberOfLines={1} style={{ fontFamily: Type.display, fontSize: 16, color: palette.text }}>
-            {meal.name}
-          </Text>
-        </View>
-        <View style={[styles.dot, { backgroundColor: shared ? palette.accent : palette.blue }]} />
-      </PressableScale>
-      {canCook && (
-        <PressableScale onPress={isCooked ? onUncook : onCook} to={0.85}>
-          <View
-            style={[
-              styles.cookCheck,
-              { borderColor: isCooked ? palette.accent : palette.border, backgroundColor: isCooked ? palette.accent : 'transparent' },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={isCooked ? `Mark ${meal.name} as not cooked` : `I made ${meal.name}`}
-          >
-            <Text style={{ fontSize: 15, color: isCooked ? palette.card : palette.textSecondary, fontFamily: Type.bodySemibold }}>
-              {isCooked ? '✓' : '+'}
-            </Text>
-          </View>
-        </PressableScale>
-      )}
-    </View>
   );
 }
 
@@ -1022,8 +1076,15 @@ const styles = StyleSheet.create({
   centerCol: { width: '100%', maxWidth: 560, alignSelf: 'center' },
   dashboardRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.four },
   rail: { width: 300, flexShrink: 0 },
-  dayGrid: { flex: 1, minWidth: 0, flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three },
-  dayCol: { flexGrow: 1, flexBasis: '31%', minWidth: 260 },
+  dayStrip: { flexDirection: 'row', gap: Spacing.two, paddingVertical: 4, paddingRight: Spacing.two },
+  dayPill: { width: 62, minHeight: 76, paddingVertical: Spacing.two, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  dayDots: { flexDirection: 'row', gap: 3, marginTop: 2 },
+  dayDot: { width: 5, height: 5, borderRadius: 5 },
+  mealGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three },
+  mealCardCol: { flexGrow: 1, flexBasis: '46%', minWidth: 280 },
+  cardPhoto: { width: '100%', height: 124 },
+  slotBadge: { position: 'absolute', top: Spacing.two, left: Spacing.two, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, borderWidth: 1 },
+  cardCook: { position: 'absolute', top: Spacing.two, right: Spacing.two },
   glanceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   splitTrack: { height: 8, borderRadius: 999, overflow: 'hidden', width: '100%' },
   splitFill: { height: '100%', borderRadius: 999 },
@@ -1043,9 +1104,6 @@ const styles = StyleSheet.create({
   footerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.four },
   budgetIcon: { width: 44, height: 44, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' },
   budgetTag: { alignSelf: 'flex-start', paddingHorizontal: Spacing.three, paddingVertical: 6, borderRadius: Radius.pill },
-  mealRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.two, paddingHorizontal: Spacing.two },
-  mealMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  dot: { width: 8, height: 8, borderRadius: 8 },
   cookCheck: { width: 34, height: 34, borderRadius: 999, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   dayProgress: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   progressTrack: { height: 8, borderRadius: 999, overflow: 'hidden', width: '100%' },

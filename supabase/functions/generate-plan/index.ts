@@ -74,6 +74,10 @@ const SYSTEM_PROMPT =
   'MEALS: Produce FOUR meals for EACH of the 7 days — slot must be one of ' +
   '"breakfast","lunch","supper","dinner" (28 entries total). Breakfasts should be ' +
   'breakfast-appropriate for the region (e.g. south_asian: anda paratha, chana, halwa puri).\n' +
+  'SUPPER is the LIGHT evening tea-time snack that pairs with chai/tea or coffee — small and ' +
+  'quick, NOT a second full dinner. Examples: south_asian: pakoray, samosa, chana chaat, masala ' +
+  'toast, aloo tikki, dahi bhalla, biscuits/rusk; western: a cheese toastie, savoury muffin, ' +
+  'scone, dip with crackers. Keep supper simple and small. "lunch" and "dinner" are the full meals.\n' +
   'CUISINE: When a `region` other than "none" is given, the MAJORITY of meals must be ' +
   'authentic, named dishes of that cuisine (e.g. south_asian: karahi, biryani, daal, pulao, ' +
   'sabzi, qeema — not generic "traybake" or "stir-fry"). Use that cuisine\'s real spices and ' +

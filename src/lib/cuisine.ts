@@ -517,6 +517,106 @@ const BREAKFAST_BY_REGION: Partial<Record<Region, DishStyle[]>> = {
   south_asian: SOUTH_ASIAN_BREAKFAST,
 };
 
+/* --- Supper: LIGHT tea-time snacks, not a second dinner ------------- */
+
+// "Supper" here is the evening chai/coffee bite — pakoray, chaat, a toastie,
+// something small and quick — NOT a full rice-and-curry plate. These read as
+// light snacks so the four daily slots aren't four heavy meals.
+const SOUTH_ASIAN_SUPPER: DishStyle[] = [
+  {
+    name: (_p, _g, v) => `${cap(v)} pakoray`,
+    aromatics: ['onion', 'green chili'],
+    spices: ['cumin', 'coriander', 'red chili powder', 'turmeric'],
+    steps: ({ v, v2, fat, aromatics, spices }) => [
+      `Make a thick batter from gram flour, ${spices} and a splash of water.`,
+      `Fold in thinly sliced ${v}, ${v2} and ${aromatics}.`,
+      `Heat ${fat} for shallow-frying over medium heat.`,
+      `Drop in spoonfuls and fry until golden and crisp.`,
+      `Drain and serve hot with chutney and a cup of chai.`,
+    ],
+  },
+  {
+    name: (p, _g, _v) => `${cap(p)} chaat`,
+    suits: (_p, isLegume) => isLegume,
+    aromatics: ['onion', 'tomatoes', 'green chili'],
+    spices: ['chaat masala', 'cumin', 'red chili powder'],
+    steps: ({ p, aromatics, spices }) => [
+      `Boil the ${p} until just tender, then drain and cool a little.`,
+      `Toss with finely chopped ${aromatics}.`,
+      `Sprinkle over ${spices} and a squeeze of lemon.`,
+      `Top with a spoon of yoghurt and crisp sev if you like.`,
+      `Serve in small bowls alongside evening chai.`,
+    ],
+  },
+  {
+    name: (_p, g, _v) => `Masala ${g} toast`,
+    aromatics: ['onion', 'tomatoes', 'green chili'],
+    spices: ['cumin', 'turmeric', 'chaat masala'],
+    steps: ({ g, v, fat, aromatics, spices }) => [
+      `Sauté ${aromatics} and ${v} in a little ${fat} with ${spices}.`,
+      `Cook down into a soft, dry spiced topping.`,
+      `Toast slices of ${g} until crisp.`,
+      `Spoon the masala over and cut into halves.`,
+      `Serve warm with chai or coffee.`,
+    ],
+  },
+  {
+    name: (p, _g, _v) => `${cap(p)} tikki`,
+    aromatics: ['onion', 'green chili'],
+    spices: ['cumin', 'coriander', 'garam masala'],
+    steps: ({ p, v, fat, aromatics, spices }) => [
+      `Mash the cooked ${p} with a little boiled potato to bind.`,
+      `Mix in ${aromatics}, ${v} and ${spices}.`,
+      `Shape into small flat tikki patties.`,
+      `Shallow-fry in ${fat} until golden on both sides.`,
+      `Serve hot with chutney and tea.`,
+    ],
+  },
+];
+
+const GLOBAL_SUPPER: DishStyle[] = [
+  {
+    name: (_p, _g, v) => `${cap(v)} toastie`,
+    aromatics: ['tomatoes'],
+    spices: ['black pepper'],
+    steps: ({ g, v, fat, spices }) => [
+      `Lightly butter slices of ${g} with ${fat}.`,
+      `Layer ${v} and a little cheese between them.`,
+      `Toast in a pan until golden and melting.`,
+      `Season with ${spices}.`,
+      `Halve and serve warm with tea or coffee.`,
+    ],
+  },
+  {
+    name: (_p, _g, v) => `${cap(v)} & dip plate`,
+    aromatics: ['garlic'],
+    spices: ['black pepper', 'paprika'],
+    steps: ({ v, v2, fat, aromatics, spices }) => [
+      `Whisk a quick dip from ${aromatics}, ${fat} and ${spices}.`,
+      `Cut ${v} and ${v2} into sticks.`,
+      `Arrange on a plate with a few crackers.`,
+      `Spoon the dip alongside.`,
+      `Serve as a light bite with coffee.`,
+    ],
+  },
+  {
+    name: (_p, _g, v) => `Quick ${v} fritters`,
+    aromatics: ['onion'],
+    spices: ['black pepper', 'paprika'],
+    steps: ({ v, v2, fat, aromatics, spices }) => [
+      `Grate ${v} and ${v2} and mix with ${aromatics} and a little flour.`,
+      `Season with ${spices}.`,
+      `Pan-fry small spoonfuls in ${fat} until crisp.`,
+      `Drain on paper.`,
+      `Serve warm with a dip and tea or coffee.`,
+    ],
+  },
+];
+
+const SUPPER_BY_REGION: Partial<Record<Region, DishStyle[]>> = {
+  south_asian: SOUTH_ASIAN_SUPPER,
+};
+
 const CUISINE_LABEL: Record<Region, string> = {
   south_asian: 'South Asian',
   middle_eastern: 'Middle Eastern',
@@ -558,7 +658,9 @@ export function buildRegionalMeal(input: RegionalMealInput): RegionalMeal {
   const styles =
     slot === 'breakfast'
       ? BREAKFAST_BY_REGION[region] ?? GLOBAL_BREAKFAST
-      : STYLES_BY_REGION[region] ?? GLOBAL;
+      : slot === 'supper'
+        ? SUPPER_BY_REGION[region] ?? GLOBAL_SUPPER
+        : STYLES_BY_REGION[region] ?? GLOBAL;
 
   // Prefer a style that suits this protein (e.g. legume-only dishes for lentils).
   const suited = styles.filter((s) => (s.suits ? s.suits(protein, isLegume) : true));
@@ -583,13 +685,15 @@ export function buildRegionalMeal(input: RegionalMealInput): RegionalMeal {
     spices: spicesText,
   };
 
+  // Tea-time supper and breakfast are quick; lunch/dinner take a bit longer.
+  const light = slot === 'supper' || slot === 'breakfast';
   return {
     name: style.name(loc(protein), loc(grain), loc(veg)),
     cuisine: CUISINE_LABEL[region] ?? 'Everyday',
     extras: safeAromatics,
     recipe: {
       servings: 4,
-      timeMinutes: 25 + (seed % 4) * 5,
+      timeMinutes: light ? 15 + (seed % 3) * 5 : 25 + (seed % 4) * 5,
       steps: style.steps(ctx),
     },
   };
@@ -619,6 +723,9 @@ const GRADIENTS: [string, string][] = [
 ];
 
 const EMOJI_RULES: { re: RegExp; emoji: string }[] = [
+  { re: /pakora|pakoray|tikki|cutlet|fritter|samosa/i, emoji: '🧆' },
+  { re: /toastie|toast|sandwich|chaat/i, emoji: '🥪' },
+  { re: /halwa|sheera|muffin|scone/i, emoji: '🧁' },
   { re: /biryani|pulao|pilaf|rice bowl|fried rice/i, emoji: '🍛' },
   { re: /karahi|curry|tikka|masala|salan|stew|ragout|tinga|claypot|berbere/i, emoji: '🍛' },
   { re: /daal|dal|tarka|lentil|bean|chickpea/i, emoji: '🍲' },

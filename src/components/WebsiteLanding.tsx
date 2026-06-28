@@ -259,7 +259,7 @@ export function WebsiteLanding() {
                 No card to start · Works on phone & laptop · Your diets stay private
               </Text>
               <Text style={[styles.trust, { color: palette.textSecondary }]}>
-                ✓ Built on a deterministic safety engine — not just AI-guessed
+                ✓ Built on a deterministic safety algorithm — not just guesswork
               </Text>
             </Reveal>
           </View>
@@ -337,7 +337,9 @@ export function WebsiteLanding() {
                 </View>
               ))}
             </View>
-            <CTA label="Explore the community" onPress={() => router.push('/community')} />
+            <View style={styles.ctaBelow}>
+              <CTA label="Explore the community" onPress={() => router.push('/community')} />
+            </View>
           </Center>
         </View>
 
@@ -370,7 +372,7 @@ export function WebsiteLanding() {
                   <Text style={{ fontFamily: Type.displayBold, fontSize: 34, color: palette.text }}>$0</Text>
                 </View>
                 <Text style={[styles.cardBody, { color: palette.textSecondary, marginTop: 6 }]}>
-                  1 member profile · 3 AI plans a week · basic grocery list
+                  1 member profile · 3 plans a week · basic grocery list
                 </Text>
               </View>
               <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.accent, borderWidth: 1.5 }]}>
@@ -385,7 +387,9 @@ export function WebsiteLanding() {
                 </Text>
               </View>
             </View>
-            <CTA label="See your price" onPress={() => router.push('/paywall')} />
+            <View style={styles.ctaBelow}>
+              <CTA label="See your price" onPress={() => router.push('/paywall')} />
+            </View>
           </Center>
         </View>
 
@@ -566,7 +570,7 @@ const PERSONAS = [
 
 const STEPS = [
   { title: 'Add your household', body: 'Each person, each diet — halal, gluten-free, diabetic, allergies, the lot. Tap a few chips and you’re done.' },
-  { title: 'We merge every diet', body: 'Our engine computes what’s safe for everyone, then asks our AI for real, culturally-aware dishes.' },
+  { title: 'We merge every diet', body: 'Our algorithm computes what’s safe for everyone, then builds real, culturally-aware dishes around it.' },
   { title: 'One plan, one list', body: 'Get a 7-day plan plus a single consolidated grocery list. Shared dishes where possible, simple swaps where needed.' },
 ];
 
@@ -615,6 +619,7 @@ const styles = StyleSheet.create({
   navLink: { paddingHorizontal: 8, paddingVertical: 6 },
 
   cta: { height: 46, paddingHorizontal: 20, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center' },
+  ctaBelow: { alignItems: 'center', marginTop: 36 },
 
   hero: { flexDirection: 'row', alignItems: 'center', gap: 56, paddingTop: 48, paddingBottom: 88 },
   heroLeft: { flex: 1.05 },
