@@ -7,7 +7,7 @@
 
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar, Body, Heading, ProBadge, Small } from '@/components/ui';
 import { Spacing, Type } from '@/constants/theme';
@@ -34,7 +34,11 @@ export function ProfileHeader({
   const palette = usePalette();
   return (
     <View>
-      <LinearGradient colors={[palette.blobA, palette.blobB]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.banner} />
+      {profile.coverUrl ? (
+        <Image source={{ uri: profile.coverUrl }} resizeMode="cover" style={styles.banner} />
+      ) : (
+        <LinearGradient colors={[palette.blobA, palette.blobB]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.banner} />
+      )}
       <View style={styles.body}>
         <View style={[styles.avatarRing, { borderColor: palette.background, backgroundColor: palette.background }]}>
           <Avatar name={profile.displayName || profile.username} uri={profile.avatarUrl} size={80} />

@@ -296,6 +296,7 @@ export interface Profile {
   username: string;
   displayName: string;
   avatarUrl: string | null;
+  coverUrl: string | null;
   bio: string | null;
   isPublic: boolean;
   /** Optional, for regional leaderboards — never a member's constraint data. */

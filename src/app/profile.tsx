@@ -7,21 +7,24 @@
  */
 
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
 import { Avatar, Body, Button, Chip, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
 import { ProfileHeader } from '@/components/ProfileHeader';
+import { ProfileTabs } from '@/components/ProfileTabs';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
+import { getPostsByAuthor } from '@/lib/community';
 import { REGIONS } from '@/lib/dietLibrary';
-import { lifetimeStats, type LifetimeStats } from '@/lib/gamification';
+import { lifetimeStats } from '@/lib/gamification';
 import { pickAndUploadImage } from '@/lib/imageUpload';
 import { getAllLogs, getFollowCounts, getMyProfile, isValidUsername, updateProfile } from '@/lib/social';
 import { usePalette } from '@/theme/use-theme';
-import type { FollowCounts, Profile, Region } from '@/types';
+import type { CookingStats, FollowCounts, Post, Profile, Region } from '@/types';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -29,8 +32,10 @@ export default function ProfileScreen() {
   const { session, loading: authLoading } = useAuth();
 
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [stats, setStats] = useState<LifetimeStats | null>(null);
+  const [stats, setStats] = useState<CookingStats | null>(null);
   const [counts, setCounts] = useState<FollowCounts>({ followers: 0, following: 0 });
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [postsLoading, setPostsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
 
@@ -38,8 +43,21 @@ export default function ProfileScreen() {
     setLoading(true);
     const [p, logs] = await Promise.all([getMyProfile(), getAllLogs()]);
     setProfile(p);
-    setStats(lifetimeStats(logs, new Date().toISOString().slice(0, 10)));
-    if (p) setCounts(await getFollowCounts(p.userId));
+    const lifetime = lifetimeStats(logs, new Date().toISOString().slice(0, 10));
+    setStats({
+      totalPoints: lifetime.totalPoints,
+      currentStreak: lifetime.streak.current,
+      longestStreak: lifetime.streak.longest,
+      mealsLogged: lifetime.mealsLogged,
+      cleanPlateDays: lifetime.cleanPlateDays,
+      perfectWeeks: lifetime.perfectWeeks,
+    });
+    if (p) {
+      setCounts(await getFollowCounts(p.userId));
+      setPostsLoading(true);
+      setPosts(await getPostsByAuthor(p.userId));
+      setPostsLoading(false);
+    }
     setLoading(false);
   }, []);
 
@@ -112,36 +130,12 @@ export default function ProfileScreen() {
             </Reveal>
 
             <Reveal delay={80}>
-              <View style={{ gap: Spacing.two }}>
-                <Eyebrow>Your stats</Eyebrow>
-                <View style={styles.statGrid}>
-                  <StatCard label="Points" value={stats.totalPoints} accent />
-                  <StatCard label="Day streak" value={stats.streak.current} suffix="🔥" />
-                  <StatCard label="Meals cooked" value={stats.mealsLogged} />
-                  <StatCard label="Longest streak" value={stats.streak.longest} />
-                </View>
-              </View>
-            </Reveal>
-
-            <Reveal delay={160}>
-              <View style={{ gap: Spacing.two }}>
-                <Eyebrow>Badges</Eyebrow>
-                <GlassCard style={{ gap: Spacing.three }}>
-                  <BadgeRow
-                    icon="🍽️"
-                    title="Clean-Plate Days"
-                    subtitle="Cooked all four meals in a day"
-                    count={stats.cleanPlateDays}
-                  />
-                  <View style={[styles.divider, { backgroundColor: palette.border }]} />
-                  <BadgeRow
-                    icon="🏆"
-                    title="Perfect Weeks"
-                    subtitle="Cooked every meal, all week"
-                    count={stats.perfectWeeks}
-                  />
-                </GlassCard>
-              </View>
+              <ProfileTabs
+                posts={posts}
+                postsLoading={postsLoading}
+                stats={stats}
+                onOpenPost={(post) => router.push({ pathname: '/post/[id]', params: { id: post.id } })}
+              />
             </Reveal>
 
             {!profile.isPublic && (
@@ -167,36 +161,6 @@ export default function ProfileScreen() {
 /* Pieces                                                             */
 /* ------------------------------------------------------------------ */
 
-function StatCard({ label, value, suffix, accent }: { label: string; value: number; suffix?: string; accent?: boolean }) {
-  const palette = usePalette();
-  return (
-    <GlassCard style={styles.statCard}>
-      <Text style={{ fontFamily: Type.displayBold, fontSize: 26, color: accent ? palette.accent : palette.text }}>
-        {value}
-        {suffix ? <Text style={{ fontSize: 16 }}> {suffix}</Text> : null}
-      </Text>
-      <Small color={palette.textSecondary}>{label}</Small>
-    </GlassCard>
-  );
-}
-
-function BadgeRow({ icon, title, subtitle, count }: { icon: string; title: string; subtitle: string; count: number }) {
-  const palette = usePalette();
-  const earned = count > 0;
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three }}>
-      <View style={[styles.badgeIcon, { backgroundColor: earned ? palette.accentMuted : palette.backgroundElement, opacity: earned ? 1 : 0.5 }]}>
-        <Text style={{ fontSize: 22 }}>{icon}</Text>
-      </View>
-      <View style={{ flex: 1 }}>
-        <Body style={{ fontFamily: Type.bodySemibold }}>{title}</Body>
-        <Small color={palette.textSecondary}>{subtitle}</Small>
-      </View>
-      <Text style={{ fontFamily: Type.displayBold, fontSize: 20, color: earned ? palette.accent : palette.textSecondary }}>×{count}</Text>
-    </View>
-  );
-}
-
 function ProfileEditor({ profile, onCancel, onSaved }: { profile: Profile; onCancel: () => void; onSaved: (p: Profile) => void }) {
   const palette = usePalette();
   const [displayName, setDisplayName] = useState(profile.displayName);
@@ -204,8 +168,10 @@ function ProfileEditor({ profile, onCancel, onSaved }: { profile: Profile; onCan
   const [bio, setBio] = useState(profile.bio ?? '');
   const [isPublic, setIsPublic] = useState(profile.isPublic);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatarUrl);
+  const [coverUrl, setCoverUrl] = useState<string | null>(profile.coverUrl);
   const [region, setRegion] = useState<Region | null>((profile.region as Region | null) ?? null);
   const [uploading, setUploading] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -218,6 +184,15 @@ function ProfileEditor({ profile, onCancel, onSaved }: { profile: Profile; onCan
     else if ('error' in res) setError(res.error);
   };
 
+  const changeCover = async () => {
+    setUploadingCover(true);
+    setError(null);
+    const res = await pickAndUploadImage('covers', { aspect: [3, 1] });
+    setUploadingCover(false);
+    if ('url' in res) setCoverUrl(res.url);
+    else if ('error' in res) setError(res.error);
+  };
+
   const save = async () => {
     if (!isValidUsername(username.trim().toLowerCase())) {
       setError('Username must be 3–20 letters, numbers or underscores.');
@@ -225,7 +200,7 @@ function ProfileEditor({ profile, onCancel, onSaved }: { profile: Profile; onCan
     }
     setSaving(true);
     setError(null);
-    const res = await updateProfile({ displayName, username, bio: bio.trim() || null, isPublic, avatarUrl, region });
+    const res = await updateProfile({ displayName, username, bio: bio.trim() || null, isPublic, avatarUrl, coverUrl, region });
     setSaving(false);
     if (res.error) setError(res.error);
     else if (res.profile) onSaved(res.profile);
@@ -234,13 +209,30 @@ function ProfileEditor({ profile, onCancel, onSaved }: { profile: Profile; onCan
   return (
     <Reveal>
       <GlassCard style={{ gap: Spacing.three }}>
-        <View style={{ alignItems: 'center', gap: Spacing.two }}>
-          <Avatar name={displayName || username} uri={avatarUrl} size={88} />
-          <PressableScale onPress={changeAvatar} to={0.96} disabled={uploading}>
-            <Text style={{ fontFamily: Type.bodySemibold, fontSize: 14, color: palette.accent }}>
-              {uploading ? 'Uploading…' : 'Change photo'}
-            </Text>
+        <View style={{ marginHorizontal: -Spacing.four, marginTop: -Spacing.four }}>
+          <PressableScale onPress={changeCover} to={0.98} disabled={uploadingCover}>
+            <View>
+              {coverUrl ? (
+                <Image source={{ uri: coverUrl }} resizeMode="cover" style={styles.editorBanner} />
+              ) : (
+                <LinearGradient colors={[palette.blobA, palette.blobB]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.editorBanner} />
+              )}
+              <View style={[styles.bannerBadge, { backgroundColor: palette.background, borderColor: palette.border }]}>
+                <Small>{uploadingCover ? 'Uploading…' : '📷 Change cover'}</Small>
+              </View>
+            </View>
           </PressableScale>
+
+          <View style={{ paddingHorizontal: Spacing.four }}>
+            <PressableScale onPress={changeAvatar} to={0.96} disabled={uploading} style={{ alignSelf: 'flex-start' }}>
+              <View style={[styles.avatarRing, { borderColor: palette.background, backgroundColor: palette.background }]}>
+                <Avatar name={displayName || username} uri={avatarUrl} size={80} />
+                <View style={[styles.avatarBadge, { backgroundColor: palette.background, borderColor: palette.border }]}>
+                  <Small>{uploading ? '…' : '📷'}</Small>
+                </View>
+              </View>
+            </PressableScale>
+          </View>
         </View>
 
         <Field label="Display name">
@@ -311,9 +303,9 @@ const styles = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingTop: Spacing.three },
   back: { width: 40, height: 40, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   visibility: { alignSelf: 'flex-start', marginTop: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
-  statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three },
-  statCard: { flexGrow: 1, flexBasis: '45%', minWidth: 140, gap: 2, alignItems: 'flex-start' },
-  badgeIcon: { width: 48, height: 48, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' },
-  divider: { height: 1, width: '100%' },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderWidth: 1, borderRadius: Radius.md },
+  editorBanner: { height: 110 },
+  bannerBadge: { position: 'absolute', right: Spacing.three, bottom: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
+  avatarRing: { width: 88, height: 88, borderRadius: 44, borderWidth: 4, marginTop: -44, alignItems: 'center', justifyContent: 'center' },
+  avatarBadge: { position: 'absolute', right: -2, bottom: -2, width: 28, height: 28, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
 });

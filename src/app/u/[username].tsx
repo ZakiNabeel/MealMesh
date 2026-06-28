@@ -10,13 +10,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Art } from '@/components/art';
-import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
+import { Body, Button, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
 import { ProfileHeader } from '@/components/ProfileHeader';
-import { Radius, Spacing, Type } from '@/constants/theme';
+import { ProfileTabs } from '@/components/ProfileTabs';
+import { Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
+import { getPostsByAuthor } from '@/lib/community';
 import { followUser, getFollowCounts, getPublicProfile, getUserStats, isFollowing, unfollowUser } from '@/lib/social';
 import { usePalette } from '@/theme/use-theme';
-import type { CookingStats, FollowCounts, Profile } from '@/types';
+import type { CookingStats, FollowCounts, Post, Profile } from '@/types';
 
 export default function PublicProfileScreen() {
   const { username } = useLocalSearchParams<{ username: string }>();
@@ -27,6 +29,8 @@ export default function PublicProfileScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [stats, setStats] = useState<CookingStats | null>(null);
   const [counts, setCounts] = useState<FollowCounts>({ followers: 0, following: 0 });
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [postsLoading, setPostsLoading] = useState(true);
   const [following, setFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -39,15 +43,19 @@ export default function PublicProfileScreen() {
       setLoading(false);
       return;
     }
-    const [s, c, isFollowed] = await Promise.all([
+    setPostsLoading(true);
+    const [s, c, isFollowed, userPosts] = await Promise.all([
       getUserStats(p.userId),
       getFollowCounts(p.userId),
       session ? isFollowing(p.userId) : Promise.resolve(false),
+      getPostsByAuthor(p.userId),
     ]);
     setProfile(p);
     setStats(s);
     setCounts(c);
     setFollowing(isFollowed);
+    setPosts(userPosts);
+    setPostsLoading(false);
     setLoading(false);
   }, [username, session]);
 
@@ -119,28 +127,12 @@ export default function PublicProfileScreen() {
 
           {stats && (
             <Reveal delay={80}>
-              <View style={{ gap: Spacing.two }}>
-                <Eyebrow>Cooking stats</Eyebrow>
-                <View style={styles.statGrid}>
-                  <StatCard label="Points" value={stats.totalPoints} accent />
-                  <StatCard label="Day streak" value={stats.currentStreak} suffix="🔥" />
-                  <StatCard label="Meals cooked" value={stats.mealsLogged} />
-                  <StatCard label="Longest streak" value={stats.longestStreak} />
-                </View>
-              </View>
-            </Reveal>
-          )}
-
-          {stats && (stats.cleanPlateDays > 0 || stats.perfectWeeks > 0) && (
-            <Reveal delay={160}>
-              <View style={{ gap: Spacing.two }}>
-                <Eyebrow>Badges</Eyebrow>
-                <GlassCard style={{ gap: Spacing.three }}>
-                  <BadgeRow icon="🍽️" title="Clean-Plate Days" count={stats.cleanPlateDays} />
-                  <View style={[styles.divider, { backgroundColor: palette.border }]} />
-                  <BadgeRow icon="🏆" title="Perfect Weeks" count={stats.perfectWeeks} />
-                </GlassCard>
-              </View>
+              <ProfileTabs
+                posts={posts}
+                postsLoading={postsLoading}
+                stats={stats}
+                onOpenPost={(post) => router.push({ pathname: '/post/[id]', params: { id: post.id } })}
+              />
             </Reveal>
           )}
         </ScrollView>
@@ -149,41 +141,8 @@ export default function PublicProfileScreen() {
   );
 }
 
-function StatCard({ label, value, suffix, accent }: { label: string; value: number; suffix?: string; accent?: boolean }) {
-  const palette = usePalette();
-  return (
-    <GlassCard style={styles.statCard}>
-      <Text style={{ fontFamily: Type.displayBold, fontSize: 26, color: accent ? palette.accent : palette.text }}>
-        {value}
-        {suffix ? <Text style={{ fontSize: 16 }}> {suffix}</Text> : null}
-      </Text>
-      <Small color={palette.textSecondary}>{label}</Small>
-    </GlassCard>
-  );
-}
-
-function BadgeRow({ icon, title, count }: { icon: string; title: string; count: number }) {
-  const palette = usePalette();
-  const earned = count > 0;
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three }}>
-      <View style={[styles.badgeIcon, { backgroundColor: earned ? palette.accentMuted : palette.backgroundElement, opacity: earned ? 1 : 0.5 }]}>
-        <Text style={{ fontSize: 22 }}>{icon}</Text>
-      </View>
-      <View style={{ flex: 1 }}>
-        <Body style={{ fontFamily: Type.bodySemibold }}>{title}</Body>
-      </View>
-      <Text style={{ fontFamily: Type.displayBold, fontSize: 20, color: earned ? palette.accent : palette.textSecondary }}>×{count}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingTop: Spacing.three },
   back: { width: 40, height: 40, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.three, padding: Spacing.four },
-  statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three },
-  statCard: { flexGrow: 1, flexBasis: '45%', minWidth: 140, gap: 2, alignItems: 'flex-start' },
-  badgeIcon: { width: 48, height: 48, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' },
-  divider: { height: 1, width: '100%' },
 });

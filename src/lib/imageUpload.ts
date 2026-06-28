@@ -13,7 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { supabase } from '@/lib/supabase';
 
-export type UploadBucket = 'avatars' | 'meal-photos' | 'post-images';
+export type UploadBucket = 'avatars' | 'covers' | 'meal-photos' | 'post-images';
 
 export type UploadResult =
   | { url: string }
@@ -51,9 +51,13 @@ function uniqueName(): string {
 /**
  * Prompt the user to pick a photo, then upload it to `bucket` under their own
  * folder. Returns the public URL, or a `canceled`/`error` outcome the caller
- * can branch on. `square` crops to 1:1 (used for avatars).
+ * can branch on. `square` crops to 1:1 (avatars); `aspect` crops to an
+ * arbitrary ratio (e.g. `[3, 1]` for a wide profile banner).
  */
-export async function pickAndUploadImage(bucket: UploadBucket, opts?: { square?: boolean }): Promise<UploadResult> {
+export async function pickAndUploadImage(
+  bucket: UploadBucket,
+  opts?: { square?: boolean; aspect?: [number, number] },
+): Promise<UploadResult> {
   const { data: sessionData } = await supabase.auth.getSession();
   const userId = sessionData.session?.user.id;
   if (!userId) return { error: 'Sign in to upload a photo.' };
@@ -64,7 +68,7 @@ export async function pickAndUploadImage(bucket: UploadBucket, opts?: { square?:
   const picked = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
     allowsEditing: true,
-    aspect: opts?.square ? [1, 1] : undefined,
+    aspect: opts?.aspect ?? (opts?.square ? [1, 1] : undefined),
     quality: 0.6, // compress — cooked-meal photos don't need full resolution
     base64: true,
   });

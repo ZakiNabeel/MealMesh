@@ -22,6 +22,7 @@ interface ProfileRow {
   username: string;
   display_name: string;
   avatar_url: string | null;
+  cover_url: string | null;
   bio: string | null;
   is_public: boolean;
   region: string | null;
@@ -47,6 +48,7 @@ function toProfile(row: ProfileRow): Profile {
     username: row.username,
     displayName: row.display_name,
     avatarUrl: row.avatar_url,
+    coverUrl: row.cover_url,
     bio: row.bio,
     isPublic: row.is_public,
     region: row.region,
@@ -129,6 +131,7 @@ export interface ProfileUpdate {
   username?: string;
   displayName?: string;
   avatarUrl?: string | null;
+  coverUrl?: string | null;
   bio?: string | null;
   isPublic?: boolean;
   region?: string | null;
@@ -156,6 +159,7 @@ export async function updateProfile(patch: ProfileUpdate): Promise<{ profile?: P
   }
   if (patch.displayName !== undefined) row.display_name = patch.displayName.trim();
   if (patch.avatarUrl !== undefined) row.avatar_url = patch.avatarUrl;
+  if (patch.coverUrl !== undefined) row.cover_url = patch.coverUrl;
   if (patch.bio !== undefined) row.bio = patch.bio;
   if (patch.isPublic !== undefined) row.is_public = patch.isPublic;
   if (patch.region !== undefined) row.region = patch.region;
