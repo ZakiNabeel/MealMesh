@@ -11,7 +11,7 @@
 
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Image, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { SheetModal } from '@/components/SheetModal';
 import { BrandLockup } from '@/components/SocialBar';
@@ -53,7 +53,10 @@ export function AppHeader({ active }: { active?: HeaderTab }) {
   return (
     <View style={[styles.bar, { borderBottomColor: palette.border, backgroundColor: palette.background }]}>
       <View style={[styles.inner, { paddingHorizontal: isDesktop ? Spacing.four : Spacing.three, gap: isDesktop ? Spacing.three : Spacing.two }]}>
-        <PressableScale onPress={() => Linking.openURL('https://www.getmealmesh.com')} to={0.96}>
+        {/* Internal route, not an external reload — same marketing page the
+            "/" route already renders (signed in or not), just without the
+            full page reload an external URL would force. */}
+        <PressableScale onPress={() => router.push('/')} to={0.96}>
           {isDesktop ? (
             <BrandLockup palette={palette} size={30} />
           ) : (

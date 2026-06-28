@@ -49,9 +49,13 @@ interface PlanRow {
 /* Households                                                         */
 /* ------------------------------------------------------------------ */
 
+// getSession() reads the locally-cached session (no network round-trip);
+// getUser() always calls the Auth server to revalidate. RLS is the real
+// security boundary on every write below, so the cheap local read is safe
+// here and avoids stacking an extra ~300-500ms hop onto every call site.
 async function currentUserId(): Promise<string | null> {
-  const { data } = await supabase.auth.getUser();
-  return data.user?.id ?? null;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user.id ?? null;
 }
 
 /**

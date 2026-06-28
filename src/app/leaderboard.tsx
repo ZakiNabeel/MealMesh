@@ -11,7 +11,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from
 
 import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
-import { Avatar, Body, Button, Chip, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
+import { Avatar, Body, Button, Chip, Eyebrow, GlassCard, Heading, PressableScale, ProBadge, Reveal, Screen, Small } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { getMyCrew, getLeaderboard, createCrew, joinCrewByCode, leaveCrew } from '@/lib/social';
@@ -161,9 +161,7 @@ function RankedList({
                 <Body numberOfLines={1} style={{ fontFamily: Type.bodySemibold, flexShrink: 1 }}>
                   {e.displayName || e.username}
                 </Body>
-                {e.isPro && (
-                  <Text style={{ fontFamily: Type.bodySemibold, fontSize: 10, color: palette.accent }}>PRO ✦</Text>
-                )}
+                {e.isPro && <ProBadge size={13} />}
               </View>
               <Small color={palette.textSecondary}>@{e.username}</Small>
             </View>

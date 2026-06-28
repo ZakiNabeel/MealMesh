@@ -96,9 +96,13 @@ function unknownAuthor(userId: string): AuthorSummary {
   return { userId, username: 'unknown', displayName: 'A cook', avatarUrl: null, isPro: false };
 }
 
+// getSession() reads the locally-cached session (no network round-trip);
+// getUser() always calls the Auth server to revalidate. RLS is the real
+// security boundary on every write below, so the cheap local read is safe
+// here and avoids stacking an extra ~300-500ms hop onto every call site.
 async function currentUserId(): Promise<string | null> {
-  const { data } = await supabase.auth.getUser();
-  return data.user?.id ?? null;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user.id ?? null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -240,6 +244,17 @@ export async function getFeed(sort: FeedSort): Promise<Post[]> {
   // 'new' and 'following' stay created_at desc, as fetched.
 
   return posts.slice(0, FEED_PAGE_SIZE);
+}
+
+/** A single author's posts, newest first — backs a profile's "Posts" tab. */
+export async function getPostsByAuthor(authorId: string, limit = 30): Promise<Post[]> {
+  const { data } = await supabase
+    .from('posts')
+    .select('*')
+    .eq('author_id', authorId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  return toPosts((data ?? []) as PostRow[]);
 }
 
 export async function getPost(id: string): Promise<Post | null> {

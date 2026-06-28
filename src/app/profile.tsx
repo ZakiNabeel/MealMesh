@@ -13,24 +13,24 @@ import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TextInput, Vie
 import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
 import { Avatar, Body, Button, Chip, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
+import { ProfileHeader } from '@/components/ProfileHeader';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { REGIONS } from '@/lib/dietLibrary';
 import { lifetimeStats, type LifetimeStats } from '@/lib/gamification';
 import { pickAndUploadImage } from '@/lib/imageUpload';
-import { getAllLogs, getMyProfile, isValidUsername, updateProfile } from '@/lib/social';
-import { useSubscription } from '@/lib/subscription';
+import { getAllLogs, getFollowCounts, getMyProfile, isValidUsername, updateProfile } from '@/lib/social';
 import { usePalette } from '@/theme/use-theme';
-import type { Profile, Region } from '@/types';
+import type { FollowCounts, Profile, Region } from '@/types';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const palette = usePalette();
   const { session, loading: authLoading } = useAuth();
-  const { isPro } = useSubscription();
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [stats, setStats] = useState<LifetimeStats | null>(null);
+  const [counts, setCounts] = useState<FollowCounts>({ followers: 0, following: 0 });
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
 
@@ -39,6 +39,7 @@ export default function ProfileScreen() {
     const [p, logs] = await Promise.all([getMyProfile(), getAllLogs()]);
     setProfile(p);
     setStats(lifetimeStats(logs, new Date().toISOString().slice(0, 10)));
+    if (p) setCounts(await getFollowCounts(p.userId));
     setLoading(false);
   }, []);
 
@@ -95,26 +96,18 @@ export default function ProfileScreen() {
         ) : (
           <>
             <Reveal>
-              <GlassCard style={{ gap: Spacing.three, alignItems: 'center' }}>
-                <Avatar name={profile.displayName || profile.username} uri={profile.avatarUrl} size={96} />
-                <View style={{ alignItems: 'center', gap: 2 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Heading>{profile.displayName || profile.username}</Heading>
-                    {isPro && (
-                      <View style={[styles.proPill, { backgroundColor: palette.accentMuted }]}>
-                        <Text style={{ fontFamily: Type.bodySemibold, fontSize: 11, color: palette.accent }}>PRO ✦</Text>
-                      </View>
-                    )}
+              <GlassCard style={{ padding: 0 }}>
+                <ProfileHeader
+                  profile={profile}
+                  counts={counts}
+                  actions={<Button title="Edit profile" variant="secondary" onPress={() => setEditing(true)} />}
+                >
+                  <View style={[styles.visibility, { borderColor: palette.border }]}>
+                    <Text style={{ fontFamily: Type.bodyMedium, fontSize: 12, color: palette.textSecondary }}>
+                      {profile.isPublic ? '🌐 Public profile' : '🔒 Private — only you can see this'}
+                    </Text>
                   </View>
-                  <Small color={palette.textSecondary}>@{profile.username}</Small>
-                  {profile.bio ? <Body style={{ textAlign: 'center', marginTop: 4 }}>{profile.bio}</Body> : null}
-                </View>
-                <View style={[styles.visibility, { borderColor: palette.border }]}>
-                  <Text style={{ fontFamily: Type.bodyMedium, fontSize: 12, color: palette.textSecondary }}>
-                    {profile.isPublic ? '🌐 Public profile' : '🔒 Private — only you can see this'}
-                  </Text>
-                </View>
-                <Button title="Edit profile" variant="secondary" onPress={() => setEditing(true)} />
+                </ProfileHeader>
               </GlassCard>
             </Reveal>
 
@@ -317,8 +310,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.three, padding: Spacing.four },
   top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingTop: Spacing.three },
   back: { width: 40, height: 40, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  proPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
-  visibility: { paddingHorizontal: Spacing.three, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
+  visibility: { alignSelf: 'flex-start', marginTop: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three },
   statCard: { flexGrow: 1, flexBasis: '45%', minWidth: 140, gap: 2, alignItems: 'flex-start' },
   badgeIcon: { width: 48, height: 48, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' },

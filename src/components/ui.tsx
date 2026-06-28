@@ -404,6 +404,25 @@ export function Avatar({ name, uri, size = 40 }: { name: string; uri?: string | 
   );
 }
 
+/** Small verified-style checkmark for Pro members — sits inline next to a display name. */
+export function ProBadge({ size = 15 }: { size?: number }) {
+  const palette = usePalette();
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: palette.accent,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Text style={{ fontFamily: Type.bodyBold, fontSize: size * 0.6, lineHeight: size * 0.7, color: palette.onAccent }}>✓</Text>
+    </View>
+  );
+}
+
 /** Slim progress track with a green→blue "weave" fill. */
 export function ProgressBar({ value }: { value: number }) {
   const palette = usePalette();

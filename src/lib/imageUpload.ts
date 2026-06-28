@@ -54,8 +54,8 @@ function uniqueName(): string {
  * can branch on. `square` crops to 1:1 (used for avatars).
  */
 export async function pickAndUploadImage(bucket: UploadBucket, opts?: { square?: boolean }): Promise<UploadResult> {
-  const { data: userData } = await supabase.auth.getUser();
-  const userId = userData.user?.id;
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData.session?.user.id;
   if (!userId) return { error: 'Sign in to upload a photo.' };
 
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();

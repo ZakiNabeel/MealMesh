@@ -10,7 +10,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Art } from '@/components/art';
-import { Avatar, Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
+import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
+import { ProfileHeader } from '@/components/ProfileHeader';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { followUser, getFollowCounts, getPublicProfile, getUserStats, isFollowing, unfollowUser } from '@/lib/social';
@@ -98,40 +99,21 @@ export default function PublicProfileScreen() {
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: Spacing.four, gap: Spacing.four }}>
           <Reveal>
-            <GlassCard style={{ gap: Spacing.three, alignItems: 'center' }}>
-              <Avatar name={profile.displayName || profile.username} uri={profile.avatarUrl} size={96} />
-              <View style={{ alignItems: 'center', gap: 2 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Heading>{profile.displayName || profile.username}</Heading>
-                  {profile.isPro && (
-                    <View style={[styles.proPill, { backgroundColor: palette.accentMuted }]}>
-                      <Text style={{ fontFamily: Type.bodySemibold, fontSize: 11, color: palette.accent }}>PRO ✦</Text>
-                    </View>
-                  )}
-                </View>
-                <Small color={palette.textSecondary}>@{profile.username}</Small>
-                {profile.bio ? <Body style={{ textAlign: 'center', marginTop: 4 }}>{profile.bio}</Body> : null}
-              </View>
-
-              <View style={{ flexDirection: 'row', gap: Spacing.four }}>
-                <View style={{ alignItems: 'center' }}>
-                  <Text style={{ fontFamily: Type.displayBold, fontSize: 18, color: palette.text }}>{counts.followers}</Text>
-                  <Small color={palette.textSecondary}>Followers</Small>
-                </View>
-                <View style={{ alignItems: 'center' }}>
-                  <Text style={{ fontFamily: Type.displayBold, fontSize: 18, color: palette.text }}>{counts.following}</Text>
-                  <Small color={palette.textSecondary}>Following</Small>
-                </View>
-              </View>
-
-              {!isMe && (
-                <Button
-                  title={following ? 'Following ✓' : 'Follow'}
-                  variant={following ? 'secondary' : 'primary'}
-                  disabled={busy}
-                  onPress={toggleFollow}
-                />
-              )}
+            <GlassCard style={{ padding: 0 }}>
+              <ProfileHeader
+                profile={profile}
+                counts={counts}
+                actions={
+                  !isMe ? (
+                    <Button
+                      title={following ? 'Following ✓' : 'Follow'}
+                      variant={following ? 'secondary' : 'primary'}
+                      disabled={busy}
+                      onPress={toggleFollow}
+                    />
+                  ) : undefined
+                }
+              />
             </GlassCard>
           </Reveal>
 
@@ -200,7 +182,6 @@ const styles = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingTop: Spacing.three },
   back: { width: 40, height: 40, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.three, padding: Spacing.four },
-  proPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three },
   statCard: { flexGrow: 1, flexBasis: '45%', minWidth: 140, gap: 2, alignItems: 'flex-start' },
   badgeIcon: { width: 48, height: 48, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' },
