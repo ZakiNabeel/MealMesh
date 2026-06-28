@@ -1,5 +1,4 @@
 import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Art } from '@/components/art';
@@ -12,20 +11,15 @@ import { useAuth } from '@/lib/auth';
 import { usePalette } from '@/theme/use-theme';
 
 export default function Welcome() {
-  // Browser visitors (phone or laptop) see the marketing website; the installed
-  // PWA and the native app get the focused app experience.
+  // Browser visitors (phone or laptop) see the marketing website — signed in or
+  // not, so a signed-in user can still browse it; its nav/CTAs adapt to show
+  // "Go to my home" instead of "Sign in". Both auth flows (Google + magic
+  // link) redirect straight to /home on success, so this is only ever a
+  // deliberate visit to "/", not a post-login landing. The installed PWA and
+  // the native app get the focused app experience instead.
   const isApp = useIsInstalledApp();
-  const router = useRouter();
-  const { session, loading } = useAuth();
 
-  // A signed-in visitor landing on "/" (e.g. right after Google OAuth, or just
-  // revisiting the bare domain) should land on the Home dashboard, not the
-  // marketing site / welcome screen with no sign anything happened.
-  useEffect(() => {
-    if (!loading && session) router.replace('/home');
-  }, [loading, session, router]);
-
-  if (!isApp) return session ? null : <WebsiteLanding />;
+  if (!isApp) return <WebsiteLanding />;
   return <MobileWelcome />;
 }
 

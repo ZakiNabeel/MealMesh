@@ -5,7 +5,6 @@ import { ActivityIndicator, Image, Linking, ScrollView, StyleSheet, Text, TextIn
 import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
 import { FoodImage } from '@/components/FoodImage';
-import { MeshMark } from '@/components/MeshMark';
 import { SheetModal } from '@/components/SheetModal';
 import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small, useIsDesktop } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
@@ -162,7 +161,7 @@ export default function Plan() {
 
   if (resolving) {
     return (
-      <Screen art={Art.ramen}>
+      <Screen art={Art.ramen} header={<AppHeader active="plan" />}>
         <View style={styles.empty}>
           <ActivityIndicator color={palette.accent} />
           <Small color={palette.textSecondary}>Loading your household…</Small>
@@ -173,9 +172,9 @@ export default function Plan() {
 
   if (!household) {
     return (
-      <Screen art={Art.ramen}>
+      <Screen art={Art.ramen} header={<AppHeader active="plan" />}>
         <View style={styles.empty}>
-          <MeshMark size={120} />
+          <Image source={require('../../assets/logo.svg')} alt="" style={{ width: 88, height: 88, borderRadius: 26 }} />
           <Heading>No plan yet</Heading>
           <Body color={palette.textSecondary} style={{ textAlign: 'center' }}>
             Tell us about your household and we&apos;ll weave one plan everyone can eat.

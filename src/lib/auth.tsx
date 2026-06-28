@@ -69,9 +69,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       async signInWithEmail(email) {
         if (!isSupabaseConfigured) return { error: NOT_CONFIGURED };
+        // Land straight on the Home dashboard, same as Google OAuth below —
+        // not the marketing site root, which would otherwise show "Sign in"
+        // to someone who just signed in.
         const { error } = await supabase.auth.signInWithOtp({
           email: email.trim(),
-          options: { emailRedirectTo: redirectUrl() },
+          options: { emailRedirectTo: redirectUrl('/home') },
         });
         return { error: error?.message };
       },

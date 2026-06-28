@@ -37,6 +37,7 @@ import { BrandLockup, SocialBar } from '@/components/SocialBar';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { Atmosphere, Reveal } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
+import { useAuth } from '@/lib/auth';
 import { usePalette } from '@/theme/use-theme';
 
 const MAXW = 1180;
@@ -138,6 +139,7 @@ function ValueIcon({ name, color }: { name: keyof typeof LINE_ICONS; color: stri
 export function WebsiteLanding() {
   const palette = usePalette();
   const router = useRouter();
+  const { session } = useAuth();
   const { width } = useWindowDimensions();
   const narrow = width < 760;
   const scrollRef = useRef<ScrollView>(null);
@@ -209,7 +211,11 @@ export function WebsiteLanding() {
             {narrow ? (
               <View style={styles.navRight}>
                 <ThemeSwitcher size={22} />
-                <CTA label="Start" onPress={() => router.push('/onboarding')} />
+                {session ? (
+                  <CTA label="My home" onPress={() => router.push('/home')} />
+                ) : (
+                  <CTA label="Start" onPress={() => router.push('/onboarding')} />
+                )}
               </View>
             ) : (
               <View style={styles.navRight}>
@@ -225,8 +231,14 @@ export function WebsiteLanding() {
                 <View style={{ width: 6 }} />
                 <ThemeSwitcher size={24} />
                 <View style={{ width: 6 }} />
-                <CTA label="Sign in" variant="ghost" onPress={() => router.push('/auth')} />
-                <CTA label="Build our plan" onPress={() => router.push('/onboarding')} />
+                {session ? (
+                  <CTA label="Go to my home" onPress={() => router.push('/home')} />
+                ) : (
+                  <>
+                    <CTA label="Sign in" variant="ghost" onPress={() => router.push('/auth')} />
+                    <CTA label="Build our plan" onPress={() => router.push('/onboarding')} />
+                  </>
+                )}
               </View>
             )}
           </Center>
@@ -425,7 +437,7 @@ export function WebsiteLanding() {
                 links={[
                   ['Articles', () => (BLOG_URL ? Linking.openURL(BLOG_URL) : goTo('articles'))],
                   ['How it works', () => goTo('how')],
-                  ['Sign in', () => router.push('/auth')],
+                  session ? ['Go to my home', () => router.push('/home')] : ['Sign in', () => router.push('/auth')],
                 ]}
               />
               <FooterCol title="Legal" links={[['Privacy', () => router.push('/privacy')], ['Terms', () => router.push('/terms')]]} />
