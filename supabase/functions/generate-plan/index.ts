@@ -93,8 +93,8 @@ const SYSTEM_PROMPT =
   'sabzi, qeema — not generic "traybake" or "stir-fry"). Use that cuisine\'s real spices and ' +
   'techniques. A few lighter/global meals are fine for variety.\n' +
   'RECIPES: For every meal include a `recipe` with `servings` (number), `timeMinutes` ' +
-  '(number), and `steps` (5–8 short numbered instructions a home cook can follow), plus a ' +
-  '`cuisine` label string.\n' +
+  '(number), and `steps` (3–5 short numbered instructions a home cook can follow — keep each ' +
+  'step under 12 words), plus a `cuisine` label string.\n' +
   'BUDGET: If `budgetWeekly` (in the local `currency`) is given, choose affordable, in-season, ' +
   'locally-common ingredients so the whole week fits roughly within that budget — lean on ' +
   'legumes, eggs and cheaper cuts before premium proteins.\n' +
@@ -149,10 +149,17 @@ async function requestPlan(household: Household, retryNote?: string, attempt = 1
     body: JSON.stringify({
       contents: [{ role: 'user', parts: [{ text: JSON.stringify(payload) }] }],
       systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-      // 35 meals × a 5-8 step recipe each, plus a grocery list, easily runs
-      // past 8000 tokens and gets truncated mid-JSON — raise the ceiling well
-      // above what a full week's worth of output actually needs.
-      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 18000 },
+      // 35 meals × a short recipe each, plus a grocery list, is a lot of
+      // output — and gemini-2.5-flash spends part of maxOutputTokens on
+      // internal "thinking" by default, which was eating the whole budget
+      // and truncating the JSON before any content came out (finishReason
+      // MAX_TOKENS on every attempt). Disabling thinking and raising the
+      // ceiling fixes both the truncation and the multi-minute hang.
+      generationConfig: {
+        responseMimeType: 'application/json',
+        maxOutputTokens: 24000,
+        thinkingConfig: { thinkingBudget: 0 },
+      },
     }),
   });
 
