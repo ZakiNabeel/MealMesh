@@ -283,6 +283,18 @@ export default function Plan() {
               cooked={cooked}
               canCook={Boolean(session)}
             />
+            <View style={centerCol}>
+              <PressableScale onPress={() => router.push('/pantry')} to={0.98}>
+                <View style={[styles.cookFromHaveBanner, { borderColor: palette.accent, backgroundColor: palette.accentMuted }]}>
+                  <Text style={{ fontSize: 22 }}>🥘</Text>
+                  <View style={{ flex: 1 }}>
+                    <Body style={{ fontFamily: Type.bodySemibold, color: palette.accent }}>Cook with what I have</Body>
+                    <Small color={palette.textSecondary}>Use up ingredients already in your kitchen</Small>
+                  </View>
+                  <Text style={{ fontSize: 18, color: palette.accent }}>›</Text>
+                </View>
+              </PressableScale>
+            </View>
             {isDesktop ? (
               <View style={styles.dashboardRow}>
                 <View style={styles.rail}>
@@ -306,10 +318,6 @@ export default function Plan() {
               </View>
             ) : (
               <>
-                <View style={{ gap: Spacing.three }}>
-                  <BudgetBanner plan={plan} country={household.country} budgetWeekly={household.budgetWeekly} />
-                  {session && <CookProgress summary={weekSummary} streak={streak.current} />}
-                </View>
                 <SelectedDayMeals
                   day={dayOrder[dayIdx]}
                   date={displayDate(dayIdx)}
@@ -322,6 +330,10 @@ export default function Plan() {
                   onCook={setCookTarget}
                   onUncook={removeCooked}
                 />
+                <View style={{ gap: Spacing.three }}>
+                  <BudgetBanner plan={plan} country={household.country} budgetWeekly={household.budgetWeekly} />
+                  {session && <CookProgress summary={weekSummary} streak={streak.current} />}
+                </View>
               </>
             )}
             {!session && (
@@ -347,38 +359,30 @@ export default function Plan() {
             />
           </View>
         )}
-      </ScrollView>
 
-      <View style={isDesktop && tab === 'plan' ? styles.footerRow : undefined}>
-        {isDesktop && tab === 'plan' && <View style={styles.rail} />}
-        <View style={[styles.footer, centerCol, isDesktop && tab === 'plan' && { flex: 1, marginHorizontal: 0 }]}>
-          <Button
-            title="Regenerate this week"
-            variant="secondary"
-            disabled={loading}
-            onPress={async () => {
-              if (!isPro) {
-                const used = await generationsThisWeek();
-                if (used >= FREE_WEEKLY_PLANS - 1) {
-                  router.push('/paywall');
-                  return;
+        <View style={isDesktop && tab === 'plan' ? styles.footerRow : undefined}>
+          {isDesktop && tab === 'plan' && <View style={styles.rail} />}
+          <View style={[styles.footer, centerCol, isDesktop && tab === 'plan' && { flex: 1, marginHorizontal: 0 }]}>
+            <Button
+              title="Regenerate this week"
+              variant="secondary"
+              disabled={loading}
+              onPress={async () => {
+                if (!isPro) {
+                  const used = await generationsThisWeek();
+                  if (used >= FREE_WEEKLY_PLANS - 1) {
+                    router.push('/paywall');
+                    return;
+                  }
+                  await bumpGenerations();
                 }
-                await bumpGenerations();
-              }
-              setPlan(null);
-              setSeed((s) => s + 1);
-            }}
-          />
-          <View style={styles.quickLinks}>
-            <PressableScale onPress={() => router.push('/pantry')} to={0.97}>
-              <Small color={palette.accent} style={{ fontFamily: Type.bodySemibold }}>🥘  Cook with what I have</Small>
-            </PressableScale>
-            <PressableScale onPress={() => router.push('/surprise')} to={0.97}>
-              <Small color={palette.accent} style={{ fontFamily: Type.bodySemibold }}>✨  Surprise me / Guests coming?</Small>
-            </PressableScale>
+                setPlan(null);
+                setSeed((s) => s + 1);
+              }}
+            />
           </View>
         </View>
-      </View>
+      </ScrollView>
 
       <RecipeModal meal={selected} region={household.region} onClose={() => setSelected(null)} />
       <CookSheet
@@ -1242,7 +1246,7 @@ const styles = StyleSheet.create({
   check: { width: 24, height: 24, borderRadius: 8, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   footer: { paddingVertical: Spacing.three },
   footerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.four },
-  quickLinks: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: Spacing.three, rowGap: Spacing.two, marginTop: Spacing.three },
+  cookFromHaveBanner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.md, borderWidth: 1.5 },
   budgetIcon: { width: 44, height: 44, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' },
   budgetTag: { alignSelf: 'flex-start', paddingHorizontal: Spacing.three, paddingVertical: 6, borderRadius: Radius.pill },
   cookCheck: { width: 34, height: 34, borderRadius: 999, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },

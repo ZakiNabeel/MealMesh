@@ -53,7 +53,11 @@ export function generateMockPlan(household: Household, seed = 0): MealPlan {
     const out: PlannedMeal[] = [];
     DAYS.forEach((day, dayIdx) => {
       MEAL_SLOTS.forEach((slot: MealSlot, slotIdx) => {
-        const i = dayIdx * 4 + slotIdx + seed;
+        // Day-to-day stride must NOT share a factor with any realistic pantry
+        // pool length (1-13ish) or the same dish/grain/protein repeats on the
+        // same slot every day of the week. 17 is prime and bigger than any
+        // pool we have, so i % poolLength varies properly across all 7 days.
+        const i = dayIdx * 17 + slotIdx + seed;
         // Breakfasts read best with eggs — use them when the household allows it.
         const eggsOk = pool.includes('eggs');
         const protein = slot === 'breakfast' && eggsOk && i % 3 !== 0 ? 'eggs' : pick(pool, i, 'mixed beans');

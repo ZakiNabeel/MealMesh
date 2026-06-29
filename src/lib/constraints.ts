@@ -133,13 +133,18 @@ export function unionSoftAvoid(members: Member[]): Token[] {
 /* Positive ALLOW list                                                */
 /* ------------------------------------------------------------------ */
 
-function prioritizeByRegion(staples: Staple[], region: Region): Staple[] {
+/**
+ * Keep only staples that fit the household's cuisine. A staple with no
+ * `regions` tag is universal (always kept); a tagged staple is kept only when
+ * it lists this region. This must be an exclusive filter, not a sort — a
+ * pasta/quinoa/tofu that's merely deprioritized is still picked by the plan
+ * generator's index-based selection just as often as an in-region staple,
+ * which is how a "south_asian" household used to end up with dishes like
+ * "biryani with corn tortilla."
+ */
+function filterByRegion(staples: Staple[], region: Region): Staple[] {
   if (region === 'none') return staples;
-  return [...staples].sort((a, b) => {
-    const aHit = a.regions?.includes(region) ? 0 : 1;
-    const bHit = b.regions?.includes(region) ? 0 : 1;
-    return aHit - bHit;
-  });
+  return staples.filter((s) => !s.regions || s.regions.includes(region));
 }
 
 /**
@@ -152,7 +157,7 @@ export function deriveAllowList(members: Member[], region: Region): AllowList {
   const soft = new Set(unionSoftAvoid(members));
 
   const allowed = STAPLES.filter((s) => !s.tokens.some((t) => hard.has(t)));
-  const ordered = prioritizeByRegion(allowed, region);
+  const ordered = filterByRegion(allowed, region);
 
   const namesIn = (group: StapleGroup): string[] =>
     ordered.filter((s) => s.group === group).map((s) => s.name);

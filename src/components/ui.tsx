@@ -7,7 +7,7 @@
 
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   Image,
   Platform,
@@ -203,6 +203,62 @@ export function Reveal({
   }));
 
   return <Animated.View style={[animated, style]}>{children}</Animated.View>;
+}
+
+/**
+ * Like `Reveal`, but the entrance plays the first time the element scrolls
+ * into view rather than at mount — for long single-scroll pages (the
+ * marketing site) where firing every section's animation at load time means
+ * nothing visibly happens as the user actually scrolls down. Native has no
+ * scroll-into-view signal for an arbitrary view, so it falls back to firing
+ * immediately, same as `Reveal`.
+ */
+export function ScrollReveal({
+  children,
+  delay = 0,
+  y = 22,
+  style,
+}: {
+  children: ReactNode;
+  delay?: number;
+  y?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const reduce = useReduced();
+  const ref = useRef<View>(null);
+  const p = useSharedValue(reduce || Platform.OS !== 'web' ? 1 : 0);
+
+  useEffect(() => {
+    if (reduce || Platform.OS !== 'web' || typeof IntersectionObserver === 'undefined') return;
+    const node = ref.current as unknown as Element | null;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          p.value = withDelay(delay, withTiming(1, { duration: 640, easing: Easing.out(Easing.cubic) }));
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.15, rootMargin: '0px 0px -60px 0px' },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [delay, p, reduce]);
+
+  const animated = useAnimatedStyle(() => ({
+    opacity: p.value,
+    transform: [{ translateY: (1 - p.value) * y }],
+  }));
+
+  // The outer View exists only to give IntersectionObserver a DOM node to
+  // watch — `style` (which may carry layout-critical rules like a 3-column
+  // row) goes on the inner Animated.View instead, so the real layout box has
+  // exactly the same shape it would without this wrapper.
+  return (
+    <View ref={ref}>
+      <Animated.View style={[animated, style]}>{children}</Animated.View>
+    </View>
+  );
 }
 
 /** Tactile press: a soft spring scale-down. Wraps any tappable surface. */

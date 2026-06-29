@@ -148,10 +148,23 @@ describe('deriveAllowList', () => {
     expect(allow.universal.length).toBeGreaterThan(0);
   });
 
-  it('prioritizes region-appropriate staples first', () => {
+  it('excludes out-of-region staples entirely for a strong region preference', () => {
     const allow = deriveAllowList([member('A', [])], 'south_asian');
-    // lentils carry a south_asian affinity and should rank ahead of black beans
-    expect(allow.legumes.indexOf('lentils')).toBeLessThan(allow.legumes.indexOf('black beans'));
+    // lentils carry a south_asian affinity and survive the filter...
+    expect(allow.legumes).toContain('lentils');
+    // ...but black beans (latin-only) and pasta/corn tortilla (not south_asian)
+    // must be dropped outright, not merely deprioritized — a sort-only filter
+    // is how a south_asian household used to get "biryani with corn tortilla."
+    expect(allow.legumes).not.toContain('black beans');
+    expect(allow.grains).not.toContain('pasta');
+    expect(allow.grains).not.toContain('corn tortilla');
+    expect(allow.grains).toContain('white rice');
+  });
+
+  it('keeps every staple when the household has no region preference', () => {
+    const allow = deriveAllowList([member('A', [])], 'none');
+    expect(allow.legumes).toContain('black beans');
+    expect(allow.grains).toContain('pasta');
   });
 });
 

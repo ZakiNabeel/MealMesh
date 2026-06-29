@@ -35,7 +35,7 @@ import { CuisineMarquee } from '@/components/CuisineMarquee';
 import { FoodImage } from '@/components/FoodImage';
 import { BrandLockup, SocialBar } from '@/components/SocialBar';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
-import { Atmosphere, Reveal } from '@/components/ui';
+import { Atmosphere, Reveal, ScrollReveal } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { getLatestArticles, type FeedArticle } from '@/lib/articles';
@@ -272,7 +272,9 @@ export function WebsiteLanding() {
         {/* CUISINES STRIP */}
         <View style={[{ backgroundColor: palette.backgroundElement }, styles.divider, { borderTopColor: palette.border }]}>
           <Center style={{ paddingTop: narrow ? 36 : 52, paddingHorizontal: pad }}>
-            <SectionHead kicker="EVERY KITCHEN" title="Real dishes from every cuisine" />
+            <ScrollReveal>
+              <SectionHead kicker="EVERY KITCHEN" title="Real dishes from every cuisine" />
+            </ScrollReveal>
           </Center>
           <CuisineMarquee cuisines={CUISINES} />
           <View style={{ height: narrow ? 36 : 52 }} />
@@ -281,8 +283,10 @@ export function WebsiteLanding() {
         {/* HOW IT WORKS */}
         <View onLayout={onAnchor('how')}>
           <Center style={sectionPad}>
-            <SectionHead kicker="HOW IT WORKS" title="Three steps to one plan everyone can eat" />
-            <View style={cards3}>
+            <ScrollReveal>
+              <SectionHead kicker="HOW IT WORKS" title="Three steps to one plan everyone can eat" />
+            </ScrollReveal>
+            <ScrollReveal delay={80} style={cards3}>
               {STEPS.map((s, i) => (
                 <View key={s.title} style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
                   <View style={[styles.stepNum, { backgroundColor: palette.accentMuted }]}>
@@ -292,15 +296,17 @@ export function WebsiteLanding() {
                   <Text style={[styles.cardBody, { color: palette.textSecondary }]}>{s.body}</Text>
                 </View>
               ))}
-            </View>
+            </ScrollReveal>
           </Center>
         </View>
 
         {/* WHY MEALMESH */}
         <View onLayout={onAnchor('why')} style={[{ backgroundColor: palette.backgroundElement }, styles.divider, { borderTopColor: palette.border }]}>
           <Center style={sectionPad}>
-            <SectionHead kicker="THE DIFFERENCE" title="Built for safety, not guesswork" />
-            <View style={cards3}>
+            <ScrollReveal>
+              <SectionHead kicker="THE DIFFERENCE" title="Built for safety, not guesswork" />
+            </ScrollReveal>
+            <ScrollReveal delay={80} style={cards3}>
               {VALUES.map((v) => (
                 <View key={v.title} style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
                   <View style={[styles.valueIconWrap, { backgroundColor: palette.accentMuted }]}>
@@ -310,14 +316,16 @@ export function WebsiteLanding() {
                   <Text style={[styles.cardBody, { color: palette.textSecondary }]}>{v.body}</Text>
                 </View>
               ))}
-            </View>
+            </ScrollReveal>
           </Center>
         </View>
 
         {/* ARTICLES */}
         <View onLayout={onAnchor('articles')} style={{ paddingVertical: narrow ? 52 : 80 }}>
           <Center style={{ paddingHorizontal: pad, marginBottom: Spacing.four }}>
-            <SectionHead kicker="FROM THE KITCHEN" title="Guides for multi-diet households" />
+            <ScrollReveal>
+              <SectionHead kicker="FROM THE KITCHEN" title="Guides for multi-diet households" />
+            </ScrollReveal>
           </Center>
           <ArticleMarquee liveArticles={latestArticles} placeholders={ARTICLES} pad={pad} />
         </View>
@@ -325,8 +333,10 @@ export function WebsiteLanding() {
         {/* COMMUNITY */}
         <View onLayout={onAnchor('community')} style={[{ backgroundColor: palette.backgroundElement }, styles.divider, { borderTopColor: palette.border }]}>
           <Center style={sectionPad}>
-            <SectionHead kicker="COOK TOGETHER" title="A community that cooks with you" />
-            <View style={cards3}>
+            <ScrollReveal>
+              <SectionHead kicker="COOK TOGETHER" title="A community that cooks with you" />
+            </ScrollReveal>
+            <ScrollReveal delay={80} style={cards3}>
               {COMMUNITY.map((c) => (
                 <View key={c.title} style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
                   <View style={[styles.valueIconWrap, { backgroundColor: palette.accentMuted }]}>
@@ -336,7 +346,7 @@ export function WebsiteLanding() {
                   <Text style={[styles.cardBody, { color: palette.textSecondary }]}>{c.body}</Text>
                 </View>
               ))}
-            </View>
+            </ScrollReveal>
             <View style={styles.ctaBelow}>
               <CTA label="Explore the community" onPress={() => router.push('/community')} />
             </View>
@@ -346,8 +356,10 @@ export function WebsiteLanding() {
         {/* WHO IT'S FOR */}
         <View style={[styles.divider, { borderTopColor: palette.border }]}>
           <Center style={sectionPad}>
-            <SectionHead kicker="WHO IT'S FOR" title="Built for the table you actually have" />
-            <View style={cards3}>
+            <ScrollReveal>
+              <SectionHead kicker="WHO IT'S FOR" title="Built for the table you actually have" />
+            </ScrollReveal>
+            <ScrollReveal delay={80} style={cards3}>
               {PERSONAS.map((p) => (
                 <View key={p.title} style={[styles.review, { backgroundColor: palette.card, borderColor: palette.border }]}>
                   <View style={[styles.reviewerIcon, { backgroundColor: palette.accentMuted, borderColor: palette.border }]}>
@@ -357,15 +369,17 @@ export function WebsiteLanding() {
                   <Text style={[styles.cardBody, { color: palette.textSecondary }]}>{p.body}</Text>
                 </View>
               ))}
-            </View>
+            </ScrollReveal>
           </Center>
         </View>
 
         {/* PRICING */}
         <View>
           <Center style={sectionPad}>
-            <SectionHead kicker="PRICING" title="Free to start. Fair pricing wherever you live." />
-            <View style={cards3}>
+            <ScrollReveal>
+              <SectionHead kicker="PRICING" title="Free to start. Fair pricing wherever you live." />
+            </ScrollReveal>
+            <ScrollReveal delay={80} style={cards3}>
               <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
                 <Text style={[styles.eyebrow, { color: palette.accent }]}>FREE</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 6 }}>
@@ -386,7 +400,7 @@ export function WebsiteLanding() {
                   adapts to where you live — see it on the next screen, before you pay anything.
                 </Text>
               </View>
-            </View>
+            </ScrollReveal>
             <View style={styles.ctaBelow}>
               <CTA label="See your price" onPress={() => router.push('/paywall')} />
             </View>
@@ -395,7 +409,7 @@ export function WebsiteLanding() {
 
         {/* CTA BAND */}
         <Center style={{ paddingVertical: 24, paddingHorizontal: pad }}>
-          <View style={[styles.band, { backgroundColor: palette.accent, paddingVertical: narrow ? 40 : 56, paddingHorizontal: pad }]}>
+          <ScrollReveal style={[styles.band, { backgroundColor: palette.accent, paddingVertical: narrow ? 40 : 56, paddingHorizontal: pad }]}>
             <Text style={[styles.bandTitle, { color: palette.onAccent, fontSize: narrow ? 24 : 30 }]}>Ready to feed everyone at your table?</Text>
             <Text style={[styles.bandSub, { color: palette.onAccent }]}>
               Set up your household once. Get a fresh, safe plan every week.
@@ -406,7 +420,7 @@ export function WebsiteLanding() {
             >
               <Text style={{ fontFamily: Type.bodySemibold, fontSize: 16, color: palette.accent }}>Build our plan — free</Text>
             </Pressable>
-          </View>
+          </ScrollReveal>
         </Center>
 
         {/* FOOTER */}

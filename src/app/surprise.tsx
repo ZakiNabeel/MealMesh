@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Art } from '@/components/art';
+import { AppHeader } from '@/components/AppHeader';
 import { FoodImage } from '@/components/FoodImage';
 import { Body, Button, Chip, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
@@ -134,15 +135,7 @@ export default function Surprise() {
   const limited = !isPro && usesLeft !== null && usesLeft <= 0;
 
   return (
-    <Screen art={Art.tacos}>
-      <View style={styles.top}>
-        <PressableScale onPress={() => router.back()} to={0.9}>
-          <View style={[styles.back, { borderColor: palette.border, backgroundColor: palette.card }]}>
-            <Text style={{ fontFamily: Type.bodySemibold, fontSize: 18, color: palette.text }}>‹</Text>
-          </View>
-        </PressableScale>
-      </View>
-
+    <Screen art={Art.tacos} header={<AppHeader active="surprise" />}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: Spacing.three, gap: Spacing.four }}>
         <Reveal>
           <Eyebrow>Surprise me ✨</Eyebrow>
@@ -321,8 +314,6 @@ function DishCard({ meal, region }: { meal: PlannedMeal; region: Region }) {
 }
 
 const styles = StyleSheet.create({
-  top: { paddingTop: Spacing.two },
-  back: { width: 40, height: 40, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   tabs: { flexDirection: 'row', padding: 4, borderRadius: Radius.pill, gap: 4 },
   tab: { height: 42, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center' },
   inputRow: {

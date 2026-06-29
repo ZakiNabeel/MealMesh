@@ -19,8 +19,8 @@ import type { MealSlot, Recipe, Region } from '@/types';
 /* ------------------------------------------------------------------ */
 
 interface DishStyle {
-  /** Whether this style suits the given protein. Defaults to true. */
-  suits?: (protein: string, isLegume: boolean) => boolean;
+  /** Whether this style suits the given protein + grain. Defaults to true. */
+  suits?: (protein: string, isLegume: boolean, grain: string) => boolean;
   name: (p: string, g: string, v: string) => string;
   /** Flavor items that carry allergen/diet tokens — SAFETY-FILTERED by caller. */
   aromatics: string[];
@@ -40,6 +40,10 @@ interface StepCtx {
 }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** True for rice-family grains — guards rice-named dishes (biryani, pulao) from
+ *  being built around an unrelated grain like oats, pasta or whole wheat bread. */
+const isRiceLike = (grain: string) => /\brice\b/i.test(grain);
 
 /* ------------------------------------------------------------------ */
 /* Local-language food names (DISPLAY ONLY)                           */
@@ -117,7 +121,7 @@ const SOUTH_ASIAN: DishStyle[] = [
   },
   {
     name: (p, g, _v) => `${cap(p)} biryani with ${g}`,
-    suits: (_p, isLegume) => !isLegume,
+    suits: (_p, isLegume, grain) => !isLegume && isRiceLike(grain),
     aromatics: ['onion', 'garlic', 'ginger', 'yogurt', 'green chili'],
     spices: ['biryani masala', 'cardamom', 'cinnamon', 'bay leaf', 'turmeric'],
     steps: ({ p, g, fat, aromatics, spices }) => [
@@ -158,7 +162,7 @@ const SOUTH_ASIAN: DishStyle[] = [
   },
   {
     name: (p, _g, _v) => `${cap(p)} pulao`,
-    suits: (_p, isLegume) => !isLegume,
+    suits: (_p, isLegume, grain) => !isLegume && isRiceLike(grain),
     aromatics: ['onion', 'garlic', 'ginger'],
     spices: ['cumin', 'cardamom', 'cinnamon', 'cloves', 'bay leaf'],
     steps: ({ p, g, v, fat, aromatics, spices }) => [
@@ -176,7 +180,7 @@ const SOUTH_ASIAN: DishStyle[] = [
 
 const MIDDLE_EASTERN: DishStyle[] = [
   {
-    name: (p, _g, _v) => `Spiced ${p} with herbed ${'grain'}`,
+    name: (p, g, _v) => `Spiced ${p} with herbed ${g}`,
     aromatics: ['onion', 'garlic'],
     spices: ['cumin', 'coriander', 'cinnamon', 'sumac'],
     steps: ({ p, g, v, fat, aromatics, spices }) => [
@@ -662,8 +666,9 @@ export function buildRegionalMeal(input: RegionalMealInput): RegionalMeal {
         ? SUPPER_BY_REGION[region] ?? GLOBAL_SUPPER
         : STYLES_BY_REGION[region] ?? GLOBAL;
 
-  // Prefer a style that suits this protein (e.g. legume-only dishes for lentils).
-  const suited = styles.filter((s) => (s.suits ? s.suits(protein, isLegume) : true));
+  // Prefer a style that suits this protein + grain (e.g. legume-only dishes for
+  // lentils; rice-only dishes for biryani/pulao, so "oats" never builds a biryani name).
+  const suited = styles.filter((s) => (s.suits ? s.suits(protein, isLegume, grain) : true));
   const pool = suited.length ? suited : styles;
   const style = pool[seed % pool.length];
 

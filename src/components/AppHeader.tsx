@@ -25,13 +25,20 @@ import type { Profile } from '@/types';
 
 const LOGO = require('../../assets/logo.svg');
 
-export type HeaderTab = 'home' | 'plan' | 'community' | 'leaderboard';
+export type HeaderTab = 'home' | 'plan' | 'community' | 'leaderboard' | 'surprise';
 
-const LINKS: { key: HeaderTab; label: string; path: '/home' | '/plan' | '/community' | '/leaderboard' }[] = [
+const LINKS: {
+  key: HeaderTab;
+  label: string;
+  /** Shorter glyph shown on mobile, where width is tight. Falls back to `label`. */
+  mobileLabel?: string;
+  path: '/home' | '/plan' | '/community' | '/leaderboard' | '/surprise';
+}[] = [
   { key: 'home', label: 'Home', path: '/home' },
   { key: 'plan', label: 'Plan', path: '/plan' },
   { key: 'community', label: 'Community', path: '/community' },
   { key: 'leaderboard', label: 'Leaderboard', path: '/leaderboard' },
+  { key: 'surprise', label: '✨ Surprise me', mobileLabel: '✨', path: '/surprise' },
 ];
 
 export function AppHeader({ active }: { active?: HeaderTab }) {
@@ -79,7 +86,7 @@ export function AppHeader({ active }: { active?: HeaderTab }) {
                       color: on ? palette.accent : palette.textSecondary,
                     }}
                   >
-                    {l.label}
+                    {isDesktop ? l.label : l.mobileLabel ?? l.label}
                   </Text>
                 </View>
               </PressableScale>
