@@ -16,17 +16,14 @@ import { ingredientCostUsd, weeklyLocal } from '@/lib/budget';
 import { analyzeIngredient, deriveAllowList, unionHardExclusions, validatePlan } from '@/lib/constraints';
 import { buildRegionalDessert, buildRegionalMeal } from '@/lib/cuisine';
 import { normalizeCuisineMix, pickCuisine, regionsInMix } from '@/lib/cuisineMix';
-import { MEAL_SLOTS, type ConstraintKey, type DayOfWeek, type GroceryItem, type Household, type MealPlan, type MealSlot, type PlannedMeal, type Token } from '@/types';
+import { consolidateGrocery } from '@/lib/grocery';
+import { MEAL_SLOTS, type ConstraintKey, type DayOfWeek, type Household, type MealPlan, type MealSlot, type PlannedMeal, type Token } from '@/types';
 
 const DAYS: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 // Whole, plain fruit — no allergen/diet tokens of its own, safe for every
 // household, so dessert never needs the protein-style safety dance.
 const FRUITS = ['banana', 'mango', 'apple', 'mixed berries', 'orange', 'pear'];
-
-function cap(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
 
 function pick(list: string[], i: number, fallback: string): string {
   return list.length ? list[i % list.length] : fallback;
@@ -144,7 +141,7 @@ export function generateMockPlan(household: Household, seed = 0): MealPlan {
     days = buildDays(affordable.length ? affordable : cheapestFirst.slice(0, Math.max(1, Math.ceil(cheapestFirst.length / 2))));
   }
 
-  const grocery = buildGrocery(days, { proteinPool: safeProteins, grains, veg, oil, legumes: allow.legumes });
+  const grocery = consolidateGrocery(days, { proteinPool: safeProteins, grains, veg, oil, legumes: allow.legumes });
 
   // Defense in depth: never hand back a meal that fails the safety pass. The
   // validator filters whole meal objects, so cuisine/recipe survive intact.
@@ -171,48 +168,3 @@ function dedupe(items: string[]): string[] {
   return out;
 }
 
-/** Trim a trailing ".0" off a one-decimal amount, e.g. 1.0 -> "1", 1.5 -> "1.5". */
-const trimDecimal = (n: number) => (n % 1 === 0 ? String(n) : n.toFixed(1));
-
-/** A real shopping amount for the whole week, scaled by how many meals call
- * for the ingredient — never an occurrence count (the bug this replaces). */
-function quantityFor(category: string, name: string, timesUsed: number): string {
-  if (name.includes('egg')) {
-    const count = timesUsed * 2;
-    return count >= 12 ? `${trimDecimal(count / 12)} dozen` : `${count} pcs`;
-  }
-  if (category === 'Oils & pantry') {
-    const ml = timesUsed * 30;
-    return ml >= 1000 ? `${trimDecimal(ml / 1000)} L` : `${ml} ml`;
-  }
-  const gramsPerUse: Record<string, number> = { Protein: 300, Legumes: 150, Grains: 200 };
-  const perUse = gramsPerUse[category];
-  if (perUse) {
-    const grams = timesUsed * perUse;
-    return grams >= 1000 ? `${trimDecimal(grams / 1000)} kg` : `${grams} g`;
-  }
-  return `${timesUsed} pcs`; // produce — countable items
-}
-
-function buildGrocery(
-  days: PlannedMeal[],
-  groups: { proteinPool: string[]; grains: string[]; veg: string[]; oil: string[]; legumes: string[] },
-): GroceryItem[] {
-  const counts = new Map<string, number>();
-  for (const d of days) for (const ing of d.ingredients) counts.set(ing, (counts.get(ing) ?? 0) + 1);
-
-  const categoryOf = (name: string): string => {
-    if (groups.legumes.includes(name)) return 'Legumes';
-    if (groups.proteinPool.includes(name)) return 'Protein';
-    if (groups.grains.includes(name)) return 'Grains';
-    if (groups.oil.includes(name)) return 'Oils & pantry';
-    return 'Produce';
-  };
-
-  return [...counts.entries()]
-    .map(([name, n]) => {
-      const category = categoryOf(name);
-      return { name: cap(name), category, quantity: quantityFor(category, name, n) };
-    })
-    .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
-}

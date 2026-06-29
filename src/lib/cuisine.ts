@@ -1008,7 +1008,7 @@ const DRINK_BY_REGION: Partial<Record<Region, DrinkStyle[]>> = {
   middle_eastern: MIDDLE_EASTERN_DRINKS,
 };
 
-const CUISINE_LABEL: Record<Region, string> = {
+export const CUISINE_LABEL: Record<Region, string> = {
   south_asian: 'South Asian',
   middle_eastern: 'Middle Eastern',
   mediterranean: 'Mediterranean',
