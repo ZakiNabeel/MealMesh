@@ -223,3 +223,24 @@ export async function loadPlan(householdId: string, weekStart: string): Promise<
   const row = data as PlanRow;
   return { days: row.plan_json, grocery: row.grocery_json };
 }
+
+/**
+ * Load the household's most recently generated plan, whatever week it was
+ * made for — NOT pinned to today's calendar week. A plan should stay active
+ * across a real-world Monday rollover (the user is still finishing it) and
+ * only change when they explicitly regenerate, so callers use this instead
+ * of `loadPlan(id, currentWeekStart())` for the normal "show my plan" path.
+ */
+export async function loadLatestPlan(householdId: string): Promise<{ weekStart: string; plan: MealPlan } | null> {
+  if (householdId === 'draft') return null;
+  const { data } = await supabase
+    .from('meal_plans')
+    .select('week_start, plan_json, grocery_json')
+    .eq('household_id', householdId)
+    .order('week_start', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  const row = data as PlanRow & { week_start: string };
+  return { weekStart: row.week_start, plan: { days: row.plan_json, grocery: row.grocery_json } };
+}

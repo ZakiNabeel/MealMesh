@@ -26,8 +26,11 @@ const REGION_FOOD_INDEX: Record<Region, number> = {
   middle_eastern: 0.6,
   mediterranean: 0.8,
   east_asian: 0.6,
+  chinese: 0.5,
   latin: 0.5,
   african: 0.42,
+  american: 1.0,
+  european: 0.95,
   none: 1.0,
 };
 

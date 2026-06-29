@@ -4,12 +4,14 @@ import { ActivityIndicator, Image, Linking, ScrollView, StyleSheet, Text, TextIn
 
 import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
+import { CommunityCard, LeaderboardCard } from '@/components/DashboardCards';
 import { FoodImage } from '@/components/FoodImage';
 import { SheetModal } from '@/components/SheetModal';
 import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small, useIsDesktop } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { weeklyLocal } from '@/lib/budget';
+import { getFeed } from '@/lib/community';
 import { localizeName, youtubeSearchUrl } from '@/lib/cuisine';
 import { getDraftHousehold, setDraftHousehold } from '@/lib/draft';
 import { computeStreak, summarizeWeek, type WeekSummary } from '@/lib/gamification';
@@ -17,11 +19,11 @@ import { formatMoney } from '@/lib/geo';
 import { generatePlan } from '@/lib/generatePlan';
 import { buildGroceryPdf, groceryPdfFileName, shareOrDownloadGroceryPdf } from '@/lib/groceryPdf';
 import { pickAndUploadImage } from '@/lib/imageUpload';
-import { getAllLogs, logMeal, unlogMeal } from '@/lib/social';
-import { currentWeekStart, loadHousehold, loadPlan, localDateKey, savePlan, saveHousehold } from '@/lib/store';
+import { getAllLogs, getMyRank, logMeal, unlogMeal } from '@/lib/social';
+import { currentWeekStart, loadHousehold, loadLatestPlan, localDateKey, savePlan, saveHousehold } from '@/lib/store';
 import { bumpGenerations, FREE_WEEKLY_PLANS, generationsThisWeek, useSubscription } from '@/lib/subscription';
 import { usePalette } from '@/theme/use-theme';
-import { MEAL_SLOTS, type DayOfWeek, type GroceryItem, type Household, type MealLog, type MealPlan, type MealSlot, type PlannedMeal, type Region } from '@/types';
+import { MEAL_SLOTS, type DayOfWeek, type GroceryItem, type Household, type MealLog, type MealPlan, type MealSlot, type PlannedMeal, type Post, type Region } from '@/types';
 
 /** Key a cooking log by its plan coordinates (day + slot within the week). */
 const cookKey = (day: DayOfWeek, slot: MealSlot) => `${day}|${slot}`;
@@ -105,7 +107,21 @@ export default function Plan() {
   // the cross-week streak. Only signed-in users can log — guests see no checks.
   const [logs, setLogs] = useState<MealLog[]>([]);
   const [cookTarget, setCookTarget] = useState<PlannedMeal | null>(null);
-  const week = currentWeekStart();
+
+  // Desktop right rail — standing + a peek at the community, so the wide
+  // layout reads as a dashboard rather than two empty columns.
+  const [rank, setRank] = useState<{ rank: number; totalPoints: number } | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
+  useEffect(() => {
+    void getFeed('new').then((p) => setPosts(p.slice(0, 3)));
+    if (session) void getMyRank().then(setRank);
+  }, [session]);
+  // The week the ACTIVE plan was generated for — not necessarily today's real
+  // calendar week. A plan stays active across a Monday rollover until the
+  // user explicitly regenerates, so cooking logs must key off this, not
+  // `currentWeekStart()` (see the plan-loading effect below).
+  const [activeWeekStart, setActiveWeekStart] = useState<string | null>(null);
+  const week = activeWeekStart ?? currentWeekStart();
 
   const refreshLogs = useCallback(async () => {
     if (!session) {
@@ -152,6 +168,21 @@ export default function Plan() {
     [week, refreshLogs],
   );
 
+  // Only path that ever produces a NEW plan — the day-rollover bug this fixed
+  // means nothing else may call setSeed.
+  const regenerate = useCallback(async () => {
+    if (!isPro) {
+      const used = await generationsThisWeek();
+      if (used >= FREE_WEEKLY_PLANS - 1) {
+        router.push('/paywall');
+        return;
+      }
+      await bumpGenerations();
+    }
+    setPlan(null);
+    setSeed((s) => s + 1);
+  }, [isPro, router]);
+
   // Resolve the working household: persist a guest's draft once signed in, or
   // load the saved one on return. Runs before generation so we never call the
   // AI twice (once as a draft, once after persisting).
@@ -179,24 +210,34 @@ export default function Plan() {
     };
   }, [session, authLoading]);
 
-  // Generate (or load a saved) plan once the household is resolved.
+  // Generate (or load a saved) plan once the household is resolved. On
+  // first view this loads whichever plan was generated LAST, regardless of
+  // today's real calendar week — a plan must persist across a Monday
+  // rollover (the user is still finishing last week's meals) and only
+  // change when they explicitly regenerate (seed > 0), never automatically.
   useEffect(() => {
     if (resolving || !household) return;
     let cancelled = false;
     setLoading(true);
     (async () => {
-      const week = currentWeekStart();
       const persisted = Boolean(session) && household.id !== 'draft';
       let result: MealPlan | null = null;
-      // On first view, prefer the saved plan (no AI call / no cost). A
-      // regenerate (seed > 0) always asks for a fresh one and overwrites it.
-      if (persisted && seed === 0) result = await loadPlan(household.id, week);
+      let weekStart = currentWeekStart();
+      if (persisted && seed === 0) {
+        const latest = await loadLatestPlan(household.id);
+        if (latest) {
+          result = latest.plan;
+          weekStart = latest.weekStart;
+        }
+      }
       if (!result) {
         result = await generatePlan(household, seed, Boolean(session));
-        if (persisted) await savePlan(household.id, week, result);
+        weekStart = currentWeekStart();
+        if (persisted) await savePlan(household.id, weekStart, result);
       }
       if (!cancelled) {
         setPlan(result);
+        setActiveWeekStart(weekStart);
         setLoading(false);
       }
     })();
@@ -235,7 +276,7 @@ export default function Plan() {
   const centerCol = isDesktop ? styles.centerCol : undefined;
 
   return (
-    <Screen art={Art.ramen} wide header={<AppHeader active="plan" />} style={isDesktop ? { maxWidth: 1180 } : undefined}>
+    <Screen art={Art.ramen} wide header={<AppHeader active="plan" />} style={isDesktop ? { maxWidth: 1360 } : undefined}>
       {/* header + tabs — kept to a comfortable width even on a wide desktop */}
       <View style={centerCol}>
         <View style={styles.header}>
@@ -282,26 +323,39 @@ export default function Plan() {
               plan={plan}
               cooked={cooked}
               canCook={Boolean(session)}
+              centered={isDesktop}
             />
-            <View style={centerCol}>
-              <PressableScale onPress={() => router.push('/pantry')} to={0.98}>
-                <View style={[styles.cookFromHaveBanner, { borderColor: palette.accent, backgroundColor: palette.accentMuted }]}>
-                  <Text style={{ fontSize: 22 }}>🥘</Text>
-                  <View style={{ flex: 1 }}>
-                    <Body style={{ fontFamily: Type.bodySemibold, color: palette.accent }}>Cook with what I have</Body>
-                    <Small color={palette.textSecondary}>Use up ingredients already in your kitchen</Small>
+            {!isDesktop && (
+              <View style={centerCol}>
+                <PressableScale onPress={() => router.push('/pantry')} to={0.98}>
+                  <View style={[styles.cookFromHaveBanner, { borderColor: palette.accent, backgroundColor: palette.accentMuted }]}>
+                    <Text style={{ fontSize: 22 }}>🥘</Text>
+                    <View style={{ flex: 1 }}>
+                      <Body style={{ fontFamily: Type.bodySemibold, color: palette.accent }}>Cook with what I have</Body>
+                      <Small color={palette.textSecondary}>Use up ingredients already in your kitchen</Small>
+                    </View>
+                    <Text style={{ fontSize: 18, color: palette.accent }}>›</Text>
                   </View>
-                  <Text style={{ fontSize: 18, color: palette.accent }}>›</Text>
-                </View>
-              </PressableScale>
-            </View>
+                </PressableScale>
+              </View>
+            )}
             {isDesktop ? (
               <View style={styles.dashboardRow}>
                 <View style={styles.rail}>
                   {session && <CookProgress summary={weekSummary} streak={streak.current} />}
                   <PlanSummaryRail plan={plan} household={household} />
                 </View>
-                <View style={{ flex: 1, minWidth: 0 }}>
+                <View style={{ flex: 1, minWidth: 0, gap: Spacing.three }}>
+                  <PressableScale onPress={() => router.push('/pantry')} to={0.98}>
+                    <View style={[styles.cookFromHaveBanner, { borderColor: palette.accent, backgroundColor: palette.accentMuted }]}>
+                      <Text style={{ fontSize: 22 }}>🥘</Text>
+                      <View style={{ flex: 1 }}>
+                        <Body style={{ fontFamily: Type.bodySemibold, color: palette.accent }}>Cook with what I have</Body>
+                        <Small color={palette.textSecondary}>Use up ingredients already in your kitchen</Small>
+                      </View>
+                      <Text style={{ fontSize: 18, color: palette.accent }}>›</Text>
+                    </View>
+                  </PressableScale>
                   <SelectedDayMeals
                     day={dayOrder[dayIdx]}
                     date={displayDate(dayIdx)}
@@ -313,6 +367,15 @@ export default function Plan() {
                     canCook={Boolean(session)}
                     onCook={setCookTarget}
                     onUncook={removeCooked}
+                  />
+                  <Button title="✨ Regenerate this week" variant="primary" disabled={loading} onPress={regenerate} />
+                </View>
+                <View style={styles.rightRail}>
+                  <LeaderboardCard rank={rank} onOpen={() => router.push('/leaderboard')} />
+                  <CommunityCard
+                    posts={posts}
+                    onOpenPost={(id) => router.push({ pathname: '/post/[id]', params: { id } })}
+                    onOpenAll={() => router.push('/community')}
                   />
                 </View>
               </View>
@@ -360,28 +423,14 @@ export default function Plan() {
           </View>
         )}
 
-        <View style={isDesktop && tab === 'plan' ? styles.footerRow : undefined}>
-          {isDesktop && tab === 'plan' && <View style={styles.rail} />}
-          <View style={[styles.footer, centerCol, isDesktop && tab === 'plan' && { flex: 1, marginHorizontal: 0 }]}>
-            <Button
-              title="Regenerate this week"
-              variant="secondary"
-              disabled={loading}
-              onPress={async () => {
-                if (!isPro) {
-                  const used = await generationsThisWeek();
-                  if (used >= FREE_WEEKLY_PLANS - 1) {
-                    router.push('/paywall');
-                    return;
-                  }
-                  await bumpGenerations();
-                }
-                setPlan(null);
-                setSeed((s) => s + 1);
-              }}
-            />
+        {/* Desktop's plan tab already has its own prominent regenerate button
+            inline with the meals column above — this footer covers mobile's
+            plan tab and the grocery tab on every width. */}
+        {!(isDesktop && tab === 'plan') && (
+          <View style={[styles.footer, centerCol]}>
+            <Button title="✨ Regenerate this week" variant="primary" disabled={loading} onPress={regenerate} />
           </View>
-        </View>
+        )}
       </ScrollView>
 
       <RecipeModal meal={selected} region={household.region} onClose={() => setSelected(null)} />
@@ -537,6 +586,7 @@ function DayStrip({
   plan,
   cooked,
   canCook,
+  centered,
 }: {
   order: DayOfWeek[];
   selectedIdx: number;
@@ -544,10 +594,18 @@ function DayStrip({
   plan: MealPlan;
   cooked: Set<string>;
   canCook: boolean;
+  /** Desktop: shrink-to-fit and center the strip instead of stretching from
+   *  the left edge — all 7 pills fit comfortably at desktop widths. */
+  centered?: boolean;
 }) {
   const palette = usePalette();
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayStrip}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={centered ? styles.dayStripCentered : undefined}
+      contentContainerStyle={styles.dayStrip}
+    >
       {order.map((day, i) => {
         const date = displayDate(i);
         const meals = plan.days.filter((m) => m.dayOfWeek === day);
@@ -1216,8 +1274,10 @@ const styles = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.three },
   centerCol: { width: '100%', maxWidth: 560, alignSelf: 'center' },
   dashboardRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.four },
-  rail: { width: 300, flexShrink: 0 },
+  rail: { width: 280, flexShrink: 0, gap: Spacing.three },
+  rightRail: { width: 280, flexShrink: 0, gap: Spacing.four },
   dayStrip: { flexDirection: 'row', gap: Spacing.two, paddingVertical: 4, paddingRight: Spacing.two },
+  dayStripCentered: { alignSelf: 'center', flexGrow: 0 },
   dayPill: { width: 62, minHeight: 76, paddingVertical: Spacing.two, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: 4 },
   dayDots: { flexDirection: 'row', gap: 3, marginTop: 2 },
   dayDot: { width: 5, height: 5, borderRadius: 5 },
@@ -1244,8 +1304,7 @@ const styles = StyleSheet.create({
   scopeChip: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: Radius.pill, borderWidth: 1 },
   exportRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: Spacing.three, paddingHorizontal: Spacing.three, borderRadius: Radius.md, borderWidth: 1 },
   check: { width: 24, height: 24, borderRadius: 8, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  footer: { paddingVertical: Spacing.three },
-  footerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.four },
+  footer: { paddingTop: Spacing.two, paddingBottom: Spacing.three },
   cookFromHaveBanner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.md, borderWidth: 1.5 },
   budgetIcon: { width: 44, height: 44, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center' },
   budgetTag: { alignSelf: 'flex-start', paddingHorizontal: Spacing.three, paddingVertical: 6, borderRadius: Radius.pill },

@@ -5,24 +5,30 @@
  * a safe, region-appropriate spread from the SAME constraint engine the weekly
  * planner uses (so it can never suggest a hard-excluded ingredient).
  *
- * Gating: free accounts get one surprise per week; Pro is unlimited.
+ * Gating: a Pro-only feature — Free accounts see a clear upsell and cannot
+ * generate. Guest mode additionally pulls the signed-in user's own saved
+ * household constraints as a safety floor (since guests eat at the same
+ * table), then asks whether the guest personally needs anything extra.
  */
 
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Art } from '@/components/art';
+import { ArticlesRail } from '@/components/ArticlesRail';
 import { AppHeader } from '@/components/AppHeader';
+import { FoodCarouselRail } from '@/components/FoodCarouselRail';
 import { FoodImage } from '@/components/FoodImage';
-import { Body, Button, Chip, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
+import { Body, Button, Chip, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small, useIsDesktop } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { cookFrom, type Suggestion } from '@/lib/cookFrom';
 import { localizeName, youtubeSearchUrl } from '@/lib/cuisine';
 import { DIET_DEFINITIONS, REGIONS } from '@/lib/dietLibrary';
 import { getDraftHousehold } from '@/lib/draft';
 import { generateMockPlan } from '@/lib/mockPlan';
-import { FREE_WEEKLY_SURPRISES, bumpSurprises, surprisesThisWeek, useSubscription } from '@/lib/subscription';
+import { loadHousehold } from '@/lib/store';
+import { useSubscription } from '@/lib/subscription';
 import { usePalette } from '@/theme/use-theme';
 import type { ConstraintKey, Household, MemberConstraint, PlannedMeal, Region } from '@/types';
 
@@ -35,26 +41,57 @@ const COMMON_DIETS: ConstraintKey[] = ['vegetarian', 'vegan', 'halal', 'kosher',
 
 type Mode = 'me' | 'guests';
 
+/** Flatten + dedupe a household's members into one safety-floor constraint
+ * set (by key, keeping 'hard' over 'soft' if members disagree). */
+function baselineConstraints(h: Household | null): MemberConstraint[] {
+  if (!h) return [];
+  const byKey = new Map<ConstraintKey, MemberConstraint>();
+  for (const m of h.members) {
+    for (const c of m.constraints) {
+      const existing = byKey.get(c.key);
+      if (!existing || (existing.severity === 'soft' && c.severity === 'hard')) byKey.set(c.key, c);
+    }
+  }
+  return [...byKey.values()];
+}
+
 export default function Surprise() {
   const router = useRouter();
   const palette = usePalette();
-  const { isPro } = useSubscription();
+  const isDesktop = useIsDesktop();
+  const { isPro, loading: subLoading } = useSubscription();
   const draft = getDraftHousehold();
+  // Reached via two separate header nav entries — "Guest mode" and "Surprise
+  // me" — that open this same screen pre-set to a different starting mode.
+  const params = useLocalSearchParams<{ mode?: string }>();
 
-  const [mode, setMode] = useState<Mode>('guests');
+  const [mode, setMode] = useState<Mode>(params.mode === 'me' ? 'me' : 'guests');
   const [region, setRegion] = useState<Region>(draft?.region ?? 'none');
   const [diets, setDiets] = useState<Set<ConstraintKey>>(new Set());
   const [items, setItems] = useState<string[]>([]);
   const [text, setText] = useState('');
 
+  // The signed-in user's own saved household — guest mode treats its hard
+  // constraints as a safety floor (the kitchen is still subject to them).
+  const [household, setHousehold] = useState<Household | null>(null);
+  // null = not yet answered; only meaningful in 'guests' mode.
+  const [guestNeeds, setGuestNeeds] = useState<boolean | null>(null);
+
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<PlannedMeal[] | null>(null);
   const [excluded, setExcluded] = useState<{ name: string; reason: string }[]>([]);
-  const [usesLeft, setUsesLeft] = useState<number | null>(null);
 
   useEffect(() => {
-    void surprisesThisWeek().then((n) => setUsesLeft(Math.max(0, FREE_WEEKLY_SURPRISES - n)));
+    void loadHousehold().then(setHousehold);
   }, []);
+
+  const baseline = baselineConstraints(household);
+
+  const switchMode = (m: Mode) => {
+    setMode(m);
+    setGuestNeeds(null);
+    setDiets(new Set());
+  };
 
   const add = (raw: string) => {
     const v = raw.trim().toLowerCase();
@@ -71,45 +108,43 @@ export default function Surprise() {
     });
 
   const guestHousehold = (): Household => {
-    const constraints: MemberConstraint[] = [...diets].map((key) => ({
-      key,
-      category: DIET_DEFINITIONS[key].category,
-      severity: DIET_DEFINITIONS[key].defaultSeverity,
-    }));
+    const extra: MemberConstraint[] =
+      mode === 'guests' && guestNeeds === true
+        ? [...diets].map((key) => ({ key, category: DIET_DEFINITIONS[key].category, severity: DIET_DEFINITIONS[key].defaultSeverity }))
+        : [];
+    const merged = new Map<ConstraintKey, MemberConstraint>();
+    for (const c of baseline) merged.set(c.key, c);
+    for (const c of extra) merged.set(c.key, c);
     return {
       id: 'surprise',
       name: mode === 'guests' ? 'Guests' : 'You',
       region,
-      members: [{ id: 'guest', name: 'Guest', ageBand: 'adult', calorieTarget: null, constraints }],
+      members: [{ id: 'guest', name: 'Guest', ageBand: 'adult', calorieTarget: null, constraints: [...merged.values()] }],
     };
   };
 
   const generate = async () => {
-    // Gate: free users get one per week; Pro is unlimited.
     if (!isPro) {
-      const used = await surprisesThisWeek();
-      if (used >= FREE_WEEKLY_SURPRISES) {
-        router.push('/paywall');
-        return;
-      }
+      router.push('/paywall');
+      return;
     }
     setBusy(true);
-    const household = guestHousehold();
+    const built = guestHousehold();
     const count = mode === 'guests' ? 5 : 3;
     let meals: PlannedMeal[] = [];
     let skipped: { name: string; reason: string }[] = [];
 
     if (items.length > 0) {
       // Build around what they actually have on hand.
-      const res = cookFrom(items, household);
-      meals = res.suggestions.map((s) => s.meal).slice(0, count);
+      const res = cookFrom(items, built);
+      meals = res.suggestions.map((s: Suggestion) => s.meal).slice(0, count);
       skipped = res.excluded;
     }
     if (meals.length < count) {
       // Top up (or fully fill, when no ingredients were given) with a fresh
       // region-appropriate spread from the planner engine. Lead with the
       // substantial meals — a guest spread shouldn't open with a breakfast.
-      const plan = generateMockPlan(household, Date.now() % 1000);
+      const plan = generateMockPlan(built, Date.now() % 1000);
       const priority: PlannedMeal['slot'][] = mode === 'guests' ? ['dinner', 'lunch', 'supper'] : ['dinner', 'lunch', 'supper', 'breakfast'];
       const ranked = plan.days
         .filter((m) => priority.includes(m.slot))
@@ -123,155 +158,198 @@ export default function Surprise() {
       }
     }
 
-    if (!isPro) {
-      const n = await bumpSurprises();
-      setUsesLeft(Math.max(0, FREE_WEEKLY_SURPRISES - n));
-    }
     setExcluded(skipped);
     setResult(meals);
     setBusy(false);
   };
 
-  const limited = !isPro && usesLeft !== null && usesLeft <= 0;
+  const locked = !subLoading && !isPro;
 
-  return (
-    <Screen art={Art.tacos} header={<AppHeader active="surprise" />}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: Spacing.three, gap: Spacing.four }}>
-        <Reveal>
-          <Eyebrow>Surprise me ✨</Eyebrow>
-          <Heading style={{ marginTop: 4 }}>{mode === 'guests' ? 'Guests are here — what do we make?' : 'Give me an idea'}</Heading>
-          <Body color={palette.textSecondary} style={{ marginTop: Spacing.two }}>
-            Tell us a little and we&apos;ll plate up a quick, safe spread — built on the same engine as your weekly plan.
-          </Body>
-        </Reveal>
+  const main = (
+    <View style={{ gap: Spacing.four }}>
+      <Reveal>
+        <Eyebrow>Surprise me ✨</Eyebrow>
+        <Heading style={{ marginTop: 4 }}>{mode === 'guests' ? 'Guests are here — what do we make?' : 'Give me an idea'}</Heading>
+        <Body color={palette.textSecondary} style={{ marginTop: Spacing.two }}>
+          Tell us a little and we&apos;ll plate up a quick, safe spread — built on the same engine as your weekly plan.
+        </Body>
+      </Reveal>
 
-        {/* mode */}
-        <Reveal delay={60} style={[styles.tabs, { backgroundColor: palette.backgroundElement }]}>
-          {(
-            [
-              ['guests', '🎉 Guests are here'],
-              ['me', '🍽️ Just me'],
-            ] as [Mode, string][]
-          ).map(([k, label]) => {
-            const active = mode === k;
-            return (
-              <PressableScale key={k} onPress={() => setMode(k)} to={0.97} style={{ flex: 1 }}>
-                <View style={[styles.tab, active && { backgroundColor: palette.card }]}>
-                  <Text style={{ fontFamily: active ? Type.bodySemibold : Type.bodyMedium, fontSize: 14, color: active ? palette.accent : palette.textSecondary }}>{label}</Text>
-                </View>
-              </PressableScale>
-            );
-          })}
-        </Reveal>
-
-        {/* cuisine */}
-        <Reveal delay={100} style={{ gap: Spacing.two }}>
-          <Small color={palette.textSecondary}>What are we in the mood for?</Small>
-          <View style={styles.wrap}>
-            {Object.values(REGIONS).map((r) => (
-              <Chip key={r.region} label={r.label} selected={region === r.region} onPress={() => setRegion(r.region)} />
-            ))}
-          </View>
-        </Reveal>
-
-        {/* dietary */}
-        <Reveal delay={140} style={{ gap: Spacing.two }}>
-          <Small color={palette.textSecondary}>Anyone at the table need this avoided?</Small>
-          <View style={styles.wrap}>
-            {COMMON_DIETS.map((k) => (
-              <Chip key={k} label={DIET_DEFINITIONS[k].label} tone="blue" selected={diets.has(k)} onPress={() => toggleDiet(k)} />
-            ))}
-          </View>
-        </Reveal>
-
-        {/* ingredients (optional) */}
-        <Reveal delay={180} style={{ gap: Spacing.two }}>
-          <Small color={palette.textSecondary}>Got ingredients to use up? (optional)</Small>
-          <View style={[styles.inputRow, { backgroundColor: palette.card, borderColor: palette.border }]}>
-            <TextInput
-              value={text}
-              onChangeText={setText}
-              onSubmitEditing={() => add(text)}
-              placeholder="Add an ingredient…"
-              placeholderTextColor={palette.textSecondary}
-              autoCapitalize="none"
-              returnKeyType="done"
-              style={{ flex: 1, fontFamily: Type.body, fontSize: 16, color: palette.text }}
-            />
-            <PressableScale onPress={() => add(text)} to={0.9}>
-              <View style={[styles.addBtn, { backgroundColor: palette.accent }]}>
-                <Text style={{ color: palette.onAccent, fontSize: 20, fontFamily: Type.bodySemibold }}>+</Text>
+      {/* mode */}
+      <Reveal delay={60} style={[styles.tabs, { backgroundColor: palette.backgroundElement }]}>
+        {(
+          [
+            ['guests', '🎉 Guests are here'],
+            ['me', '🍽️ Just me'],
+          ] as [Mode, string][]
+        ).map(([k, label]) => {
+          const active = mode === k;
+          return (
+            <PressableScale key={k} onPress={() => switchMode(k)} to={0.97} style={{ flex: 1 }}>
+              <View style={[styles.tab, active && { backgroundColor: palette.card }]}>
+                <Text style={{ fontFamily: active ? Type.bodySemibold : Type.bodyMedium, fontSize: 14, color: active ? palette.accent : palette.textSecondary }}>{label}</Text>
               </View>
             </PressableScale>
-          </View>
+          );
+        })}
+      </Reveal>
+
+      {/* cuisine */}
+      <Reveal delay={100} style={{ gap: Spacing.two }}>
+        <Small color={palette.textSecondary}>What are we in the mood for?</Small>
+        <View style={styles.wrap}>
+          {Object.values(REGIONS).map((r) => (
+            <Chip key={r.region} label={r.label} selected={region === r.region} onPress={() => setRegion(r.region)} />
+          ))}
+        </View>
+      </Reveal>
+
+      {/* household safety floor */}
+      {baseline.length > 0 && (
+        <Reveal delay={130}>
+          <GlassCard style={{ gap: 4, backgroundColor: palette.backgroundElement }}>
+            <Small style={{ fontFamily: Type.bodySemibold }}>Using your household&apos;s saved dietary needs</Small>
+            <Small color={palette.textSecondary}>
+              {baseline.map((c) => DIET_DEFINITIONS[c.key].label).join(', ')} — applied automatically so the kitchen stays safe.
+            </Small>
+          </GlassCard>
+        </Reveal>
+      )}
+
+      {/* dietary — guest mode only; "just me" already inherits the household above */}
+      {mode === 'guests' && (
+        <Reveal delay={140} style={{ gap: Spacing.two }}>
+          <Small color={palette.textSecondary}>Does your guest have any dietary needs we should know about?</Small>
           <View style={styles.wrap}>
-            {QUICK.filter((q) => !items.includes(q)).map((q) => (
-              <PressableScale key={q} onPress={() => add(q)} to={0.94}>
-                <View style={[styles.quick, { borderColor: palette.border, backgroundColor: palette.backgroundElement }]}>
-                  <Text style={{ fontFamily: Type.bodyMedium, fontSize: 13, color: palette.textSecondary }}>+ {localizeName(q, region)}</Text>
-                </View>
-              </PressableScale>
-            ))}
+            <Chip label="No, nothing extra" selected={guestNeeds === false} onPress={() => setGuestNeeds(false)} />
+            <Chip label="Yes, let me add some" selected={guestNeeds === true} onPress={() => setGuestNeeds(true)} />
           </View>
-          {items.length > 0 && (
+          {guestNeeds === true && (
             <View style={styles.wrap}>
-              {items.map((it) => (
-                <PressableScale key={it} onPress={() => remove(it)} to={0.94}>
-                  <View style={[styles.chip, { backgroundColor: palette.accentMuted, borderColor: palette.accent }]}>
-                    <Text style={{ fontFamily: Type.bodyMedium, fontSize: 14, color: palette.accent }}>{localizeName(it, region)}  ✕</Text>
-                  </View>
-                </PressableScale>
+              {COMMON_DIETS.map((k) => (
+                <Chip key={k} label={DIET_DEFINITIONS[k].label} tone="blue" selected={diets.has(k)} onPress={() => toggleDiet(k)} />
               ))}
             </View>
           )}
         </Reveal>
+      )}
 
-        {/* generate */}
-        <Reveal delay={220} style={{ gap: Spacing.two }}>
-          <Button
-            title={busy ? 'Plating up…' : limited ? '✦ Out of free surprises — Go Pro' : mode === 'guests' ? '🎉 Surprise us!' : '✨ Surprise me!'}
-            disabled={busy}
-            onPress={generate}
+      {/* ingredients (optional) */}
+      <Reveal delay={180} style={{ gap: Spacing.two }}>
+        <Small color={palette.textSecondary}>Got ingredients to use up? (optional)</Small>
+        <View style={[styles.inputRow, { backgroundColor: palette.card, borderColor: palette.border }]}>
+          <TextInput
+            value={text}
+            onChangeText={setText}
+            onSubmitEditing={() => add(text)}
+            placeholder="Add an ingredient…"
+            placeholderTextColor={palette.textSecondary}
+            autoCapitalize="none"
+            returnKeyType="done"
+            style={{ flex: 1, fontFamily: Type.body, fontSize: 16, color: palette.text }}
           />
-          {!isPro && usesLeft !== null && (
-            <Small color={palette.textSecondary} style={{ textAlign: 'center' }}>
-              {usesLeft > 0 ? `${usesLeft} free surprise${usesLeft === 1 ? '' : 's'} left this week · unlimited on Pro` : 'Pro members get unlimited surprises every week.'}
-            </Small>
-          )}
-        </Reveal>
-
-        {busy && (
-          <View style={{ alignItems: 'center', paddingVertical: Spacing.four }}>
-            <ActivityIndicator color={palette.accent} />
+          <PressableScale onPress={() => add(text)} to={0.9}>
+            <View style={[styles.addBtn, { backgroundColor: palette.accent }]}>
+              <Text style={{ color: palette.onAccent, fontSize: 20, fontFamily: Type.bodySemibold }}>+</Text>
+            </View>
+          </PressableScale>
+        </View>
+        <View style={styles.wrap}>
+          {QUICK.filter((q) => !items.includes(q)).map((q) => (
+            <PressableScale key={q} onPress={() => add(q)} to={0.94}>
+              <View style={[styles.quick, { borderColor: palette.border, backgroundColor: palette.backgroundElement }]}>
+                <Text style={{ fontFamily: Type.bodyMedium, fontSize: 13, color: palette.textSecondary }}>+ {localizeName(q, region)}</Text>
+              </View>
+            </PressableScale>
+          ))}
+        </View>
+        {items.length > 0 && (
+          <View style={styles.wrap}>
+            {items.map((it) => (
+              <PressableScale key={it} onPress={() => remove(it)} to={0.94}>
+                <View style={[styles.chip, { backgroundColor: palette.accentMuted, borderColor: palette.accent }]}>
+                  <Text style={{ fontFamily: Type.bodyMedium, fontSize: 14, color: palette.accent }}>{localizeName(it, region)}  ✕</Text>
+                </View>
+              </PressableScale>
+            ))}
           </View>
         )}
+      </Reveal>
 
-        {/* result */}
-        {result && !busy && (
-          <View style={{ gap: Spacing.three }}>
-            {excluded.length > 0 && (
-              <GlassCard style={{ gap: 4 }}>
-                <Small color={palette.danger} style={{ fontFamily: Type.bodySemibold }}>Left out for safety</Small>
-                <Small>{excluded.map((e) => `${localizeName(e.name, region)} (${e.reason})`).join(', ')}</Small>
-              </GlassCard>
-            )}
-            {result.length === 0 ? (
-              <GlassCard>
-                <Body style={{ fontFamily: Type.bodySemibold }}>Hmm, nothing safe to suggest</Body>
-                <Small>Try fewer restrictions or a different cuisine.</Small>
-              </GlassCard>
-            ) : (
-              <>
-                <Eyebrow>{mode === 'guests' ? 'Your guest spread' : 'Cook one of these'}</Eyebrow>
-                {result.map((meal, i) => (
-                  <Reveal key={`${meal.name}-${i}`} delay={i * 50}>
-                    <DishCard meal={meal} region={region} />
-                  </Reveal>
-                ))}
-                <Button title={mode === 'guests' ? 'Surprise us again' : 'Another idea'} variant="secondary" onPress={generate} disabled={busy} />
-              </>
-            )}
+      {/* Pro gate */}
+      {locked && (
+        <Reveal delay={210}>
+          <GlassCard style={{ gap: Spacing.two, borderWidth: 1.5, borderColor: palette.accent, backgroundColor: palette.accentMuted }}>
+            <Text style={{ fontSize: 22 }}>🔒</Text>
+            <Body style={{ fontFamily: Type.bodySemibold }}>Surprise Me is a Pro feature</Body>
+            <Small color={palette.textSecondary}>
+              Guest spreads and quick personal ideas are unlocked with MealMesh Pro, along with unlimited weekly plans.
+            </Small>
+            <Button title="Go Pro ✦" onPress={() => router.push('/paywall')} />
+          </GlassCard>
+        </Reveal>
+      )}
+
+      {/* generate */}
+      <Reveal delay={220} style={{ gap: Spacing.two }}>
+        <Button
+          title={busy ? 'Plating up…' : locked ? '🔒 Surprise us! (Pro)' : mode === 'guests' ? '🎉 Surprise us!' : '✨ Surprise me!'}
+          disabled={busy || locked || subLoading}
+          onPress={generate}
+        />
+      </Reveal>
+
+      {busy && (
+        <View style={{ alignItems: 'center', paddingVertical: Spacing.four }}>
+          <ActivityIndicator color={palette.accent} />
+        </View>
+      )}
+
+      {/* result */}
+      {result && !busy && (
+        <View style={{ gap: Spacing.three }}>
+          {excluded.length > 0 && (
+            <GlassCard style={{ gap: 4 }}>
+              <Small color={palette.danger} style={{ fontFamily: Type.bodySemibold }}>Left out for safety</Small>
+              <Small>{excluded.map((e) => `${localizeName(e.name, region)} (${e.reason})`).join(', ')}</Small>
+            </GlassCard>
+          )}
+          {result.length === 0 ? (
+            <GlassCard>
+              <Body style={{ fontFamily: Type.bodySemibold }}>Hmm, nothing safe to suggest</Body>
+              <Small>Try fewer restrictions or a different cuisine.</Small>
+            </GlassCard>
+          ) : (
+            <>
+              <Eyebrow>{mode === 'guests' ? 'Your guest spread' : 'Cook one of these'}</Eyebrow>
+              {result.map((meal, i) => (
+                <Reveal key={`${meal.name}-${i}`} delay={i * 50}>
+                  <DishCard meal={meal} region={region} />
+                </Reveal>
+              ))}
+              <Button title={mode === 'guests' ? 'Surprise us again' : 'Another idea'} variant="secondary" onPress={generate} disabled={busy} />
+            </>
+          )}
+        </View>
+      )}
+    </View>
+  );
+
+  return (
+    <Screen art={Art.tacos} wide maxWidth={1280} header={<AppHeader active={mode === 'me' ? 'surprise' : 'guest'} />}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: Spacing.three }}>
+        {isDesktop ? (
+          <View style={styles.row}>
+            <View style={styles.leftRail}>
+              <ArticlesRail />
+            </View>
+            <View style={styles.main}>{main}</View>
+            <View style={styles.rail}>
+              <FoodCarouselRail region={region} />
+            </View>
           </View>
+        ) : (
+          main
         )}
       </ScrollView>
     </Screen>
@@ -330,4 +408,8 @@ const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   quick: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: Radius.pill, borderWidth: 1 },
   chip: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: Radius.pill, borderWidth: 1.5 },
+  row: { flexDirection: 'row', gap: Spacing.four, alignItems: 'flex-start' },
+  leftRail: { width: 280, flexShrink: 0, gap: Spacing.four },
+  main: { flex: 1.6, minWidth: 0, gap: Spacing.four },
+  rail: { width: 280, flexShrink: 0, gap: Spacing.four },
 });

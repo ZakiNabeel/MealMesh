@@ -18,8 +18,11 @@ export type Region =
   | 'middle_eastern'
   | 'mediterranean'
   | 'east_asian'
+  | 'chinese'
   | 'latin'
   | 'african'
+  | 'american'
+  | 'european'
   | 'none';
 
 /** Where a constraint comes from. Drives UI grouping. */

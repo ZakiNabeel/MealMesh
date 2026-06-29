@@ -21,6 +21,7 @@ const COMPARISON: ComparisonRow[] = [
   { label: 'Regional cuisines', free: true, pro: true },
   { label: 'Grocery list', free: true, pro: true },
   { label: 'Grocery PDF export & share', free: false, pro: true },
+  { label: 'Surprise Me (guest spreads & quick ideas)', free: false, pro: true },
   { label: 'Create a Crew (friends/family board)', free: false, pro: true },
   { label: 'Pro badge ✦', free: false, pro: true },
 ];

@@ -25,7 +25,7 @@ import type { Profile } from '@/types';
 
 const LOGO = require('../../assets/logo.svg');
 
-export type HeaderTab = 'home' | 'plan' | 'community' | 'leaderboard' | 'surprise';
+export type HeaderTab = 'home' | 'plan' | 'community' | 'leaderboard' | 'guest' | 'surprise';
 
 const LINKS: {
   key: HeaderTab;
@@ -33,12 +33,17 @@ const LINKS: {
   /** Shorter glyph shown on mobile, where width is tight. Falls back to `label`. */
   mobileLabel?: string;
   path: '/home' | '/plan' | '/community' | '/leaderboard' | '/surprise';
+  /** "Guest mode" and "Surprise me" are the same Pro-gated screen opened to a
+   *  different starting mode — kept as two distinct nav entries since
+   *  they're different features to the user (hosting guests vs. a solo idea). */
+  params?: { mode: 'guests' | 'me' };
 }[] = [
   { key: 'home', label: 'Home', path: '/home' },
   { key: 'plan', label: 'Plan', path: '/plan' },
   { key: 'community', label: 'Community', path: '/community' },
   { key: 'leaderboard', label: 'Leaderboard', path: '/leaderboard' },
-  { key: 'surprise', label: '✨ Surprise me', mobileLabel: '✨', path: '/surprise' },
+  { key: 'guest', label: '🎉 Guest mode', mobileLabel: '🎉', path: '/surprise', params: { mode: 'guests' } },
+  { key: 'surprise', label: '✨ Surprise me', mobileLabel: '✨', path: '/surprise', params: { mode: 'me' } },
 ];
 
 export function AppHeader({ active }: { active?: HeaderTab }) {
@@ -77,7 +82,7 @@ export function AppHeader({ active }: { active?: HeaderTab }) {
           {LINKS.filter((l) => l.key !== 'home' || isDesktop).map((l) => {
             const on = active === l.key;
             return (
-              <PressableScale key={l.key} onPress={() => router.push(l.path)} to={0.94}>
+              <PressableScale key={l.key} onPress={() => router.push(l.params ? { pathname: l.path, params: l.params } : l.path)} to={0.94}>
                 <View style={[styles.link, { paddingHorizontal: isDesktop ? Spacing.three : 9 }, on && { backgroundColor: palette.accentMuted }]}>
                   <Text
                     style={{

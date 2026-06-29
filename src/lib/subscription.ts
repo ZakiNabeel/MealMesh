@@ -74,26 +74,5 @@ export async function bumpGenerations(): Promise<number> {
 }
 
 /* ------------------------------------------------------------------ */
-/* Surprise / guest-menu counter (free = 1 per week, Pro = unlimited)  */
+/* Surprise / guest-menu — Pro-only, no weekly counter needed          */
 /* ------------------------------------------------------------------ */
-
-const SURPRISE_KEY = 'mealmesh.surprise';
-
-export const FREE_WEEKLY_SURPRISES = 1;
-
-export async function surprisesThisWeek(): Promise<number> {
-  try {
-    const raw = await AsyncStorage.getItem(SURPRISE_KEY);
-    if (!raw) return 0;
-    const parsed = JSON.parse(raw) as { week: string; count: number };
-    return parsed.week === currentWeekStart() ? parsed.count : 0;
-  } catch {
-    return 0;
-  }
-}
-
-export async function bumpSurprises(): Promise<number> {
-  const count = (await surprisesThisWeek()) + 1;
-  await AsyncStorage.setItem(SURPRISE_KEY, JSON.stringify({ week: currentWeekStart(), count })).catch(() => {});
-  return count;
-}

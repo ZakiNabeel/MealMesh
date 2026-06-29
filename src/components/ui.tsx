@@ -16,6 +16,7 @@ import {
   Text,
   useWindowDimensions,
   View,
+  type GestureResponderEvent,
   type ImageSourcePropType,
   type StyleProp,
   type TextStyle,
@@ -261,7 +262,78 @@ export function ScrollReveal({
   );
 }
 
-/** Tactile press: a soft spring scale-down. Wraps any tappable surface. */
+/**
+ * A short, quiet synthesized click (web only — native has no Web Audio API
+ * and Hermes/expo-av would need a bundled sound asset). Lazily creates one
+ * shared AudioContext rather than one per tap. Sound is always a nice-to-have:
+ * any failure (autoplay policy, unsupported browser) is swallowed silently so
+ * it can never break a tap.
+ */
+let tapAudioCtx: AudioContext | null = null;
+function playTapSound() {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+  try {
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    if (!tapAudioCtx) tapAudioCtx = new Ctx();
+    if (tapAudioCtx.state === 'suspended') void tapAudioCtx.resume();
+    const ctx = tapAudioCtx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1100, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.08);
+    gain.gain.setValueAtTime(0.05, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.09);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.1);
+  } catch {
+    // ignore — see comment above
+  }
+}
+
+const SPARKLE_COUNT = 5;
+
+/** A handful of tiny stars bursting outward from the tap point, then fading.
+ * Self-removes via `onDone` once the animation has finished. */
+function SparkleBurst({ x, y, onDone }: { x: number; y: number; onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 520);
+    return () => clearTimeout(t);
+  }, [onDone]);
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {Array.from({ length: SPARKLE_COUNT }).map((_, i) => (
+        <SparkleParticle key={i} index={i} total={SPARKLE_COUNT} x={x} y={y} />
+      ))}
+    </View>
+  );
+}
+
+function SparkleParticle({ index, total, x, y }: { index: number; total: number; x: number; y: number }) {
+  const progress = useSharedValue(0);
+  useEffect(() => {
+    progress.value = withTiming(1, { duration: 480, easing: Easing.out(Easing.quad) });
+  }, [progress]);
+  const angle = (index / total) * Math.PI * 2 + (index % 2 === 0 ? 0.3 : -0.3);
+  const distance = 16 + (index % 3) * 6;
+  const animated = useAnimatedStyle(() => ({
+    opacity: 1 - progress.value,
+    transform: [
+      { translateX: Math.cos(angle) * distance * progress.value },
+      { translateY: Math.sin(angle) * distance * progress.value },
+      { scale: 0.6 + (1 - progress.value) * 0.6 },
+    ],
+  }));
+  return (
+    <Animated.Text style={[styles.sparkle, { left: x - 5, top: y - 5 }, animated]}>✦</Animated.Text>
+  );
+}
+
+/** Tactile press: a soft spring scale-down, plus a sleek tap sound and a small
+ * sparkle burst from the touch point. Wraps any tappable surface. */
 export function PressableScale({
   children,
   onPress,
@@ -279,19 +351,29 @@ export function PressableScale({
   const s = useSharedValue(1);
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
   const spring = { damping: 18, stiffness: 240 };
+  const [burst, setBurst] = useState<{ id: number; x: number; y: number } | null>(null);
+
+  const handlePressIn = (e: GestureResponderEvent) => {
+    if (!reduce) s.value = withSpring(to, spring);
+    playTapSound();
+    if (!reduce) {
+      const { locationX, locationY } = e.nativeEvent;
+      setBurst({ id: Date.now(), x: locationX, y: locationY });
+    }
+  };
+
   return (
     <AnimatedPressable
       onPress={onPress}
       disabled={disabled}
-      onPressIn={() => {
-        if (!reduce) s.value = withSpring(to, spring);
-      }}
+      onPressIn={handlePressIn}
       onPressOut={() => {
         s.value = withSpring(1, spring);
       }}
       style={[animated, style]}
     >
       {children}
+      {burst && <SparkleBurst key={burst.id} x={burst.x} y={burst.y} onDone={() => setBurst(null)} />}
     </AnimatedPressable>
   );
 }
@@ -508,6 +590,7 @@ export function ProgressBar({ value }: { value: number }) {
 }
 
 const styles = StyleSheet.create({
+  sparkle: { position: 'absolute', fontSize: 10, color: '#FFD166' },
   column: {
     flex: 1,
     width: '100%',

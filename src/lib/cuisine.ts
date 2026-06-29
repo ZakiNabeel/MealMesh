@@ -373,6 +373,161 @@ const AFRICAN: DishStyle[] = [
   },
 ];
 
+const CHINESE: DishStyle[] = [
+  {
+    name: (p, _g, _v) => `${cap(p)} stir-fry`,
+    aromatics: ['garlic', 'ginger', 'scallion'],
+    spices: ['white pepper', 'five-spice'],
+    steps: ({ p, g, v, v2, fat, aromatics, spices }) => [
+      `Heat ${fat} in a wok over high heat until shimmering.`,
+      `Flash-fry ${aromatics} for 20 seconds.`,
+      `Add the ${p} and stir-fry until nearly cooked through.`,
+      `Toss in ${v} and ${v2} with ${spices}; keep everything moving.`,
+      `Finish with a splash of soy sauce and serve over ${g}.`,
+    ],
+  },
+  {
+    name: (p, _g, _v) => `Kung pao ${p}`,
+    suits: (_p, isLegume) => !isLegume,
+    aromatics: ['garlic', 'ginger', 'scallion'],
+    spices: ['dried chili', 'five-spice', 'white pepper'],
+    steps: ({ p, g, fat, aromatics, spices }) => [
+      `Marinate the ${p} briefly, then sear in hot ${fat} until just done.`,
+      `Push aside, fry ${aromatics} and ${spices} until fragrant.`,
+      `Toss everything together with a savory-sweet sauce.`,
+      `Stir through roasted peanuts if allowed.`,
+      `Serve over steamed ${g}.`,
+    ],
+  },
+  {
+    name: (p, g, _v) => `${cap(p)} fried rice with ${g}`,
+    suits: (_p, isLegume, grain) => !isLegume && isRiceLike(grain),
+    aromatics: ['garlic', 'scallion', 'ginger'],
+    spices: ['white pepper'],
+    steps: ({ p, g, v, fat, aromatics, spices }) => [
+      `Use day-old ${g} so the grains stay separate when fried.`,
+      `Heat ${fat} in a wok and scramble in egg if allowed.`,
+      `Add ${aromatics} and the ${p}, stir-frying until done.`,
+      `Toss in the ${g} and ${v}, breaking up clumps.`,
+      `Season with soy sauce and ${spices}; serve hot.`,
+    ],
+  },
+  {
+    name: (_p, _g, v) => `${cap(v)} & tofu claypot`,
+    aromatics: ['garlic', 'ginger', 'scallion'],
+    spices: ['white pepper', 'star anise'],
+    steps: ({ g, v, v2, fat, aromatics, spices }) => [
+      `Pan-fry tofu cubes in ${fat} until golden.`,
+      `Add ${aromatics}, ${spices} and a little water or stock.`,
+      `Stir in ${v} and ${v2}, simmering until tender.`,
+      `Reduce to a glossy sauce.`,
+      `Serve over steamed ${g}.`,
+    ],
+  },
+];
+
+const AMERICAN: DishStyle[] = [
+  {
+    name: (p, _g, _v) => `Skillet ${p} with roasted vegetables`,
+    aromatics: ['onion', 'garlic'],
+    spices: ['black pepper', 'paprika', 'thyme'],
+    steps: ({ p, g, v, v2, fat, aromatics, spices }) => [
+      `Season the ${p} with ${spices} and sear in ${fat} until golden.`,
+      `Roast ${v} and ${v2} alongside until caramelised.`,
+      `Soften ${aromatics} in the same pan for a quick pan sauce.`,
+      `Plate the ${p} and vegetables together.`,
+      `Serve with ${g} on the side.`,
+    ],
+  },
+  {
+    name: (p, _g, _v) => `BBQ-style ${p}`,
+    aromatics: ['onion', 'garlic'],
+    spices: ['smoked paprika', 'black pepper', 'brown sugar rub'],
+    steps: ({ p, g, v, fat, aromatics, spices }) => [
+      `Rub the ${p} with ${spices} and let it sit 10 minutes.`,
+      `Sear in ${fat} until well-charred on the outside.`,
+      `Glaze with a smoky barbecue sauce, basting as it finishes cooking.`,
+      `Warm ${aromatics} with ${v} as a quick side.`,
+      `Serve with ${g} and extra sauce.`,
+    ],
+  },
+  {
+    name: (p, g, _v) => `${cap(p)} & ${g} casserole`,
+    aromatics: ['onion', 'garlic'],
+    spices: ['black pepper', 'thyme'],
+    steps: ({ p, g, v, v2, fat, aromatics, spices }) => [
+      `Brown the ${p} in ${fat} with ${aromatics}.`,
+      `Layer with ${g}, ${v} and ${v2} in a baking dish.`,
+      `Season with ${spices} and a splash of stock.`,
+      `Bake until bubbling and golden on top.`,
+      `Rest briefly before serving.`,
+    ],
+  },
+  {
+    name: (_p, _g, v) => `Loaded ${v} bowl`,
+    aromatics: ['garlic', 'onion'],
+    spices: ['black pepper', 'paprika'],
+    steps: ({ p, g, v, v2, fat, aromatics, spices }) => [
+      `Roast ${v} and ${v2} with ${fat} and ${spices}.`,
+      `Pan-cook the ${p} with ${aromatics} until done.`,
+      `Warm the ${g} and build the bowl.`,
+      `Layer the roasted vegetables and ${p} on top.`,
+      `Finish with a simple dressing of choice.`,
+    ],
+  },
+];
+
+const EUROPEAN: DishStyle[] = [
+  {
+    name: (p, _g, _v) => `Braised ${p} with herbs`,
+    aromatics: ['onion', 'garlic'],
+    spices: ['bay leaf', 'thyme', 'black pepper'],
+    steps: ({ p, g, v, fat, aromatics, spices }) => [
+      `Brown the ${p} in ${fat}, then set aside.`,
+      `Soften ${aromatics} in the same pot.`,
+      `Return the ${p}, add ${v}, ${spices} and enough stock to cover.`,
+      `Cover and braise low and slow until tender.`,
+      `Serve with ${g} to soak up the sauce.`,
+    ],
+  },
+  {
+    name: (p, g, _v) => `Pan-roasted ${p} with ${g}`,
+    aromatics: ['garlic', 'shallot'],
+    spices: ['black pepper', 'rosemary', 'thyme'],
+    steps: ({ p, g, v, fat, aromatics, spices }) => [
+      `Season the ${p} with ${spices} and sear in ${fat}.`,
+      `Finish in the oven until cooked through.`,
+      `Sauté ${aromatics} and ${v} in the same pan.`,
+      `Rest the ${p} briefly before slicing.`,
+      `Serve over ${g} with the pan vegetables.`,
+    ],
+  },
+  {
+    name: (_p, _g, v) => `${cap(v)} & white-bean gratin`,
+    aromatics: ['onion', 'garlic'],
+    spices: ['thyme', 'black pepper', 'nutmeg'],
+    steps: ({ g, v, v2, fat, aromatics, spices }) => [
+      `Soften ${aromatics} in ${fat}.`,
+      `Layer with ${v}, ${v2} and the beans in a baking dish.`,
+      `Season with ${spices} and a little cream or stock.`,
+      `Bake until tender and golden on top.`,
+      `Serve with ${g} and crusty bread.`,
+    ],
+  },
+  {
+    name: (_p, g, v) => `${cap(g)} & ${v} soup`,
+    aromatics: ['onion', 'garlic', 'leek'],
+    spices: ['bay leaf', 'black pepper'],
+    steps: ({ p, g, v, fat, aromatics, spices }) => [
+      `Soften ${aromatics} in ${fat}.`,
+      `Add the ${g}, ${v} and ${p}; cover with stock.`,
+      `Simmer with ${spices} until everything is tender.`,
+      `Blend partially or leave chunky, to taste.`,
+      `Season and serve warm with bread.`,
+    ],
+  },
+];
+
 /* --- Global fallback (region 'none' / unmatched) ------------------- */
 
 const GLOBAL: DishStyle[] = [
@@ -431,8 +586,11 @@ const STYLES_BY_REGION: Record<Region, DishStyle[]> = {
   middle_eastern: MIDDLE_EASTERN,
   mediterranean: MEDITERRANEAN,
   east_asian: EAST_ASIAN,
+  chinese: CHINESE,
   latin: LATIN,
   african: AFRICAN,
+  american: AMERICAN,
+  european: EUROPEAN,
   none: GLOBAL,
 };
 
@@ -626,8 +784,11 @@ const CUISINE_LABEL: Record<Region, string> = {
   middle_eastern: 'Middle Eastern',
   mediterranean: 'Mediterranean',
   east_asian: 'East Asian',
+  chinese: 'Chinese',
   latin: 'Latin American',
   african: 'African',
+  american: 'American',
+  european: 'European',
   none: 'Everyday',
 };
 
