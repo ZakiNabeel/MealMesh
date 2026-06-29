@@ -168,7 +168,7 @@ export default function Surprise() {
   const main = (
     <View style={{ gap: Spacing.four }}>
       <Reveal>
-        <Eyebrow>Surprise me ✨</Eyebrow>
+        <Eyebrow>Surprise me</Eyebrow>
         <Heading style={{ marginTop: 4 }}>{mode === 'guests' ? 'Guests are here — what do we make?' : 'Give me an idea'}</Heading>
         <Body color={palette.textSecondary} style={{ marginTop: Spacing.two }}>
           Tell us a little and we&apos;ll plate up a quick, safe spread — built on the same engine as your weekly plan.
@@ -179,8 +179,8 @@ export default function Surprise() {
       <Reveal delay={60} style={[styles.tabs, { backgroundColor: palette.backgroundElement }]}>
         {(
           [
-            ['guests', '🎉 Guests are here'],
-            ['me', '🍽️ Just me'],
+            ['guests', 'Guests are here'],
+            ['me', 'Just me'],
           ] as [Mode, string][]
         ).map(([k, label]) => {
           const active = mode === k;
@@ -280,7 +280,6 @@ export default function Surprise() {
       {locked && (
         <Reveal delay={210}>
           <GlassCard style={{ gap: Spacing.two, borderWidth: 1.5, borderColor: palette.accent, backgroundColor: palette.accentMuted }}>
-            <Text style={{ fontSize: 22 }}>🔒</Text>
             <Body style={{ fontFamily: Type.bodySemibold }}>Surprise Me is a Pro feature</Body>
             <Small color={palette.textSecondary}>
               Guest spreads and quick personal ideas are unlocked with MealMesh Pro, along with unlimited weekly plans.
@@ -293,7 +292,7 @@ export default function Surprise() {
       {/* generate */}
       <Reveal delay={220} style={{ gap: Spacing.two }}>
         <Button
-          title={busy ? 'Plating up…' : locked ? '🔒 Surprise us! (Pro)' : mode === 'guests' ? '🎉 Surprise us!' : '✨ Surprise me!'}
+          title={busy ? 'Plating up…' : locked ? 'Surprise us! (Pro)' : mode === 'guests' ? 'Surprise us!' : 'Surprise me!'}
           disabled={busy || locked || subLoading}
           onPress={generate}
         />

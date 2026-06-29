@@ -872,10 +872,13 @@ function joinList(items: string[]): string {
 }
 
 /* ------------------------------------------------------------------ */
-/* Food visuals — emoji + gradient tile (no network, always loads)    */
+/* Food visuals — clipart + gradient tile (no network, always loads)  */
 /* ------------------------------------------------------------------ */
 
-type Visual = { emoji: string; colors: [string, string] };
+/** One of the brand's 7 recoloured food cliparts (see components/art.ts). */
+export type Clipart = 'rice' | 'ramen' | 'fruits' | 'steak' | 'sandwich' | 'tacos' | 'cinnamon';
+
+type Visual = { clipart: Clipart; colors: [string, string] };
 
 const GRADIENTS: [string, string][] = [
   ['#F4A259', '#E76F51'], // warm amber → terracotta
@@ -888,44 +891,35 @@ const GRADIENTS: [string, string][] = [
   ['#C1486B', '#9B2F4E'], // pomegranate
 ];
 
-const EMOJI_RULES: { re: RegExp; emoji: string }[] = [
-  { re: /pakora|pakoray|tikki|cutlet|fritter|samosa/i, emoji: '🧆' },
-  { re: /toastie|toast|sandwich|chaat/i, emoji: '🥪' },
-  { re: /halwa|sheera|muffin|scone/i, emoji: '🧁' },
-  { re: /biryani|pulao|pilaf|rice bowl|fried rice/i, emoji: '🍛' },
-  { re: /karahi|curry|tikka|masala|salan|stew|ragout|tinga|claypot|berbere/i, emoji: '🍛' },
-  { re: /daal|dal|tarka|lentil|bean|chickpea/i, emoji: '🍲' },
-  { re: /soup|broth|pot\b/i, emoji: '🥣' },
-  { re: /stir-fry|noodle|claypot/i, emoji: '🍜' },
-  { re: /sabzi|salad|bowl|vegetable|veg /i, emoji: '🥗' },
-  { re: /traybake|baked|roast/i, emoji: '🍗' },
-  { re: /taco|tortilla|wrap/i, emoji: '🌮' },
+// Only 7 cliparts exist — match the clearest cases by name, and hash-rotate
+// the rest (curries, lentils, salads, plain proteins…) across all 7 rather
+// than force a wrong-looking icon onto a dish it doesn't resemble.
+const CLIPART_RULES: { re: RegExp; clipart: Clipart }[] = [
+  { re: /toastie|toast|sandwich|chaat/i, clipart: 'sandwich' },
+  { re: /halwa|sheera|muffin|scone|pakora|pakoray|tikki|cutlet|fritter|samosa/i, clipart: 'cinnamon' },
+  { re: /biryani|pulao|pilaf|rice bowl|fried rice/i, clipart: 'rice' },
+  { re: /stir-fry|noodle|claypot/i, clipart: 'ramen' },
+  { re: /taco|tortilla|wrap/i, clipart: 'tacos' },
+  { re: /beef|lamb|goat|steak|mutton|traybake|baked|roast/i, clipart: 'steak' },
+  { re: /sabzi|salad|vegetable|veg /i, clipart: 'fruits' },
 ];
 
-const PROTEIN_EMOJI: { re: RegExp; emoji: string }[] = [
-  { re: /shrimp|prawn|crab|lobster|shellfish/i, emoji: '🦐' },
-  { re: /salmon|fish|cod|tilapia|tuna/i, emoji: '🐟' },
-  { re: /chicken|turkey|poultry/i, emoji: '🍗' },
-  { re: /beef|lamb|goat|steak|mutton/i, emoji: '🥩' },
-  { re: /egg/i, emoji: '🍳' },
-  { re: /tofu|tempeh|paneer/i, emoji: '🥡' },
-];
+const CLIPART_ROTATION: Clipart[] = ['ramen', 'tacos', 'sandwich', 'steak', 'rice', 'fruits', 'cinnamon'];
 
 /** A YouTube search link for a dish — opens real cooking videos, no API key. */
 export function youtubeSearchUrl(dish: string): string {
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${dish} recipe`)}`;
 }
 
-/** Deterministic emoji + gradient for a meal, from its name and ingredients. */
-export function mealVisual(name: string, ingredients: string[]): Visual {
-  const hay = `${name} ${ingredients.join(' ')}`;
-  let emoji = '';
-  for (const r of EMOJI_RULES) if (r.re.test(name)) { emoji = r.emoji; break; }
-  if (!emoji) for (const r of PROTEIN_EMOJI) if (r.re.test(hay)) { emoji = r.emoji; break; }
-  if (!emoji) emoji = '🍽️';
+/** Deterministic clipart + gradient for a meal, from its name. */
+export function mealVisual(name: string, _ingredients: string[]): Visual {
+  let clipart: Clipart | undefined;
+  for (const r of CLIPART_RULES) if (r.re.test(name)) { clipart = r.clipart; break; }
 
-  // Stable hash so the same dish always gets the same tile colour.
+  // Stable hash so the same dish always gets the same tile colour (and
+  // clipart, when no rule matched).
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return { emoji, colors: GRADIENTS[h % GRADIENTS.length] };
+  if (!clipart) clipart = CLIPART_ROTATION[h % CLIPART_ROTATION.length];
+  return { clipart, colors: GRADIENTS[h % GRADIENTS.length] };
 }

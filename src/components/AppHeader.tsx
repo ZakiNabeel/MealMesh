@@ -42,8 +42,8 @@ const LINKS: {
   { key: 'plan', label: 'Plan', path: '/plan' },
   { key: 'community', label: 'Community', path: '/community' },
   { key: 'leaderboard', label: 'Leaderboard', path: '/leaderboard' },
-  { key: 'guest', label: '🎉 Guest mode', mobileLabel: '🎉', path: '/surprise', params: { mode: 'guests' } },
-  { key: 'surprise', label: '✨ Surprise me', mobileLabel: '✨', path: '/surprise', params: { mode: 'me' } },
+  { key: 'guest', label: 'Guest mode', mobileLabel: 'Guest', path: '/surprise', params: { mode: 'guests' } },
+  { key: 'surprise', label: 'Surprise me', mobileLabel: 'Surprise', path: '/surprise', params: { mode: 'me' } },
 ];
 
 export function AppHeader({ active }: { active?: HeaderTab }) {

@@ -85,6 +85,7 @@ export default function RecipeScreen() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={palette.accent} />
+          <Small color={palette.textSecondary}>Loading recipe…</Small>
         </View>
       ) : !recipe ? (
         <View style={styles.center}>

@@ -116,6 +116,12 @@ const LINE_ICONS = {
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='${c}' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='9'/><path d='M3 12h18'/><path d='M12 3c2.5 2.5 4 5.8 4 9s-1.5 6.5-4 9c-2.5-2.5-4-5.8-4-9s1.5-6.5 4-9z'/></svg>`,
   cart: (c: string) =>
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='${c}' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><circle cx='9' cy='20' r='1.4' fill='${c}' stroke='none'/><circle cx='18' cy='20' r='1.4' fill='${c}' stroke='none'/><path d='M3 4h2l2.4 12.2a1.6 1.6 0 0 0 1.58 1.3h8.2a1.6 1.6 0 0 0 1.58-1.3L20.5 8H6'/></svg>`,
+  camera: (c: string) =>
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='${c}' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z'/><circle cx='12' cy='13' r='3.5'/></svg>`,
+  flame: (c: string) =>
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='${c}' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M12 21c4 0 6.5-2.5 6.5-6 0-2.5-1.5-3.8-2.5-5.5.3 2-.5 3-1.3 3.5C15 11 14 8 12 6c.5 3-1 4-2.3 5.7C8.7 12.8 8 14 8 15.5 8 19 9 21 12 21z'/></svg>`,
+  users: (c: string) =>
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='${c}' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><circle cx='9' cy='8' r='3'/><path d='M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6'/><circle cx='17.5' cy='9' r='2.3'/><path d='M16 14.2c2.3.4 4 2.3 4 5.8'/></svg>`,
 } satisfies Record<string, (c: string) => string>;
 
 function ValueIcon({ name, color }: { name: keyof typeof LINE_ICONS; color: string }) {
@@ -340,7 +346,7 @@ export function WebsiteLanding() {
               {COMMUNITY.map((c) => (
                 <View key={c.title} style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
                   <View style={[styles.valueIconWrap, { backgroundColor: palette.accentMuted }]}>
-                    <Text style={{ fontSize: 22 }}>{c.emoji}</Text>
+                    <ValueIcon name={c.icon} color={palette.accent} />
                   </View>
                   <Text style={[styles.cardTitle, { color: palette.text }]}>{c.title}</Text>
                   <Text style={[styles.cardBody, { color: palette.textSecondary }]}>{c.body}</Text>
@@ -588,10 +594,10 @@ const STEPS = [
   { title: 'One plan, one list', body: 'Get a 7-day plan plus a single consolidated grocery list. Shared dishes where possible, simple swaps where needed.' },
 ];
 
-const COMMUNITY: { emoji: string; title: string; body: string }[] = [
-  { emoji: '📸', title: 'Share what you cook', body: 'Post a photo of tonight’s dinner, swap recipes, and get ideas from other home cooks juggling the same diets.' },
-  { emoji: '🔥', title: 'Build streaks & climb', body: 'Mark meals cooked to earn points and badges, keep a daily streak, and see where you rank on the leaderboard.' },
-  { emoji: '👥', title: 'Follow other cooks', body: 'Find people cooking for a table like yours, follow them, and cook their recipes in one tap.' },
+const COMMUNITY: { icon: keyof typeof LINE_ICONS; title: string; body: string }[] = [
+  { icon: 'camera', title: 'Share what you cook', body: 'Post a photo of tonight’s dinner, swap recipes, and get ideas from other home cooks juggling the same diets.' },
+  { icon: 'flame', title: 'Build streaks & climb', body: 'Mark meals cooked to earn points and badges, keep a daily streak, and see where you rank on the leaderboard.' },
+  { icon: 'users', title: 'Follow other cooks', body: 'Find people cooking for a table like yours, follow them, and cook their recipes in one tap.' },
 ];
 
 const VALUES: { icon: keyof typeof LINE_ICONS; title: string; body: string }[] = [

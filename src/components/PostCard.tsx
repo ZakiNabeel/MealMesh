@@ -62,7 +62,7 @@ export function PostCard({ post, onOpen }: { post: Post; onOpen: () => void }) {
 
           {post.type === 'recipe' && post.recipeTitle && (
             <View style={[styles.recipeChip, { borderColor: palette.border, backgroundColor: palette.backgroundElement }]}>
-              <Small color={palette.text} style={{ fontFamily: Type.bodySemibold }}>📖 {post.recipeTitle}</Small>
+              <Small color={palette.text} style={{ fontFamily: Type.bodySemibold }}>{post.recipeTitle}</Small>
             </View>
           )}
 

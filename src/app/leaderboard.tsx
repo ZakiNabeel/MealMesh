@@ -189,7 +189,7 @@ function RankedList({
             </View>
             <View style={{ alignItems: 'flex-end', gap: 1 }}>
               <Text style={{ fontFamily: Type.displayBold, fontSize: 16, color: palette.accent }}>{e.totalPoints}</Text>
-              {e.currentStreak > 0 && <Small color={palette.textSecondary}>🔥 {e.currentStreak}</Small>}
+              {e.currentStreak > 0 && <Small color={palette.textSecondary}>{e.currentStreak}-day streak</Small>}
             </View>
           </View>
         </PressableScale>

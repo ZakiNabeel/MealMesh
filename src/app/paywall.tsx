@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
 import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
@@ -63,15 +64,7 @@ export default function Paywall() {
   }
 
   return (
-    <Screen art={Art.steak} rail>
-      <View style={styles.top}>
-        <PressableScale onPress={() => router.back()} to={0.9}>
-          <View style={[styles.back, { borderColor: palette.border, backgroundColor: palette.card }]}>
-            <Text style={{ fontFamily: Type.bodySemibold, fontSize: 18, color: palette.text }}>‹</Text>
-          </View>
-        </PressableScale>
-      </View>
-
+    <Screen art={Art.steak} rail header={<AppHeader />}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.body}>
         <Reveal>
           <Eyebrow>MealMesh Pro</Eyebrow>
@@ -157,8 +150,6 @@ function ComparisonCell({ value }: { value: string | boolean }) {
 }
 
 const styles = StyleSheet.create({
-  top: { paddingTop: Spacing.two },
-  back: { width: 40, height: 40, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   body: { flexGrow: 1, justifyContent: 'center', paddingTop: Spacing.three, paddingBottom: Spacing.five },
   tick: { width: 24, height: 24, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   compareHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.two },

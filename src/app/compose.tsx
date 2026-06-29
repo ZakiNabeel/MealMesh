@@ -165,7 +165,7 @@ export default function ComposeScreen() {
             ) : (
               <PressableScale onPress={addPhoto} to={0.98} disabled={uploading}>
                 <View style={[styles.photoDrop, { borderColor: palette.border, backgroundColor: palette.backgroundElement }]}>
-                  {uploading ? <ActivityIndicator color={palette.accent} /> : <Small color={palette.textSecondary}>📸 Add a photo</Small>}
+                  {uploading ? <ActivityIndicator color={palette.accent} /> : <Small color={palette.textSecondary}>Add a photo</Small>}
                 </View>
               </PressableScale>
             )}

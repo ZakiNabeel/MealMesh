@@ -65,7 +65,7 @@ function MobileWelcome() {
           )}
           <PressableScale onPress={() => router.push('/pantry')} to={0.97}>
             <Body color={palette.accent} style={{ textAlign: 'center', fontFamily: Type.bodySemibold, paddingVertical: Spacing.two }}>
-              🥘  Cook with what I have
+              Cook with what I have
             </Body>
           </PressableScale>
           <View style={{ alignItems: 'center', gap: Spacing.two, paddingTop: Spacing.two }}>

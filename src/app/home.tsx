@@ -13,7 +13,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
 import { CommunityCard, LeaderboardCard } from '@/components/DashboardCards';
-import { Avatar, Body, Button, Display, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small, useIsDesktop } from '@/components/ui';
+import { Avatar, Body, Button, Display, Eyebrow, GlassCard, Heading, LoadingScreen, PressableScale, Reveal, Screen, Small, useIsDesktop } from '@/components/ui';
 import { Spacing, Type } from '@/constants/theme';
 import { getFeed } from '@/lib/community';
 import { useAuth } from '@/lib/auth';
@@ -39,31 +39,44 @@ export default function HomeScreen() {
   const [rank, setRank] = useState<{ rank: number; totalPoints: number } | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [suggested, setSuggested] = useState<Profile[]>([]);
+  // First paint only — fills the instant after navigating in instead of a
+  // flash of "no plan yet" / empty cards before the real data lands.
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     // Recent posts + suggestions don't need a session; the rest do.
     void getFeed('new').then((p) => setPosts(p.slice(0, 3)));
     void getSuggestedProfiles(8).then(setSuggested);
 
-    if (!session) return;
-    const [profile, hh, myRank] = await Promise.all([getMyProfile(), loadHousehold(), getMyRank()]);
-    setName(profile?.displayName || user?.email?.split('@')[0] || 'there');
-    setRank(myRank);
+    if (session) {
+      const [profile, hh, myRank] = await Promise.all([getMyProfile(), loadHousehold(), getMyRank()]);
+      setName(profile?.displayName || user?.email?.split('@')[0] || 'there');
+      setRank(myRank);
 
-    const home = hh ?? getDraftHousehold();
-    setHousehold(home);
-    if (home && home.id !== 'draft') {
-      const week = currentWeekStart();
-      const [savedPlan, logs] = await Promise.all([loadPlan(home.id, week), getWeekLogs(week)]);
-      setPlan(savedPlan);
-      setCooked(summarizeWeek(logs, week).mealsCooked);
+      const home = hh ?? getDraftHousehold();
+      setHousehold(home);
+      if (home && home.id !== 'draft') {
+        const week = currentWeekStart();
+        const [savedPlan, logs] = await Promise.all([loadPlan(home.id, week), getWeekLogs(week)]);
+        setPlan(savedPlan);
+        setCooked(summarizeWeek(logs, week).mealsCooked);
+      }
     }
+    setLoading(false);
   }, [session, user]);
 
   useEffect(() => {
     if (authLoading) return;
     void load();
   }, [authLoading, load]);
+
+  if (authLoading || loading) {
+    return (
+      <Screen art={Art.rice} wide header={<AppHeader active="home" />}>
+        <LoadingScreen />
+      </Screen>
+    );
+  }
 
   const firstName = name || (user?.email?.split('@')[0] ?? '');
 

@@ -55,7 +55,7 @@ export function ProfileTabs({
       {tab === 'stats' && (
         <View style={styles.statGrid}>
           <StatCard label="Points" value={stats.totalPoints} accent />
-          <StatCard label="Day streak" value={stats.currentStreak} suffix="🔥" />
+          <StatCard label="Day streak" value={stats.currentStreak} />
           <StatCard label="Meals cooked" value={stats.mealsLogged} />
           <StatCard label="Longest streak" value={stats.longestStreak} />
         </View>
@@ -63,9 +63,9 @@ export function ProfileTabs({
 
       {tab === 'badges' && (
         <GlassCard style={{ gap: Spacing.three }}>
-          <BadgeRow icon="🍽️" title="Clean-Plate Days" subtitle="Cooked all four meals in a day" count={stats.cleanPlateDays} />
+          <BadgeRow title="Clean-Plate Days" subtitle="Cooked all four meals in a day" count={stats.cleanPlateDays} />
           <View style={[styles.divider, { backgroundColor: palette.border }]} />
-          <BadgeRow icon="🏆" title="Perfect Weeks" subtitle="Cooked every meal, all week" count={stats.perfectWeeks} />
+          <BadgeRow title="Perfect Weeks" subtitle="Cooked every meal, all week" count={stats.perfectWeeks} />
         </GlassCard>
       )}
     </View>
@@ -98,13 +98,13 @@ function StatCard({ label, value, suffix, accent }: { label: string; value: numb
   );
 }
 
-function BadgeRow({ icon, title, subtitle, count }: { icon: string; title: string; subtitle: string; count: number }) {
+function BadgeRow({ title, subtitle, count }: { title: string; subtitle: string; count: number }) {
   const palette = usePalette();
   const earned = count > 0;
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three }}>
       <View style={[styles.badgeIcon, { backgroundColor: earned ? palette.accentMuted : palette.backgroundElement, opacity: earned ? 1 : 0.5 }]}>
-        <Text style={{ fontSize: 22 }}>{icon}</Text>
+        <Text style={{ fontFamily: Type.displayBold, fontSize: 18, color: earned ? palette.accent : palette.textSecondary }}>{title.charAt(0)}</Text>
       </View>
       <View style={{ flex: 1 }}>
         <Body style={{ fontFamily: Type.bodySemibold }}>{title}</Body>

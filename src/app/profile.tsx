@@ -124,7 +124,7 @@ export default function ProfileScreen() {
           >
             <View style={[styles.visibility, { borderColor: palette.border }]}>
               <Text style={{ fontFamily: Type.bodyMedium, fontSize: 12, color: palette.textSecondary }}>
-                {profile.isPublic ? '🌐 Public profile' : '🔒 Private — only you can see this'}
+                {profile.isPublic ? 'Public profile' : 'Private — only you can see this'}
               </Text>
             </View>
           </ProfileHeader>
@@ -261,7 +261,7 @@ function ProfileEditor({ profile, onCancel, onSaved }: { profile: Profile; onCan
                 <LinearGradient colors={[palette.blobA, palette.blobB]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.editorBanner} />
               )}
               <View style={[styles.bannerBadge, { backgroundColor: palette.background, borderColor: palette.border }]}>
-                <Small>{uploadingCover ? 'Uploading…' : '📷 Change cover'}</Small>
+                <Small>{uploadingCover ? 'Uploading…' : 'Change cover'}</Small>
               </View>
             </View>
           </PressableScale>
@@ -271,7 +271,7 @@ function ProfileEditor({ profile, onCancel, onSaved }: { profile: Profile; onCan
               <View style={[styles.avatarRing, { borderColor: palette.background, backgroundColor: palette.background }]}>
                 <Avatar name={displayName || username} uri={avatarUrl} size={80} />
                 <View style={[styles.avatarBadge, { backgroundColor: palette.background, borderColor: palette.border }]}>
-                  <Small>{uploading ? '…' : '📷'}</Small>
+                  <Small>{uploading ? '…' : '+'}</Small>
                 </View>
               </View>
             </PressableScale>

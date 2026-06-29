@@ -9,6 +9,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
+  ActivityIndicator,
   Image,
   Platform,
   Pressable,
@@ -144,6 +145,21 @@ export function Screen({
           <View style={[columnStyle, style]}>{children}</View>
         )}
       </SafeAreaView>
+    </View>
+  );
+}
+
+/**
+ * The branded "fill the gap instantly" loader: every screen's first paint
+ * while it fetches its data, instead of a bare/blank flash. Pass `label` for
+ * what's loading; omit for a quiet generic state.
+ */
+export function LoadingScreen({ label }: { label?: string }) {
+  const palette = usePalette();
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.three }}>
+      <ActivityIndicator color={palette.accent} />
+      {label && <Small color={palette.textSecondary}>{label}</Small>}
     </View>
   );
 }

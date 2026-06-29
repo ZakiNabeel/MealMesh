@@ -77,6 +77,7 @@ export default function PostScreen() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={palette.accent} />
+          <Small color={palette.textSecondary}>Loading post…</Small>
         </View>
       ) : !post ? (
         <View style={styles.center}>
@@ -101,7 +102,7 @@ export default function PostScreen() {
               {post.type === 'recipe' && post.recipeId && post.recipeTitle && (
                 <PressableScale onPress={() => router.push({ pathname: '/recipe/[id]', params: { id: post.recipeId! } })} to={0.98}>
                   <View style={[styles.recipeChip, { borderColor: palette.border, backgroundColor: palette.backgroundElement }]}>
-                    <Small color={palette.text} style={{ fontFamily: Type.bodySemibold }}>📖 {post.recipeTitle} — view recipe ›</Small>
+                    <Small color={palette.text} style={{ fontFamily: Type.bodySemibold }}>{post.recipeTitle} — view recipe ›</Small>
                   </View>
                 </PressableScale>
               )}

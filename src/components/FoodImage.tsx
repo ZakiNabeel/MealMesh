@@ -10,8 +10,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
-import { Image, Text, type ImageStyle, type StyleProp, type ViewStyle } from 'react-native';
+import { Image, type ImageStyle, type StyleProp, type ViewStyle } from 'react-native';
 
+import { Art } from '@/components/art';
 import { Radius } from '@/constants/theme';
 import { mealVisual } from '@/lib/cuisine';
 
@@ -87,7 +88,7 @@ export function FoodImage({
   radius?: number;
   emojiSize?: number;
 }) {
-  const { emoji, colors } = mealVisual(name, ingredients);
+  const { clipart, colors } = mealVisual(name, ingredients);
   const [uri, setUri] = useState<string | null>(null);
 
   useEffect(() => {
@@ -110,7 +111,7 @@ export function FoodImage({
       end={{ x: 1, y: 1 }}
       style={[{ borderRadius: radius, alignItems: 'center', justifyContent: 'center' }, style]}
     >
-      <Text style={{ fontSize: emojiSize, lineHeight: emojiSize * 1.2 }}>{emoji}</Text>
+      <Image source={Art[clipart]} resizeMode="contain" style={{ width: emojiSize * 1.6, height: emojiSize * 1.6, opacity: 0.9 }} />
     </LinearGradient>
   );
 }

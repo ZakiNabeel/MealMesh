@@ -329,7 +329,6 @@ export default function Plan() {
               <View style={centerCol}>
                 <PressableScale onPress={() => router.push('/pantry')} to={0.98}>
                   <View style={[styles.cookFromHaveBanner, { borderColor: palette.accent, backgroundColor: palette.accentMuted }]}>
-                    <Text style={{ fontSize: 22 }}>🥘</Text>
                     <View style={{ flex: 1 }}>
                       <Body style={{ fontFamily: Type.bodySemibold, color: palette.accent }}>Cook with what I have</Body>
                       <Small color={palette.textSecondary}>Use up ingredients already in your kitchen</Small>
@@ -348,7 +347,6 @@ export default function Plan() {
                 <View style={{ flex: 1, minWidth: 0, gap: Spacing.three }}>
                   <PressableScale onPress={() => router.push('/pantry')} to={0.98}>
                     <View style={[styles.cookFromHaveBanner, { borderColor: palette.accent, backgroundColor: palette.accentMuted }]}>
-                      <Text style={{ fontSize: 22 }}>🥘</Text>
                       <View style={{ flex: 1 }}>
                         <Body style={{ fontFamily: Type.bodySemibold, color: palette.accent }}>Cook with what I have</Body>
                         <Small color={palette.textSecondary}>Use up ingredients already in your kitchen</Small>
@@ -368,7 +366,7 @@ export default function Plan() {
                     onCook={setCookTarget}
                     onUncook={removeCooked}
                   />
-                  <Button title="✨ Regenerate this week" variant="primary" disabled={loading} onPress={regenerate} />
+                  <Button title="Regenerate this week" variant="primary" disabled={loading} onPress={regenerate} />
                 </View>
                 <View style={styles.rightRail}>
                   <LeaderboardCard rank={rank} onOpen={() => router.push('/leaderboard')} />
@@ -428,7 +426,7 @@ export default function Plan() {
             plan tab and the grocery tab on every width. */}
         {!(isDesktop && tab === 'plan') && (
           <View style={[styles.footer, centerCol]}>
-            <Button title="✨ Regenerate this week" variant="primary" disabled={loading} onPress={regenerate} />
+            <Button title="Regenerate this week" variant="primary" disabled={loading} onPress={regenerate} />
           </View>
         )}
       </ScrollView>
@@ -458,7 +456,7 @@ function CookProgress({ summary, streak }: { summary: WeekSummary; streak: numbe
         <Eyebrow>Your week</Eyebrow>
         <View style={[styles.streakPill, { backgroundColor: streak > 0 ? palette.accentMuted : palette.backgroundElement }]}>
           <Text style={{ fontFamily: Type.bodySemibold, fontSize: 12, color: streak > 0 ? palette.accent : palette.textSecondary }}>
-            {streak > 0 ? `🔥 ${streak}-day streak` : 'Start a streak today'}
+            {streak > 0 ? `${streak}-day streak` : 'Start a streak today'}
           </Text>
         </View>
       </View>
@@ -480,7 +478,7 @@ function CookProgress({ summary, streak }: { summary: WeekSummary; streak: numbe
       </View>
 
       {summary.perfectWeek ? (
-        <Small color={palette.accent} style={{ fontFamily: Type.bodySemibold }}>🏆 Perfect Week — every meal cooked!</Small>
+        <Small color={palette.accent} style={{ fontFamily: Type.bodySemibold }}>Perfect Week — every meal cooked!</Small>
       ) : (
         <Small color={palette.textSecondary}>Tap ✓ on a meal once you&apos;ve cooked it.</Small>
       )}
@@ -541,7 +539,6 @@ function CookSheet({
                   <ActivityIndicator color={palette.accent} />
                 ) : (
                   <>
-                    <Text style={{ fontSize: 26 }}>📸</Text>
                     <Small color={palette.textSecondary} style={{ fontFamily: Type.bodySemibold }}>
                       Add a photo (optional)
                     </Small>
@@ -885,9 +882,6 @@ function BudgetBanner({ plan, country, budgetWeekly }: { plan: MealPlan; country
   return (
     <GlassCard style={{ gap: Spacing.three }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three }}>
-        <View style={[styles.budgetIcon, { backgroundColor: palette.accentMuted }]}>
-          <Text style={{ fontSize: 20 }}>🧾</Text>
-        </View>
         <View style={{ flex: 1 }}>
           <Eyebrow>Est. weekly groceries</Eyebrow>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: Spacing.two, flexWrap: 'wrap' }}>
@@ -1175,7 +1169,7 @@ function GroceryExportAction({
           ? 'Downloaded ✓'
           : isPro
             ? '⬇ Export / Share PDF'
-            : '🔒 Export PDF — Pro';
+            : 'Export PDF — Pro';
 
   return (
     <PressableScale onPress={onPress} to={0.97} disabled={status === 'working'}>

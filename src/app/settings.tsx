@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -8,17 +9,27 @@ import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Scre
 import { Radius, Spacing, THEME_META, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { getDraftHousehold } from '@/lib/draft';
+import { loadHousehold } from '@/lib/store';
 import { useSubscription } from '@/lib/subscription';
 import { usePalette, useTheme } from '@/theme/use-theme';
+import type { Household } from '@/types';
 
 export default function Settings() {
   const router = useRouter();
   const palette = usePalette();
   const { themeName, setTheme } = useTheme();
-  const { user, signOut } = useAuth();
+  const { user, signOut, loading: authLoading } = useAuth();
   const { isPro } = useSubscription();
-  const household = getDraftHousehold();
+  const [household, setHousehold] = useState<Household | null>(getDraftHousehold());
   const isDesktop = useIsDesktop();
+
+  // The in-memory draft only survives within this session; a signed-in user
+  // landing here fresh (no prior /plan visit yet) needs their saved
+  // household fetched, or "Edit household" wrongly offers first-time setup.
+  useEffect(() => {
+    if (authLoading || !user || getDraftHousehold()) return;
+    void loadHousehold().then((h) => h && setHousehold(h));
+  }, [authLoading, user]);
   const col = isDesktop ? styles.col : undefined;
 
   return (
@@ -65,7 +76,7 @@ export default function Settings() {
             <Button
               title={household ? 'Edit household' : 'Set up household'}
               variant="secondary"
-              onPress={() => router.push('/onboarding')}
+              onPress={() => router.push(household ? '/household' : '/onboarding')}
             />
           </Section>
         </Reveal>
