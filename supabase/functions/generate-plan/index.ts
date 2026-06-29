@@ -29,8 +29,16 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2.74.0';
 
+import { COUNTRIES } from '../../../src/lib/countries.ts';
 import { deriveAllowList, unionHardExclusions, unionSoftAvoid, validatePlan } from '../../../src/lib/constraints.ts';
+import { normalizeCuisineMix, regionsInMix } from '../../../src/lib/cuisineMix.ts';
 import type { Household, MealPlan } from '../../../src/types/index.ts';
+
+/** Country label for a code (e.g. 'PK' -> 'Pakistan') — used only to phrase
+ *  the cuisine-disambiguation note to Gemini, never sent as PII. */
+function countryLabel(code: string | undefined): string | null {
+  return COUNTRIES.find((c) => c.code === code)?.label ?? null;
+}
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -54,11 +62,13 @@ const admin = createClient(
 );
 
 async function constraintHash(household: Household, hardExclude: string[], softAvoid: string[], allow: ReturnType<typeof deriveAllowList>): Promise<string> {
+  const cuisineMix = normalizeCuisineMix(household.region, household.cuisines);
   const canonical = {
     hardExclude: [...hardExclude].sort(),
     softAvoid: [...softAvoid].sort(),
     allow: Object.fromEntries(Object.entries(allow).map(([k, v]) => [k, [...(v as string[])].sort()])),
-    region: household.region ?? null,
+    cuisineMix: cuisineMix.map((c) => `${c.region}:${c.percent}`).sort(),
+    country: household.country ?? null,
     budgetWeekly: household.budgetWeekly ?? null,
     currency: household.currency ?? null,
     healthConsciousness: household.healthConsciousness ?? 3,
@@ -88,10 +98,20 @@ const SYSTEM_PROMPT =
   'legumes, egg whites) over fatty cuts, favor fruit-forward desserts over syrup-heavy sweets, and add more ' +
   'vegetables/fiber per meal. At 1-2, cook normally with no special restriction. Never violate HARD_EXCLUDE ' +
   'or SOFT_AVOID to satisfy this — it only adjusts technique and proportions within what is already allowed.\n' +
-  'CUISINE: When a `region` other than "none" is given, the MAJORITY of meals must be ' +
-  'authentic, named dishes of that cuisine (e.g. south_asian: karahi, biryani, daal, pulao, ' +
-  'sabzi, qeema — not generic "traybake" or "stir-fry"). Use that cuisine\'s real spices and ' +
-  'techniques. A few lighter/global meals are fine for variety.\n' +
+  'CUISINE: `cuisineMix` is a list of {region, percent} that sums to 100 — distribute the 35 ' +
+  'meals across them proportionally (e.g. 80/20 means roughly 28 of the 35 meals draw from the ' +
+  'first region\'s dishes, 7 from the second\'s), spread naturally through the week rather than ' +
+  'grouped into a block at the start or end. Every meal\'s `cuisine` field must name the specific ' +
+  'region it was drawn from. For each region, use authentic, named dishes of THAT cuisine (e.g. ' +
+  'south_asian: karahi, biryani, daal, pulao, sabzi, qeema — not generic "traybake" or "stir-fry"); ' +
+  'use that cuisine\'s real spices and techniques.\n' +
+  'COUNTRY DISAMBIGUATION: when `country` is given, a broad region label must read as THAT ' +
+  'country\'s specific home cooking, not the wider region\'s stereotype — these are not ' +
+  'interchangeable even within the same region. For Pakistan specifically: use Pakistani dishes ' +
+  '(karahi, biryani, nihari, haleem, daal chawal, paratha, qeema, chapli kebab, seekh kebab) and ' +
+  'avoid dishes that read as distinctly Indian rather than Pakistani (e.g. dosa, idli, sambar, ' +
+  'vada, paneer-heavy Punjabi-Indian restaurant fare) unless a member\'s constraints specifically ' +
+  'call for them. Apply the same country-specific judgment for any other country given.\n' +
   'RECIPES: For every meal include a `recipe` with `servings` (number), `timeMinutes` ' +
   '(number), and `steps` (3–5 short numbered instructions a home cook can follow — keep each ' +
   'step under 12 words), plus a `cuisine` label string.\n' +
@@ -117,7 +137,8 @@ function isMealPlan(value: unknown): value is MealPlan {
 async function requestPlan(household: Household, retryNote?: string, attempt = 1): Promise<MealPlan> {
   const hardExclude = unionHardExclusions(household.members);
   const softAvoid = unionSoftAvoid(household.members);
-  const allow = deriveAllowList(household.members, household.region);
+  const cuisineMix = normalizeCuisineMix(household.region, household.cuisines);
+  const allow = deriveAllowList(household.members, regionsInMix(cuisineMix));
 
   const payload = {
     // Anonymized on purpose — the output schema (below) never references a
@@ -127,7 +148,9 @@ async function requestPlan(household: Household, retryNote?: string, attempt = 1
     HARD_EXCLUDE: hardExclude,
     SOFT_AVOID: softAvoid,
     ALLOW: allow,
-    region: household.region,
+    cuisineMix,
+    country: household.country ?? null,
+    countryName: countryLabel(household.country),
     budgetWeekly: household.budgetWeekly ?? null,
     currency: household.currency ?? null,
     // 1 (not health-conscious) - 5 (extremely, e.g. gym-goers tracking
@@ -219,7 +242,7 @@ Deno.serve(async (req) => {
 
     const hardExclude = unionHardExclusions(household.members);
     const softAvoid = unionSoftAvoid(household.members);
-    const allow = deriveAllowList(household.members, household.region);
+    const allow = deriveAllowList(household.members, regionsInMix(normalizeCuisineMix(household.region, household.cuisines)));
     const hash = await constraintHash(household, hardExclude, softAvoid, allow);
     const isRegenerate = Boolean(seed && seed > 0);
 

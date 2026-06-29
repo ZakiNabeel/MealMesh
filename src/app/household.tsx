@@ -5,16 +5,17 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from
 import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
 import { CountryPicker } from '@/components/CountryPicker';
+import { CuisineMixPicker } from '@/components/CuisineMixPicker';
 import { Body, Button, Chip, Eyebrow, GlassCard, Heading, PressableScale, Screen, Small, useIsDesktop } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { constraintsByCategory, makeConstraint } from '@/lib/constraints';
-import { REGIONS } from '@/lib/dietLibrary';
+import { normalizeCuisineMix } from '@/lib/cuisineMix';
 import { getDraftHousehold, setDraftHousehold } from '@/lib/draft';
 import { countryByCode, currencySymbol } from '@/lib/geo';
 import { loadHousehold, saveHousehold } from '@/lib/store';
 import { usePalette } from '@/theme/use-theme';
-import type { AgeBand, ConstraintCategory, ConstraintKey, Household, Member, Region } from '@/types';
+import type { AgeBand, ConstraintCategory, ConstraintKey, CuisineWeight, Household, Member, Region } from '@/types';
 
 type DraftMember = { id: string; name: string; ageBand: AgeBand; keys: ConstraintKey[] };
 
@@ -60,7 +61,8 @@ export default function HouseholdEdit() {
   const [existingId, setExistingId] = useState<string>('draft');
 
   const [name, setName] = useState('');
-  const [region, setRegion] = useState<Region>('none');
+  const [cuisines, setCuisines] = useState<CuisineWeight[]>([{ region: 'none', percent: 100 }]);
+  const dominantRegion: Region = cuisines.reduce((a, b) => (b.percent > a.percent ? b : a)).region;
   const [country, setCountry] = useState('');
   const [budget, setBudget] = useState('');
   const [healthConsciousness, setHealthConsciousness] = useState(3);
@@ -79,7 +81,7 @@ export default function HouseholdEdit() {
       if (existing) {
         setExistingId(existing.id);
         setName(existing.name);
-        setRegion(existing.region);
+        setCuisines(normalizeCuisineMix(existing.region, existing.cuisines));
         setCountry(existing.country ?? '');
         setBudget(existing.budgetWeekly ? String(existing.budgetWeekly) : '');
         setHealthConsciousness(existing.healthConsciousness ?? 3);
@@ -125,7 +127,8 @@ export default function HouseholdEdit() {
     const household: Household = {
       id: existingId,
       name: name.trim() || 'Our household',
-      region,
+      region: dominantRegion,
+      cuisines: cuisines.length > 1 ? cuisines : undefined,
       country: country || undefined,
       currency: country ? countryByCode(country).currency : undefined,
       budgetWeekly: budget ? Number(budget) : undefined,
@@ -175,7 +178,7 @@ export default function HouseholdEdit() {
                 value={country}
                 onSelect={(code) => {
                   setCountry(code);
-                  setRegion((r) => (r === 'none' ? countryByCode(code).region : r));
+                  setCuisines((mix) => (mix.length === 1 && mix[0].region === 'none' ? [{ region: countryByCode(code).region, percent: 100 }] : mix));
                 }}
               />
               {country !== '' && (
@@ -200,11 +203,10 @@ export default function HouseholdEdit() {
           <View style={[{ gap: Spacing.two }, col]}>
             <Eyebrow>Cuisine preference</Eyebrow>
             <GlassCard style={{ gap: Spacing.three }}>
-              <View style={styles.wrap}>
-                {Object.values(REGIONS).map((r) => (
-                  <Chip key={r.region} label={r.label} selected={region === r.region} onPress={() => setRegion(r.region)} />
-                ))}
-              </View>
+              <Small color={palette.textSecondary}>
+                Tap to add up to 3 — e.g. mostly Pakistani with a little Chinese — and rebalance the split.
+              </Small>
+              <CuisineMixPicker value={cuisines} onChange={setCuisines} />
             </GlassCard>
           </View>
 

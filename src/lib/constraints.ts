@@ -142,22 +142,28 @@ export function unionSoftAvoid(members: Member[]): Token[] {
  * which is how a "south_asian" household used to end up with dishes like
  * "biryani with corn tortilla."
  */
-function filterByRegion(staples: Staple[], region: Region): Staple[] {
-  if (region === 'none') return staples;
-  return staples.filter((s) => !s.regions || s.regions.includes(region));
+function filterByRegion(staples: Staple[], regions: Region[]): Staple[] {
+  if (regions.includes('none')) return staples;
+  return staples.filter((s) => !s.regions || s.regions.some((r) => regions.includes(r)));
 }
 
 /**
  * Derive the positive pantry. A staple survives if NONE of its tokens are
  * hard-excluded. `universal` staples additionally avoid every soft preference,
  * so they are the safe basis for shared (whole-household) dishes.
+ *
+ * `region` accepts a single region (the common case) or an array — pass an
+ * array when the household blends multiple cuisines (see cuisineMix.ts) so
+ * e.g. tofu/sesame oil aren't excluded just because the dominant region is
+ * south_asian.
  */
-export function deriveAllowList(members: Member[], region: Region): AllowList {
+export function deriveAllowList(members: Member[], region: Region | Region[]): AllowList {
+  const regionList = Array.isArray(region) ? region : [region];
   const hard = new Set(unionHardExclusions(members));
   const soft = new Set(unionSoftAvoid(members));
 
   const allowed = STAPLES.filter((s) => !s.tokens.some((t) => hard.has(t)));
-  const ordered = filterByRegion(allowed, region);
+  const ordered = filterByRegion(allowed, regionList);
 
   const namesIn = (group: StapleGroup): string[] =>
     ordered.filter((s) => s.group === group).map((s) => s.name);
@@ -173,13 +179,13 @@ export function deriveAllowList(members: Member[], region: Region): AllowList {
     vegetables: namesIn('vegetable'),
     legumes: namesIn('legume'),
     universal,
-    notes: buildNotes(members, region),
+    notes: buildNotes(members, regionList),
   };
 }
 
-function buildNotes(members: Member[], region: Region): string[] {
+function buildNotes(members: Member[], regions: Region[]): string[] {
   const notes: string[] = [];
-  if (region !== 'none') notes.push(REGIONS[region].hint);
+  for (const region of regions) if (region !== 'none') notes.push(REGIONS[region].hint);
 
   const hardLabels = uniqueLabels(members, 'hard');
   notes.push(

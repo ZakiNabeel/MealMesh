@@ -165,11 +165,30 @@ export interface Member {
   constraints: MemberConstraint[];
 }
 
+/** One cuisine in a household's mix, with its share of the week's meals (0-100). */
+export interface CuisineWeight {
+  region: Region;
+  percent: number;
+}
+
 export interface Household {
   id: string;
   name: string;
+  /** The dominant/primary cuisine — kept as the single source of truth for
+   *  the safety-relevant ALLOW-list pantry filter and as the fallback when
+   *  `cuisines` is unset. Always equal to the highest-weighted entry in
+   *  `cuisines` when that's set. */
   region: Region;
-  /** ISO country code (e.g. 'PK', 'US'). Drives currency + budget. */
+  /**
+   * Optional multi-cuisine mix (e.g. 80% Pakistani-style south_asian + 20%
+   * Chinese) — lets a household blend more than one cuisine instead of being
+   * locked to a single region. Percentages sum to 100. When unset or a
+   * single entry, behaves exactly like the old single-`region` household.
+   */
+  cuisines?: CuisineWeight[];
+  /** ISO country code (e.g. 'PK', 'US'). Drives currency + budget, and
+   *  disambiguates a broad region (e.g. south_asian) toward that country's
+   *  home cooking rather than the region's stereotype. */
   country?: string;
   /** ISO currency code (e.g. 'PKR', 'USD'). Derived from country. */
   currency?: string;

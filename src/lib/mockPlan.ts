@@ -15,6 +15,7 @@
 import { ingredientCostUsd, weeklyLocal } from '@/lib/budget';
 import { analyzeIngredient, deriveAllowList, unionHardExclusions, validatePlan } from '@/lib/constraints';
 import { buildRegionalDessert, buildRegionalMeal } from '@/lib/cuisine';
+import { normalizeCuisineMix, pickCuisine, regionsInMix } from '@/lib/cuisineMix';
 import { MEAL_SLOTS, type ConstraintKey, type DayOfWeek, type GroceryItem, type Household, type MealPlan, type MealSlot, type PlannedMeal, type Token } from '@/types';
 
 const DAYS: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -32,7 +33,8 @@ function pick(list: string[], i: number, fallback: string): string {
 }
 
 export function generateMockPlan(household: Household, seed = 0): MealPlan {
-  const allow = deriveAllowList(household.members, household.region);
+  const cuisineMix = normalizeCuisineMix(household.region, household.cuisines);
+  const allow = deriveAllowList(household.members, regionsInMix(cuisineMix));
   const hardSet = new Set<Token>(unionHardExclusions(household.members));
   const universal = new Set(allow.universal);
 
@@ -69,11 +71,12 @@ export function generateMockPlan(household: Household, seed = 0): MealPlan {
         // same slot every day of the week. 17 is prime and bigger than any
         // pool we have, so i % poolLength varies properly across all 7 days.
         const i = dayIdx * 17 + slotIdx + seed;
+        const mealRegion = pickCuisine(cuisineMix, seed, i);
 
         if (slot === 'dessert') {
           const fruit = pick(FRUITS, i, 'mixed berries');
           const grain = pick(grains, i + 1, 'rice');
-          const dish = buildRegionalDessert({ region: household.region, fruit, grain, seed: i, isSafe, healthConsciousness });
+          const dish = buildRegionalDessert({ region: mealRegion, fruit, grain, seed: i, isSafe, healthConsciousness });
           const ingredients = dedupe([fruit, grain, 'sugar', ...dish.extras]);
           const shared = ingredients.every((ing) => universal.has(ing) || isSafe(ing));
           out.push({
@@ -99,7 +102,7 @@ export function generateMockPlan(household: Household, seed = 0): MealPlan {
         const isLegume = legumeSet.has(protein);
 
         const dish = buildRegionalMeal({
-          region: household.region,
+          region: mealRegion,
           slot,
           protein,
           grain,

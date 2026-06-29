@@ -4,6 +4,7 @@ import { Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-nati
 
 import { Art } from '@/components/art';
 import { CountryPicker } from '@/components/CountryPicker';
+import { CuisineMixPicker } from '@/components/CuisineMixPicker';
 import { Body, Button, Chip, Eyebrow, Heading, PressableScale, ProgressBar, Reveal, Screen, Small } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { constraintsByCategory, makeConstraint } from '@/lib/constraints';
@@ -11,7 +12,7 @@ import { REGIONS } from '@/lib/dietLibrary';
 import { setDraftHousehold } from '@/lib/draft';
 import { countryByCode, currencySymbol } from '@/lib/geo';
 import { usePalette } from '@/theme/use-theme';
-import type { AgeBand, ConstraintCategory, ConstraintKey, Household, Member, Region } from '@/types';
+import type { AgeBand, ConstraintCategory, ConstraintKey, CuisineWeight, Household, Member, Region } from '@/types';
 
 type DraftMember = { id: string; name: string; ageBand: AgeBand; keys: ConstraintKey[] };
 
@@ -68,7 +69,8 @@ export default function Onboarding() {
   const step: Step = STEPS[stepIndex];
 
   const [householdName, setHouseholdName] = useState('');
-  const [region, setRegion] = useState<Region>('none');
+  const [cuisines, setCuisines] = useState<CuisineWeight[]>([{ region: 'none', percent: 100 }]);
+  const dominantRegion: Region = cuisines.reduce((a, b) => (b.percent > a.percent ? b : a)).region;
   const [country, setCountry] = useState<string>('');
   const [budget, setBudget] = useState('');
   const [healthConsciousness, setHealthConsciousness] = useState(3);
@@ -129,7 +131,8 @@ export default function Onboarding() {
       const household: Household = {
         id: 'draft',
         name: householdName.trim() || 'Our household',
-        region,
+        region: dominantRegion,
+        cuisines: cuisines.length > 1 ? cuisines : undefined,
         country: country || undefined,
         currency: country ? countryByCode(country).currency : undefined,
         budgetWeekly: budget ? Number(budget) : undefined,
@@ -182,7 +185,7 @@ export default function Onboarding() {
                   value={country}
                   onSelect={(code) => {
                     setCountry(code);
-                    setRegion(countryByCode(code).region); // pre-pick a cuisine; user can change below
+                    setCuisines([{ region: countryByCode(code).region, percent: 100 }]); // pre-pick a cuisine; user can change below
                   }}
                 />
               </View>
@@ -208,16 +211,10 @@ export default function Onboarding() {
               )}
               <View style={{ gap: Spacing.two }}>
                 <Body color={palette.textSecondary}>Lean the plan toward a cuisine?</Body>
-                <View style={styles.wrap}>
-                  {Object.values(REGIONS).map((r) => (
-                    <Chip
-                      key={r.region}
-                      label={r.label}
-                      selected={region === r.region}
-                      onPress={() => setRegion(r.region)}
-                    />
-                  ))}
-                </View>
+                <Small color={palette.textSecondary}>
+                  Tap to add up to 3 — e.g. mostly Pakistani with a little Chinese — and rebalance the split.
+                </Small>
+                <CuisineMixPicker value={cuisines} onChange={setCuisines} />
               </View>
 
               <View style={{ gap: Spacing.two }}>
@@ -329,11 +326,13 @@ export default function Onboarding() {
           {step === 'review' && (
             <View style={{ gap: Spacing.four }}>
               <View style={{ gap: Spacing.one }}>
-                <Image source={Art[REGION_CLIPART[region]]} alt="" style={{ width: 48, height: 48, marginBottom: 4 }} resizeMode="contain" />
+                <Image source={Art[REGION_CLIPART[dominantRegion]]} alt="" style={{ width: 48, height: 48, marginBottom: 4 }} resizeMode="contain" />
                 <Eyebrow>Almost there</Eyebrow>
                 <Heading>{householdName.trim() || 'Our household'}</Heading>
                 <Body color={palette.textSecondary}>
-                  {REGIONS[region].label}
+                  {cuisines.length > 1
+                    ? cuisines.map((c) => `${REGIONS[c.region].label} ${c.percent}%`).join(' + ')
+                    : REGIONS[dominantRegion].label}
                   {' · '}
                   {members.length} {members.length === 1 ? 'person' : 'people'}
                   {' · '}

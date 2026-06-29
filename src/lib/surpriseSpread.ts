@@ -9,6 +9,7 @@
 
 import { analyzeIngredient, deriveAllowList, unionHardExclusions } from '@/lib/constraints';
 import { buildRegionalDessert, buildRegionalDrink, buildRegionalMeal } from '@/lib/cuisine';
+import { normalizeCuisineMix, pickCuisine, regionsInMix } from '@/lib/cuisineMix';
 import type { Household, Recipe, Token } from '@/types';
 
 export type Course = 'appetizer' | 'main' | 'drink' | 'dessert';
@@ -45,7 +46,8 @@ function pick(list: string[], i: number, fallback: string): string {
  * Have, just feeding this builder instead of the weekly generator.
  */
 export function buildSurpriseSpread(household: Household, seed = 0, pantryItems: string[] = []): CourseDish[] {
-  const allow = deriveAllowList(household.members, household.region);
+  const cuisineMix = normalizeCuisineMix(household.region, household.cuisines);
+  const allow = deriveAllowList(household.members, regionsInMix(cuisineMix));
   const hardSet = new Set<Token>(unionHardExclusions(household.members));
   const isSafe = (ingredient: string): boolean => ![...analyzeIngredient(ingredient)].some((t) => hardSet.has(t));
 
@@ -72,7 +74,7 @@ export function buildSurpriseSpread(household: Household, seed = 0, pantryItems:
     const v2 = pick(veg, i + 2, 'greens');
     const fat = pick(oil, i, 'olive oil');
     const isLegume = legumeSet.has(protein);
-    const dish = buildRegionalMeal({ region: household.region, slot, protein, grain, veg: v1, veg2: v2, fat, isLegume, seed: i, isSafe });
+    const dish = buildRegionalMeal({ region: pickCuisine(cuisineMix, seed, i), slot, protein, grain, veg: v1, veg2: v2, fat, isLegume, seed: i, isSafe });
     return {
       course,
       name: dish.name,
@@ -87,7 +89,7 @@ export function buildSurpriseSpread(household: Household, seed = 0, pantryItems:
 
   const fruit = pick(FRUITS, seed + 3, 'mixed berries');
   const dessertGrain = pick(grains, seed + 4, 'rice');
-  const dessertDish = buildRegionalDessert({ region: household.region, fruit, grain: dessertGrain, seed: seed + 3, isSafe, healthConsciousness });
+  const dessertDish = buildRegionalDessert({ region: pickCuisine(cuisineMix, seed, seed + 3), fruit, grain: dessertGrain, seed: seed + 3, isSafe, healthConsciousness });
   const dessert: CourseDish = {
     course: 'dessert',
     name: dessertDish.name,
@@ -96,7 +98,7 @@ export function buildSurpriseSpread(household: Household, seed = 0, pantryItems:
     recipe: dessertDish.recipe,
   };
 
-  const drinkDish = buildRegionalDrink({ region: household.region, seed: seed + 5, isSafe });
+  const drinkDish = buildRegionalDrink({ region: pickCuisine(cuisineMix, seed, seed + 5), seed: seed + 5, isSafe });
   const drink: CourseDish = {
     course: 'drink',
     name: drinkDish.name,
