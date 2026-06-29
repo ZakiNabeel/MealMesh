@@ -11,7 +11,7 @@
 -- recipe's ingredients carry. The GIN index makes the overlap test fast at
 -- corpus scale.
 
-create table if not exists public.recipes (
+create table if not exists public.recipe_corpus (
   id              uuid primary key default gen_random_uuid(),
   title           text not null,
   cuisine         text not null,                       -- Region enum value (south_asian, chinese, …)
@@ -36,14 +36,14 @@ create table if not exists public.recipes (
 );
 
 -- The safety hot-path: `WHERE NOT exclusion_tokens && :hard_exclude`.
-create index if not exists recipes_exclusion_gin on public.recipes using gin (exclusion_tokens);
+create index if not exists recipe_corpus_exclusion_gin on public.recipe_corpus using gin (exclusion_tokens);
 -- Cuisine + course narrowing for the weekly selector.
-create index if not exists recipes_cuisine_course on public.recipes (cuisine, course);
+create index if not exists recipe_corpus_cuisine_course on public.recipe_corpus (cuisine, course);
 
 -- Public read (the corpus is shared, non-sensitive reference data). No insert/
 -- update/delete policies are defined, so ONLY the service role (which bypasses
 -- RLS) can write — i.e. the offline ingest pipeline, never a client.
-alter table public.recipes enable row level security;
+alter table public.recipe_corpus enable row level security;
 
-drop policy if exists "recipes are publicly readable" on public.recipes;
-create policy "recipes are publicly readable" on public.recipes for select using (true);
+drop policy if exists "recipe_corpus is publicly readable" on public.recipe_corpus;
+create policy "recipe_corpus is publicly readable" on public.recipe_corpus for select using (true);

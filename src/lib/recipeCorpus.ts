@@ -15,7 +15,7 @@
  *      household's HARD_EXCLUDE. No model, no network, no guessing: a recipe is
  *      safe iff none of its tokens are hard-excluded by ANY member.
  *
- * The DB column `recipes.exclusion_tokens` (migration 0013) stores tagRecipe's
+ * The DB column `recipe_corpus.exclusion_tokens` (migration 0013) stores tagRecipe's
  * output so the same logic that runs here at ingest can be a GIN-indexed SQL
  * filter at query time.
  */

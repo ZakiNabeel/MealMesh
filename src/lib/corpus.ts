@@ -10,7 +10,7 @@
  * Mediterranean, East Asian, American, European, Latin, African). The procedural
  * generator (cuisine.ts) fills any slot the corpus can't cover, so plans are
  * always complete. New dishes drop straight in here (or, at scale, the
- * `recipes` table via migration 0013) and the engine picks them up — the path
+ * `recipe_corpus` table via migration 0013) and the engine picks them up — the path
  * to deep per-cuisine / per-country depth.
  *
  * `countryOrigin` (ISO code) disambiguates a broad cuisine: a Pakistani
