@@ -8,7 +8,7 @@
 
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
@@ -179,6 +179,7 @@ function PlanCard({
   if (!signedIn) {
     return (
       <GlassCard style={{ gap: Spacing.three }}>
+        <Image source={Art.tacos} alt="" style={{ width: 56, height: 56 }} resizeMode="contain" />
         <Eyebrow>This week</Eyebrow>
         <Heading>Build a plan everyone can eat</Heading>
         <Body color={palette.textSecondary}>One weekly plan that works for every diet at your table — and a single grocery list to match.</Body>
@@ -193,6 +194,7 @@ function PlanCard({
   if (!household) {
     return (
       <GlassCard style={{ gap: Spacing.three }}>
+        <Image source={Art.rice} alt="" style={{ width: 56, height: 56 }} resizeMode="contain" />
         <Eyebrow>This week</Eyebrow>
         <Heading>Set up your household</Heading>
         <Body color={palette.textSecondary}>Add who&apos;s at your table and their diets, and we&apos;ll weave one plan everyone can eat.</Body>

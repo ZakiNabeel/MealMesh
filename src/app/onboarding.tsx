@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Art } from '@/components/art';
 import { CountryPicker } from '@/components/CountryPicker';
@@ -24,6 +24,16 @@ const AGE_BANDS: { value: AgeBand; label: string }[] = [
   { value: 'child', label: 'Child' },
 ];
 
+/** 1-5 scale — factored into plan generation (sugar/oil/fried-food
+ *  moderation, leaner proteins, fruit-forward desserts) as it rises. */
+const HEALTH_LEVELS: { value: number; label: string }[] = [
+  { value: 1, label: 'Not really' },
+  { value: 2, label: 'A little' },
+  { value: 3, label: 'Moderate' },
+  { value: 4, label: 'Very' },
+  { value: 5, label: 'Extremely' },
+];
+
 const CATEGORY_META: Record<ConstraintCategory, { title: string; tone: 'green' | 'blue' }> = {
   religious: { title: 'Religious & cultural', tone: 'green' },
   lifestyle: { title: 'Lifestyle', tone: 'green' },
@@ -33,6 +43,21 @@ const CATEGORY_META: Record<ConstraintCategory, { title: string; tone: 'green' |
 
 let idSeq = 0;
 const nextId = () => `m${++idSeq}`;
+
+// A loose, food-themed flavor of the chosen cuisine — only 7 cliparts exist,
+// so most regions share whichever reads closest rather than going iconless.
+const REGION_CLIPART: Record<Region, keyof typeof Art> = {
+  south_asian: 'rice',
+  middle_eastern: 'cinnamon',
+  mediterranean: 'fruits',
+  east_asian: 'ramen',
+  chinese: 'ramen',
+  latin: 'tacos',
+  african: 'rice',
+  american: 'steak',
+  european: 'sandwich',
+  none: 'fruits',
+};
 
 export default function Onboarding() {
   const router = useRouter();
@@ -46,6 +71,7 @@ export default function Onboarding() {
   const [region, setRegion] = useState<Region>('none');
   const [country, setCountry] = useState<string>('');
   const [budget, setBudget] = useState('');
+  const [healthConsciousness, setHealthConsciousness] = useState(3);
   const [members, setMembers] = useState<DraftMember[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -107,6 +133,7 @@ export default function Onboarding() {
         country: country || undefined,
         currency: country ? countryByCode(country).currency : undefined,
         budgetWeekly: budget ? Number(budget) : undefined,
+        healthConsciousness,
         members: built,
       };
       setDraftHousehold(household);
@@ -191,6 +218,24 @@ export default function Onboarding() {
                     />
                   ))}
                 </View>
+              </View>
+
+              <View style={{ gap: Spacing.two }}>
+                <Body color={palette.textSecondary}>How health-conscious is your household? (e.g. gym-goers, macro tracking)</Body>
+                <View style={styles.wrap}>
+                  {HEALTH_LEVELS.map((h) => (
+                    <Chip
+                      key={h.value}
+                      label={h.label}
+                      tone="blue"
+                      selected={healthConsciousness === h.value}
+                      onPress={() => setHealthConsciousness(h.value)}
+                    />
+                  ))}
+                </View>
+                <Small color={palette.textSecondary}>
+                  Higher settings moderate sugar, oil and fried food, and lean on lighter proteins and fruit-forward desserts.
+                </Small>
               </View>
             </View>
           )}
@@ -284,12 +329,15 @@ export default function Onboarding() {
           {step === 'review' && (
             <View style={{ gap: Spacing.four }}>
               <View style={{ gap: Spacing.one }}>
+                <Image source={Art[REGION_CLIPART[region]]} alt="" style={{ width: 48, height: 48, marginBottom: 4 }} resizeMode="contain" />
                 <Eyebrow>Almost there</Eyebrow>
                 <Heading>{householdName.trim() || 'Our household'}</Heading>
                 <Body color={palette.textSecondary}>
                   {REGIONS[region].label}
                   {' · '}
                   {members.length} {members.length === 1 ? 'person' : 'people'}
+                  {' · '}
+                  {HEALTH_LEVELS.find((h) => h.value === healthConsciousness)?.label} health focus
                 </Body>
               </View>
               {members.map((m) => (

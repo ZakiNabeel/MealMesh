@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
-import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
+import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small, useIsDesktop } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { getDraftHousehold } from '@/lib/draft';
@@ -31,6 +31,7 @@ export default function Paywall() {
   const router = useRouter();
   const palette = usePalette();
   const { user } = useAuth();
+  const isDesktop = useIsDesktop();
   // Monthly is the promoted default; yearly is still available but not pushed.
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [tier, setTier] = useState<PriceTier>(() => tierForCountry(getDraftHousehold()?.country));
@@ -111,8 +112,8 @@ export default function Paywall() {
             })}
           </View>
 
-          <View style={styles.priceRow}>
-            <Text style={{ fontFamily: Type.displayBold, fontSize: 40, color: palette.text }}>{price}</Text>
+          <View style={[styles.priceRow, !isDesktop && { flexDirection: 'column', gap: Spacing.one }]}>
+            <Text style={{ fontFamily: Type.displayBold, fontSize: isDesktop ? 40 : 32, color: palette.text }}>{price}</Text>
             <Body color={palette.textSecondary}>{per}</Body>
           </View>
 

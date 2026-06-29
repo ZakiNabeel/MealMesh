@@ -31,6 +31,14 @@ const CATEGORY_META: Record<ConstraintCategory, { title: string; tone: 'green' |
   allergen: { title: 'Allergens', tone: 'blue' },
 };
 
+const HEALTH_LEVELS: { value: number; label: string }[] = [
+  { value: 1, label: 'Not really' },
+  { value: 2, label: 'A little' },
+  { value: 3, label: 'Moderate' },
+  { value: 4, label: 'Very' },
+  { value: 5, label: 'Extremely' },
+];
+
 let idSeq = 0;
 const nextId = () => `new${++idSeq}`;
 
@@ -55,6 +63,7 @@ export default function HouseholdEdit() {
   const [region, setRegion] = useState<Region>('none');
   const [country, setCountry] = useState('');
   const [budget, setBudget] = useState('');
+  const [healthConsciousness, setHealthConsciousness] = useState(3);
   const [members, setMembers] = useState<DraftMember[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -73,6 +82,7 @@ export default function HouseholdEdit() {
         setRegion(existing.region);
         setCountry(existing.country ?? '');
         setBudget(existing.budgetWeekly ? String(existing.budgetWeekly) : '');
+        setHealthConsciousness(existing.healthConsciousness ?? 3);
         setMembers(
           existing.members.map((m) => ({ id: m.id, name: m.name, ageBand: m.ageBand, keys: m.constraints.map((c) => c.key) })),
         );
@@ -119,6 +129,7 @@ export default function HouseholdEdit() {
       country: country || undefined,
       currency: country ? countryByCode(country).currency : undefined,
       budgetWeekly: budget ? Number(budget) : undefined,
+      healthConsciousness,
       members: built,
     };
     setSaving(true);
@@ -192,6 +203,18 @@ export default function HouseholdEdit() {
               <View style={styles.wrap}>
                 {Object.values(REGIONS).map((r) => (
                   <Chip key={r.region} label={r.label} selected={region === r.region} onPress={() => setRegion(r.region)} />
+                ))}
+              </View>
+            </GlassCard>
+          </View>
+
+          <View style={[{ gap: Spacing.two }, col]}>
+            <Eyebrow>Health consciousness</Eyebrow>
+            <GlassCard style={{ gap: Spacing.three }}>
+              <Body color={palette.textSecondary}>How health-conscious is your household? (e.g. gym-goers, macro tracking)</Body>
+              <View style={styles.wrap}>
+                {HEALTH_LEVELS.map((h) => (
+                  <Chip key={h.value} label={h.label} tone="blue" selected={healthConsciousness === h.value} onPress={() => setHealthConsciousness(h.value)} />
                 ))}
               </View>
             </GlassCard>

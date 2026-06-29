@@ -8,9 +8,9 @@
  * a user with a stale total.
  *
  * The loop it powers:
- *   cook a meal            → +MEAL_POINTS
- *   cook all 4 of a day    → "Clean-Plate Day" badge + CLEAN_PLATE_BONUS
- *   cook all 28 of a week  → "Perfect Week" badge + PERFECT_WEEK_BONUS
+ *   cook a meal              → +MEAL_POINTS
+ *   cook every slot of a day → "Clean-Plate Day" badge + CLEAN_PLATE_BONUS
+ *   cook every slot of a week → "Perfect Week" badge + PERFECT_WEEK_BONUS
  *   cook on consecutive days → a streak (Duolingo-style daily habit)
  */
 
@@ -51,7 +51,7 @@ export interface WeekSummary {
   byDay: DayProgress[];
   /** Days that earned a Clean-Plate badge (all 4 slots). */
   cleanPlateDays: DayOfWeek[];
-  /** True only when every one of the 28 slots was cooked. */
+  /** True only when every one of the week's slots was cooked. */
   perfectWeek: boolean;
 }
 

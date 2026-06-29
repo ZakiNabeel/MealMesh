@@ -175,6 +175,13 @@ export interface Household {
   currency?: string;
   /** Optional target weekly grocery budget, in the local currency. */
   budgetWeekly?: number;
+  /**
+   * 1 (not health-conscious) – 5 (extremely health-conscious, e.g. gym-goers
+   * tracking macros). Moderates sugar/oil/fried-food usage and leans on
+   * leaner proteins + fruit-forward desserts as it rises. Defaults to 3
+   * (moderate) when unset.
+   */
+  healthConsciousness?: number;
   members: Member[];
 }
 
@@ -223,10 +230,10 @@ export type DayOfWeek =
   | 'saturday'
   | 'sunday';
 
-export type MealSlot = 'breakfast' | 'lunch' | 'supper' | 'dinner';
+export type MealSlot = 'breakfast' | 'lunch' | 'supper' | 'dinner' | 'dessert';
 
-/** The four daily meals, in order. */
-export const MEAL_SLOTS: MealSlot[] = ['breakfast', 'lunch', 'supper', 'dinner'];
+/** The five daily meals, in order. */
+export const MEAL_SLOTS: MealSlot[] = ['breakfast', 'lunch', 'supper', 'dinner', 'dessert'];
 
 /** Step-by-step cooking guide shown when a meal card is opened. */
 export interface Recipe {

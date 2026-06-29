@@ -126,7 +126,7 @@ export function Screen({
           <Image
             source={art}
             resizeMode="contain"
-            style={[StyleSheet.absoluteFill, { opacity: palette.glassTint === 'dark' ? 0.12 : 0.07 }]}
+            style={[StyleSheet.absoluteFill, { opacity: palette.glassTint === 'dark' ? 0.22 : 0.16 }]}
           />
         </View>
       )}

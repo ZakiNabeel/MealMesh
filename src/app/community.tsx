@@ -6,7 +6,7 @@
 
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
@@ -121,7 +121,8 @@ export default function CommunityScreen() {
         </View>
       ) : posts.length === 0 ? (
         <Reveal delay={80}>
-          <GlassCard style={{ gap: Spacing.two }}>
+          <GlassCard style={{ gap: Spacing.two, alignItems: 'center' }}>
+            <Image source={Art.fruits} alt="" style={{ width: 48, height: 48 }} resizeMode="contain" />
             <Small color={palette.textSecondary}>
               {sort === 'following' ? 'Follow other home cooks to see their posts here.' : 'Nothing here yet — be the first to share something.'}
             </Small>

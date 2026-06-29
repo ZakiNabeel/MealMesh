@@ -22,15 +22,15 @@ import { FoodCarouselRail } from '@/components/FoodCarouselRail';
 import { FoodImage } from '@/components/FoodImage';
 import { Body, Button, Chip, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Screen, Small, useIsDesktop } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
-import { cookFrom, type Suggestion } from '@/lib/cookFrom';
+import { cookFrom } from '@/lib/cookFrom';
 import { localizeName, youtubeSearchUrl } from '@/lib/cuisine';
 import { DIET_DEFINITIONS, REGIONS } from '@/lib/dietLibrary';
 import { getDraftHousehold } from '@/lib/draft';
-import { generateMockPlan } from '@/lib/mockPlan';
 import { loadHousehold } from '@/lib/store';
+import { buildSurpriseSpread, COURSE_LABEL, type CourseDish } from '@/lib/surpriseSpread';
 import { useSubscription } from '@/lib/subscription';
 import { usePalette } from '@/theme/use-theme';
-import type { ConstraintKey, Household, MemberConstraint, PlannedMeal, Region } from '@/types';
+import type { ConstraintKey, Household, MemberConstraint, Region } from '@/types';
 
 const QUICK = ['eggs', 'rice', 'chicken', 'lentils', 'potato', 'onion', 'tomato', 'spinach', 'yogurt', 'chickpeas'];
 
@@ -78,7 +78,7 @@ export default function Surprise() {
   const [guestNeeds, setGuestNeeds] = useState<boolean | null>(null);
 
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<PlannedMeal[] | null>(null);
+  const [result, setResult] = useState<CourseDish[] | null>(null);
   const [excluded, setExcluded] = useState<{ name: string; reason: string }[]>([]);
 
   useEffect(() => {
@@ -130,36 +130,13 @@ export default function Surprise() {
     }
     setBusy(true);
     const built = guestHousehold();
-    const count = mode === 'guests' ? 5 : 3;
-    let meals: PlannedMeal[] = [];
-    let skipped: { name: string; reason: string }[] = [];
-
-    if (items.length > 0) {
-      // Build around what they actually have on hand.
-      const res = cookFrom(items, built);
-      meals = res.suggestions.map((s: Suggestion) => s.meal).slice(0, count);
-      skipped = res.excluded;
-    }
-    if (meals.length < count) {
-      // Top up (or fully fill, when no ingredients were given) with a fresh
-      // region-appropriate spread from the planner engine. Lead with the
-      // substantial meals — a guest spread shouldn't open with a breakfast.
-      const plan = generateMockPlan(built, Date.now() % 1000);
-      const priority: PlannedMeal['slot'][] = mode === 'guests' ? ['dinner', 'lunch', 'supper'] : ['dinner', 'lunch', 'supper', 'breakfast'];
-      const ranked = plan.days
-        .filter((m) => priority.includes(m.slot))
-        .sort((a, b) => priority.indexOf(a.slot) - priority.indexOf(b.slot));
-      const seen = new Set(meals.map((m) => m.name));
-      for (const m of ranked) {
-        if (meals.length >= count) break;
-        if (seen.has(m.name)) continue;
-        seen.add(m.name);
-        meals.push(m);
-      }
-    }
+    // Surfaces "left out for safety" messaging for any pantry item that broke
+    // a household rule — the dishes themselves come from buildSurpriseSpread.
+    const skipped = items.length > 0 ? cookFrom(items, built).excluded : [];
+    const dishes = buildSurpriseSpread(built, Date.now() % 1000, items);
 
     setExcluded(skipped);
-    setResult(meals);
+    setResult(dishes);
     setBusy(false);
   };
 
@@ -320,10 +297,10 @@ export default function Surprise() {
             </GlassCard>
           ) : (
             <>
-              <Eyebrow>{mode === 'guests' ? 'Your guest spread' : 'Cook one of these'}</Eyebrow>
-              {result.map((meal, i) => (
-                <Reveal key={`${meal.name}-${i}`} delay={i * 50}>
-                  <DishCard meal={meal} region={region} />
+              <Eyebrow>{mode === 'guests' ? 'Your guest spread' : 'Your spread'}</Eyebrow>
+              {result.map((dish, i) => (
+                <Reveal key={`${dish.course}-${i}`} delay={i * 50}>
+                  <DishCard dish={dish} region={region} />
                 </Reveal>
               ))}
               <Button title={mode === 'guests' ? 'Surprise us again' : 'Another idea'} variant="secondary" onPress={generate} disabled={busy} />
@@ -355,32 +332,35 @@ export default function Surprise() {
   );
 }
 
-function DishCard({ meal, region }: { meal: PlannedMeal; region: Region }) {
+function DishCard({ dish, region }: { dish: CourseDish; region: Region }) {
   const palette = usePalette();
   const [open, setOpen] = useState(false);
   return (
     <PressableScale onPress={() => setOpen((o) => !o)} to={0.98}>
       <GlassCard style={{ gap: Spacing.three }}>
         <View style={{ flexDirection: 'row', gap: Spacing.three, alignItems: 'center' }}>
-          <FoodImage name={meal.name} ingredients={meal.ingredients} style={{ width: 56, height: 56 }} emojiSize={28} />
+          <FoodImage name={dish.name} ingredients={dish.ingredients} style={{ width: 56, height: 56 }} emojiSize={28} />
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ fontFamily: Type.display, fontSize: 17, color: palette.text }}>{localizeName(meal.name, region)}</Text>
-            {meal.cuisine && <Small color={palette.accent}>{meal.cuisine} · tap for recipe</Small>}
+            <Small color={palette.textSecondary} style={{ fontFamily: Type.bodySemibold, textTransform: 'uppercase', letterSpacing: 0.5, fontSize: 11 }}>
+              {COURSE_LABEL[dish.course]}
+            </Small>
+            <Text style={{ fontFamily: Type.display, fontSize: 17, color: palette.text }}>{localizeName(dish.name, region)}</Text>
+            {dish.cuisine && <Small color={palette.accent}>{dish.cuisine} · tap for recipe</Small>}
           </View>
         </View>
 
-        {open && meal.recipe && (
+        {open && dish.recipe && (
           <View style={{ gap: Spacing.two, borderTopWidth: 1, borderTopColor: palette.border, paddingTop: Spacing.three }}>
             <Small color={palette.textSecondary}>
-              {meal.recipe.timeMinutes} min · serves {meal.recipe.servings}
+              {dish.recipe.timeMinutes} min · serves {dish.recipe.servings}
             </Small>
-            {meal.recipe.steps.map((step, i) => (
+            {dish.recipe.steps.map((step, i) => (
               <View key={i} style={{ flexDirection: 'row', gap: Spacing.two }}>
                 <Text style={{ fontFamily: Type.bodyBold, fontSize: 13, color: palette.accent }}>{i + 1}.</Text>
                 <Body style={{ flex: 1, fontSize: 15 }}>{step}</Body>
               </View>
             ))}
-            <PressableScale onPress={() => Linking.openURL(youtubeSearchUrl(meal.name))} to={0.98}>
+            <PressableScale onPress={() => Linking.openURL(youtubeSearchUrl(dish.name))} to={0.98}>
               <Small color={palette.blue} style={{ fontFamily: Type.bodySemibold, marginTop: Spacing.one }}>▶  Watch recipe on YouTube</Small>
             </PressableScale>
           </View>

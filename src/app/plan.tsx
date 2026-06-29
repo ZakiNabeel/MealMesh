@@ -57,6 +57,7 @@ const SLOT_LABEL: Record<MealSlot, string> = {
   lunch: 'Lunch',
   supper: 'Supper',
   dinner: 'Dinner',
+  dessert: 'Dessert',
 };
 
 const LOADING_QUIPS = [
@@ -262,7 +263,7 @@ export default function Plan() {
     return (
       <Screen art={Art.ramen} header={<AppHeader active="plan" />}>
         <View style={styles.empty}>
-          <Image source={require('../../assets/logo.svg')} alt="" style={{ width: 88, height: 88, borderRadius: 26 }} />
+          <Image source={Art.ramen} alt="" style={{ width: 110, height: 110 }} resizeMode="contain" />
           <Heading>No plan yet</Heading>
           <Body color={palette.textSecondary} style={{ textAlign: 'center' }}>
             Tell us about your household and we&apos;ll weave one plan everyone can eat.
@@ -448,7 +449,7 @@ export default function Plan() {
  *  numbers room to breathe (nav to leaderboard/community lives in the header). */
 function CookProgress({ summary, streak }: { summary: WeekSummary; streak: number }) {
   const palette = usePalette();
-  const total = DAY_ORDER.length * MEAL_SLOTS.length; // 28
+  const total = DAY_ORDER.length * MEAL_SLOTS.length; // 35 (7 days x 5 slots)
   const pct = total > 0 ? summary.mealsCooked / total : 0;
   return (
     <GlassCard style={{ gap: Spacing.three }}>

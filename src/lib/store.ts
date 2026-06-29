@@ -24,6 +24,7 @@ interface HouseholdRow {
   country: string | null;
   currency: string | null;
   budget_weekly: number | null;
+  health_consciousness: number | null;
 }
 
 interface MemberRow {
@@ -86,6 +87,7 @@ export async function saveHousehold(h: Household): Promise<Household | null> {
     country: h.country ?? null,
     currency: h.currency ?? null,
     budget_weekly: h.budgetWeekly ?? null,
+    health_consciousness: h.healthConsciousness ?? 3,
   };
 
   let householdId: string;
@@ -135,7 +137,7 @@ export async function loadHousehold(): Promise<Household | null> {
 
   const { data: hData } = await supabase
     .from('households')
-    .select('id, name, region_preference, country, currency, budget_weekly')
+    .select('id, name, region_preference, country, currency, budget_weekly, health_consciousness')
     .eq('owner_user_id', userId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -167,6 +169,7 @@ export async function loadHousehold(): Promise<Household | null> {
     country: household.country ?? undefined,
     currency: household.currency ?? undefined,
     budgetWeekly: household.budget_weekly ?? undefined,
+    healthConsciousness: household.health_consciousness ?? 3,
     members,
   };
 }

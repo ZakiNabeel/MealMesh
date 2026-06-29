@@ -14,10 +14,14 @@
 
 import { ingredientCostUsd, weeklyLocal } from '@/lib/budget';
 import { analyzeIngredient, deriveAllowList, unionHardExclusions, validatePlan } from '@/lib/constraints';
-import { buildRegionalMeal } from '@/lib/cuisine';
+import { buildRegionalDessert, buildRegionalMeal } from '@/lib/cuisine';
 import { MEAL_SLOTS, type ConstraintKey, type DayOfWeek, type GroceryItem, type Household, type MealPlan, type MealSlot, type PlannedMeal, type Token } from '@/types';
 
 const DAYS: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+// Whole, plain fruit — no allergen/diet tokens of its own, safe for every
+// household, so dessert never needs the protein-style safety dance.
+const FRUITS = ['banana', 'mango', 'apple', 'mixed berries', 'orange', 'pear'];
 
 function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -39,7 +43,14 @@ export function generateMockPlan(household: Household, seed = 0): MealPlan {
   const legumeSet = new Set(allow.legumes);
   // Proteins to cook around: real proteins first, then legumes as a fallback.
   const proteins = allow.proteins.filter((p) => !/yogurt|paneer/i.test(p));
-  const proteinPool = [...proteins, ...allow.legumes];
+  let proteinPool = [...proteins, ...allow.legumes];
+  const healthConsciousness = household.healthConsciousness ?? 3;
+  if (healthConsciousness >= 4) {
+    // Lean cuts first (fish, poultry, legumes, egg) — fattier red meat still
+    // appears, just later in the rotation, so the bias is gentle, not absolute.
+    const isLean = (p: string) => /fish|chicken|turkey|egg|lentil|chickpea|bean|tofu|tempeh/i.test(p);
+    proteinPool = [...proteinPool].sort((a, b) => Number(isLean(b)) - Number(isLean(a)));
+  }
   const safeProteins = proteinPool.length ? proteinPool : ['mixed beans'];
   const grains = allow.grains.length ? allow.grains : ['rice'];
   const veg = allow.vegetables.length ? allow.vegetables : ['seasonal vegetables'];
@@ -58,6 +69,26 @@ export function generateMockPlan(household: Household, seed = 0): MealPlan {
         // same slot every day of the week. 17 is prime and bigger than any
         // pool we have, so i % poolLength varies properly across all 7 days.
         const i = dayIdx * 17 + slotIdx + seed;
+
+        if (slot === 'dessert') {
+          const fruit = pick(FRUITS, i, 'mixed berries');
+          const grain = pick(grains, i + 1, 'rice');
+          const dish = buildRegionalDessert({ region: household.region, fruit, grain, seed: i, isSafe, healthConsciousness });
+          const ingredients = dedupe([fruit, grain, 'sugar', ...dish.extras]);
+          const shared = ingredients.every((ing) => universal.has(ing) || isSafe(ing));
+          out.push({
+            dayOfWeek: day,
+            slot,
+            name: dish.name,
+            sharedOrVariant: shared ? 'shared' : 'variant',
+            ingredients,
+            satisfies,
+            cuisine: dish.cuisine,
+            recipe: dish.recipe,
+          });
+          return;
+        }
+
         // Breakfasts read best with eggs — use them when the household allows it.
         const eggsOk = pool.includes('eggs');
         const protein = slot === 'breakfast' && eggsOk && i % 3 !== 0 ? 'eggs' : pick(pool, i, 'mixed beans');

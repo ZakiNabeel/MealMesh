@@ -11,7 +11,8 @@
 
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { SheetModal } from '@/components/SheetModal';
 import { BrandLockup } from '@/components/SocialBar';
@@ -30,8 +31,6 @@ export type HeaderTab = 'home' | 'plan' | 'community' | 'leaderboard' | 'guest' 
 const LINKS: {
   key: HeaderTab;
   label: string;
-  /** Shorter glyph shown on mobile, where width is tight. Falls back to `label`. */
-  mobileLabel?: string;
   path: '/home' | '/plan' | '/community' | '/leaderboard' | '/surprise';
   /** "Guest mode" and "Surprise me" are the same Pro-gated screen opened to a
    *  different starting mode — kept as two distinct nav entries since
@@ -42,8 +41,8 @@ const LINKS: {
   { key: 'plan', label: 'Plan', path: '/plan' },
   { key: 'community', label: 'Community', path: '/community' },
   { key: 'leaderboard', label: 'Leaderboard', path: '/leaderboard' },
-  { key: 'guest', label: 'Guest mode', mobileLabel: 'Guest', path: '/surprise', params: { mode: 'guests' } },
-  { key: 'surprise', label: 'Surprise me', mobileLabel: 'Surprise', path: '/surprise', params: { mode: 'me' } },
+  { key: 'guest', label: 'Guest mode', path: '/surprise', params: { mode: 'guests' } },
+  { key: 'surprise', label: 'Surprise me', path: '/surprise', params: { mode: 'me' } },
 ];
 
 export function AppHeader({ active }: { active?: HeaderTab }) {
@@ -55,6 +54,7 @@ export function AppHeader({ active }: { active?: HeaderTab }) {
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
 
   useEffect(() => {
     if (!session) {
@@ -67,6 +67,16 @@ export function AppHeader({ active }: { active?: HeaderTab }) {
   return (
     <View style={[styles.bar, { borderBottomColor: palette.border, backgroundColor: palette.background }]}>
       <View style={[styles.inner, { paddingHorizontal: isDesktop ? Spacing.four : Spacing.three, gap: isDesktop ? Spacing.three : Spacing.two }]}>
+        {!isDesktop && (
+          <PressableScale onPress={() => setNavOpen(true)} to={0.92}>
+            <View style={styles.hamburger}>
+              <View style={[styles.hamburgerBar, { backgroundColor: palette.text }]} />
+              <View style={[styles.hamburgerBar, { backgroundColor: palette.text }]} />
+              <View style={[styles.hamburgerBar, { backgroundColor: palette.text }]} />
+            </View>
+          </PressableScale>
+        )}
+
         {/* Internal route, not an external reload — same marketing page the
             "/" route already renders (signed in or not), just without the
             full page reload an external URL would force. */}
@@ -78,26 +88,30 @@ export function AppHeader({ active }: { active?: HeaderTab }) {
           )}
         </PressableScale>
 
-        <View style={[styles.links, { gap: isDesktop ? Spacing.one : 0 }]}>
-          {LINKS.filter((l) => l.key !== 'home' || isDesktop).map((l) => {
-            const on = active === l.key;
-            return (
-              <PressableScale key={l.key} onPress={() => router.push(l.params ? { pathname: l.path, params: l.params } : l.path)} to={0.94}>
-                <View style={[styles.link, { paddingHorizontal: isDesktop ? Spacing.three : 9 }, on && { backgroundColor: palette.accentMuted }]}>
-                  <Text
-                    style={{
-                      fontFamily: on ? Type.bodySemibold : Type.bodyMedium,
-                      fontSize: isDesktop ? 14 : 12.5,
-                      color: on ? palette.accent : palette.textSecondary,
-                    }}
-                  >
-                    {isDesktop ? l.label : l.mobileLabel ?? l.label}
-                  </Text>
-                </View>
-              </PressableScale>
-            );
-          })}
-        </View>
+        {isDesktop && (
+          <View style={[styles.links, { gap: Spacing.one }]}>
+            {LINKS.map((l) => {
+              const on = active === l.key;
+              return (
+                <PressableScale key={l.key} onPress={() => router.push(l.params ? { pathname: l.path, params: l.params } : l.path)} to={0.94}>
+                  <View style={[styles.link, { paddingHorizontal: Spacing.three }, on && { backgroundColor: palette.accentMuted }]}>
+                    <Text
+                      style={{
+                        fontFamily: on ? Type.bodySemibold : Type.bodyMedium,
+                        fontSize: 14,
+                        color: on ? palette.accent : palette.textSecondary,
+                      }}
+                    >
+                      {l.label}
+                    </Text>
+                  </View>
+                </PressableScale>
+              );
+            })}
+          </View>
+        )}
+
+        {!isDesktop && <View style={{ flex: 1 }} />}
 
         {session && !isPro && !subLoading && (
           <PressableScale onPress={() => router.push('/paywall')} to={0.94}>
@@ -133,6 +147,8 @@ export function AppHeader({ active }: { active?: HeaderTab }) {
         )}
       </View>
 
+      {!isDesktop && <NavDrawer visible={navOpen} onClose={() => setNavOpen(false)} active={active} />}
+
       {!isDesktop && (
         <SheetModal visible={menuOpen} onClose={() => setMenuOpen(false)} maxWidth={420}>
           <View style={{ padding: Spacing.four }}>
@@ -141,6 +157,63 @@ export function AppHeader({ active }: { active?: HeaderTab }) {
         </SheetModal>
       )}
     </View>
+  );
+}
+
+const DRAWER_WIDTH = 280;
+
+/**
+ * Mobile nav — a left-edge side panel instead of cramming six links into the
+ * header row, which used to overflow off-screen on phone-width viewports.
+ * Stays mounted through the close animation (the slide-out), then unmounts.
+ */
+function NavDrawer({ visible, onClose, active }: { visible: boolean; onClose: () => void; active?: HeaderTab }) {
+  const palette = usePalette();
+  const router = useRouter();
+  const [mounted, setMounted] = useState(visible);
+  const x = useSharedValue(visible ? 0 : -DRAWER_WIDTH);
+
+  useEffect(() => {
+    if (visible) {
+      setMounted(true);
+      x.value = withTiming(0, { duration: 220 });
+    } else if (mounted) {
+      x.value = withTiming(-DRAWER_WIDTH, { duration: 200 }, (finished) => {
+        if (finished) runOnJS(setMounted)(false);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
+
+  if (!mounted) return null;
+
+  const go = (l: (typeof LINKS)[number]) => {
+    onClose();
+    router.push(l.params ? { pathname: l.path, params: l.params } : l.path);
+  };
+
+  return (
+    <Modal transparent visible animationType="none" onRequestClose={onClose}>
+      <Pressable style={styles.scrim} onPress={onClose} />
+      <Animated.View style={[styles.drawer, animatedStyle, { backgroundColor: palette.background, borderRightColor: palette.border }]}>
+        <View style={{ padding: Spacing.four, gap: Spacing.one }}>
+          {LINKS.map((l) => {
+            const on = active === l.key;
+            return (
+              <PressableScale key={l.key} onPress={() => go(l)} to={0.97}>
+                <View style={[styles.drawerLink, on && { backgroundColor: palette.accentMuted }]}>
+                  <Text style={{ fontFamily: on ? Type.bodySemibold : Type.bodyMedium, fontSize: 16, color: on ? palette.accent : palette.text }}>
+                    {l.label}
+                  </Text>
+                </View>
+              </PressableScale>
+            );
+          })}
+        </View>
+      </Animated.View>
+    </Modal>
   );
 }
 
@@ -235,4 +308,19 @@ const styles = StyleSheet.create({
       : { shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 8 }),
   },
   menuItem: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: Radius.sm },
+  hamburger: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', gap: 5 },
+  hamburgerBar: { width: 18, height: 2, borderRadius: 1 },
+  drawer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: DRAWER_WIDTH,
+    borderRightWidth: 1,
+    zIndex: 50,
+    ...(Platform.OS === 'web'
+      ? ({ boxShadow: '12px 0 30px rgba(0,0,0,0.16)' } as object)
+      : { shadowColor: '#000', shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 10, height: 0 }, elevation: 8 }),
+  },
+  drawerLink: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.three, borderRadius: Radius.md },
 });

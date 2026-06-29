@@ -33,12 +33,14 @@ import { Art } from '@/components/art';
 import { ArticleMarquee } from '@/components/ArticleMarquee';
 import { CuisineMarquee } from '@/components/CuisineMarquee';
 import { FoodImage } from '@/components/FoodImage';
+import { SheetModal } from '@/components/SheetModal';
 import { BrandLockup, SocialBar } from '@/components/SocialBar';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
-import { Atmosphere, Reveal, ScrollReveal } from '@/components/ui';
+import { Atmosphere, Body, Button, Heading, Reveal, ScrollReveal } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { getLatestArticles, type FeedArticle } from '@/lib/articles';
+import { loadHousehold } from '@/lib/store';
 import { usePalette } from '@/theme/use-theme';
 
 const MAXW = 1180;
@@ -143,7 +145,21 @@ export function WebsiteLanding() {
   const [scrolled, setScrolled] = useState(false);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [latestArticles, setLatestArticles] = useState<FeedArticle[] | null>(null);
+  const [existingPlanPrompt, setExistingPlanPrompt] = useState(false);
   const dark = palette.glassTint === 'dark';
+
+  // "Build our plan" shouldn't silently restart someone who already has a
+  // household — offer to go straight back to it instead of re-onboarding.
+  const buildPlan = async () => {
+    if (session) {
+      const household = await loadHousehold();
+      if (household) {
+        setExistingPlanPrompt(true);
+        return;
+      }
+    }
+    router.push('/onboarding');
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -206,7 +222,7 @@ export function WebsiteLanding() {
                 {session ? (
                   <CTA label="My home" onPress={() => router.push('/home')} />
                 ) : (
-                  <CTA label="Start" onPress={() => router.push('/onboarding')} />
+                  <CTA label="Start" onPress={buildPlan} />
                 )}
               </View>
             ) : (
@@ -228,7 +244,7 @@ export function WebsiteLanding() {
                 ) : (
                   <>
                     <CTA label="Sign in" variant="ghost" onPress={() => router.push('/auth')} />
-                    <CTA label="Build our plan" onPress={() => router.push('/onboarding')} />
+                    <CTA label="Build our plan" onPress={buildPlan} />
                   </>
                 )}
               </View>
@@ -256,7 +272,7 @@ export function WebsiteLanding() {
             </Reveal>
             <Reveal delay={220} style={{ marginTop: 22 }}>
               <View style={[styles.heroCtas, narrow && { flexDirection: 'column' }]}>
-                <CTA label="Build our plan — free" onPress={() => router.push('/onboarding')} />
+                <CTA label="Build our plan — free" onPress={buildPlan} />
                 <CTA label="See how it works" variant="ghost" onPress={() => goTo('how')} />
               </View>
             </Reveal>
@@ -421,7 +437,7 @@ export function WebsiteLanding() {
               Set up your household once. Get a fresh, safe plan every week.
             </Text>
             <Pressable
-              onPress={() => router.push('/onboarding')}
+              onPress={buildPlan}
               style={(s) => [styles.bandBtn, { backgroundColor: palette.onAccent }, isHovered(s) && { opacity: 0.92 }]}
             >
               <Text style={{ fontFamily: Type.bodySemibold, fontSize: 16, color: palette.accent }}>Build our plan — free</Text>
@@ -441,7 +457,7 @@ export function WebsiteLanding() {
               <NewsletterCapture />
             </View>
             <View style={styles.footerCols}>
-              <FooterCol title="Product" links={[['Build a plan', () => router.push('/onboarding')], ['Pricing', () => router.push('/paywall')], ['Cook from pantry', () => router.push('/pantry')]]} />
+              <FooterCol title="Product" links={[['Build a plan', buildPlan], ['Pricing', () => router.push('/paywall')], ['Cook from pantry', () => router.push('/pantry')]]} />
               <FooterCol
                 title="Company"
                 links={[
@@ -462,6 +478,24 @@ export function WebsiteLanding() {
           </Center>
         </View>
       </ScrollView>
+
+      <SheetModal visible={existingPlanPrompt} onClose={() => setExistingPlanPrompt(false)}>
+        <View style={{ gap: Spacing.three }}>
+          <Heading>You already have a plan</Heading>
+          <Body color={palette.textSecondary}>
+            Pick up where you left off, or start fresh with a new household setup.
+          </Body>
+          <Button title="Go to my home" onPress={() => router.push('/home')} />
+          <Button
+            title="Make a new plan"
+            variant="secondary"
+            onPress={() => {
+              setExistingPlanPrompt(false);
+              router.push('/onboarding');
+            }}
+          />
+        </View>
+      </SheetModal>
     </View>
   );
 }

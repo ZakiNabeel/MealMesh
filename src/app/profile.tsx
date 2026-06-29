@@ -9,7 +9,7 @@
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
@@ -121,13 +121,7 @@ export default function ProfileScreen() {
                 )}
               </View>
             }
-          >
-            <View style={[styles.visibility, { borderColor: palette.border }]}>
-              <Text style={{ fontFamily: Type.bodyMedium, fontSize: 12, color: palette.textSecondary }}>
-                {profile.isPublic ? 'Public profile' : 'Private — only you can see this'}
-              </Text>
-            </View>
-          </ProfileHeader>
+          />
         </GlassCard>
       </Reveal>
 
@@ -139,19 +133,6 @@ export default function ProfileScreen() {
           onOpenPost={(post) => router.push({ pathname: '/post/[id]', params: { id: post.id } })}
         />
       </Reveal>
-
-      {!profile.isPublic && (
-        <Reveal delay={240}>
-          <GlassCard style={{ gap: Spacing.two }}>
-            <Body style={{ fontFamily: Type.bodySemibold }}>Join the community</Body>
-            <Small>
-              Make your profile public to share cooked meals, follow other home cooks, and climb the leaderboard
-              (coming soon). Your dietary settings always stay private.
-            </Small>
-            <Button title="Edit profile to go public" variant="secondary" onPress={() => setEditing(true)} />
-          </GlassCard>
-        </Reveal>
-      )}
     </>
   );
 
@@ -209,7 +190,6 @@ function ProfileEditor({ profile, onCancel, onSaved }: { profile: Profile; onCan
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [username, setUsername] = useState(profile.username);
   const [bio, setBio] = useState(profile.bio ?? '');
-  const [isPublic, setIsPublic] = useState(profile.isPublic);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatarUrl);
   const [coverUrl, setCoverUrl] = useState<string | null>(profile.coverUrl);
   const [region, setRegion] = useState<Region | null>((profile.region as Region | null) ?? null);
@@ -243,7 +223,7 @@ function ProfileEditor({ profile, onCancel, onSaved }: { profile: Profile; onCan
     }
     setSaving(true);
     setError(null);
-    const res = await updateProfile({ displayName, username, bio: bio.trim() || null, isPublic, avatarUrl, coverUrl, region });
+    const res = await updateProfile({ displayName, username, bio: bio.trim() || null, isPublic: true, avatarUrl, coverUrl, region });
     setSaving(false);
     if (res.error) setError(res.error);
     else if (res.profile) onSaved(res.profile);
@@ -305,14 +285,6 @@ function ProfileEditor({ profile, onCancel, onSaved }: { profile: Profile; onCan
           </View>
         </Field>
 
-        <View style={[styles.toggleRow, { borderColor: palette.border }]}>
-          <View style={{ flex: 1 }}>
-            <Body style={{ fontFamily: Type.bodySemibold }}>Public profile</Body>
-            <Small color={palette.textSecondary}>Others can find you and see your cooking. Dietary settings stay private.</Small>
-          </View>
-          <Switch value={isPublic} onValueChange={setIsPublic} trackColor={{ true: palette.accent }} />
-        </View>
-
         {error && <Small color={palette.blue}>{error}</Small>}
 
         <View style={{ flexDirection: 'row', gap: Spacing.three }}>
@@ -348,8 +320,6 @@ const styles = StyleSheet.create({
   triRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.four },
   triRail: { width: 280, flexShrink: 0, gap: Spacing.four },
   triMain: { flex: 1, minWidth: 0, gap: Spacing.four },
-  visibility: { alignSelf: 'flex-start', marginTop: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderWidth: 1, borderRadius: Radius.md },
   editorBanner: { height: 110 },
   bannerBadge: { position: 'absolute', right: Spacing.three, bottom: Spacing.three, paddingHorizontal: Spacing.three, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
   avatarRing: { width: 88, height: 88, borderRadius: 44, borderWidth: 4, marginTop: -44, alignItems: 'center', justifyContent: 'center' },

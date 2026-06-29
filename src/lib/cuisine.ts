@@ -779,6 +779,235 @@ const SUPPER_BY_REGION: Partial<Record<Region, DishStyle[]>> = {
   south_asian: SOUTH_ASIAN_SUPPER,
 };
 
+/* ------------------------------------------------------------------ */
+/* Dessert — built from fruit + grain + sugar, never protein-driven    */
+/* ------------------------------------------------------------------ */
+
+interface DessertCtx {
+  fruit: string;
+  grain: string;
+  aromatics: string; // already safety-filtered (e.g. yogurt, honey, cream)
+  spices: string;
+}
+
+interface DessertStyle {
+  name: (fruit: string, grain: string) => string;
+  /** Dairy/sweetener extras that carry tokens — SAFETY-FILTERED by caller. */
+  aromatics: string[];
+  spices: string[];
+  steps: (ctx: DessertCtx) => string[];
+  /** Fruit-forward, no/low added sugar-and-dairy — preferred when the
+   *  household is health-conscious (see buildRegionalDessert). */
+  light?: boolean;
+}
+
+const GLOBAL_DESSERT: DessertStyle[] = [
+  {
+    name: (f) => `${cap(f)} & yogurt parfait`,
+    aromatics: ['yogurt', 'honey'],
+    spices: ['cinnamon'],
+    steps: ({ fruit, aromatics, spices }) => [
+      `Slice the ${fruit} into small pieces.`,
+      `Layer it with ${aromatics} in a glass or bowl.`,
+      `Dust with ${spices}.`,
+      `Chill for 10 minutes before serving.`,
+    ],
+  },
+  {
+    name: (f, g) => `Warm ${g} pudding with ${f}`,
+    aromatics: ['milk'],
+    spices: ['cinnamon', 'cardamom'],
+    steps: ({ grain, fruit, aromatics, spices }) => [
+      `Simmer ${grain} gently in ${aromatics} with a spoon of sugar until creamy.`,
+      `Stir in ${spices}.`,
+      `Top with sliced ${fruit}.`,
+      `Serve warm in small bowls.`,
+    ],
+  },
+  {
+    name: (f) => `Baked ${f} with honey`,
+    aromatics: ['honey', 'butter'],
+    spices: ['cinnamon'],
+    steps: ({ fruit, aromatics, spices }) => [
+      `Halve the ${fruit} and place in a baking dish.`,
+      `Drizzle with ${aromatics} and a dust of ${spices}.`,
+      `Bake until soft and caramelized at the edges.`,
+      `Serve warm.`,
+    ],
+  },
+  {
+    name: (f) => `Fresh ${f} fruit salad`,
+    aromatics: ['mint', 'honey'],
+    spices: ['lime zest'],
+    steps: ({ fruit, aromatics, spices }) => [
+      `Chop the ${fruit} and any other fruit on hand into bite-size pieces.`,
+      `Toss with ${aromatics} and a little ${spices}.`,
+      `Chill for 10 minutes so the flavors mingle.`,
+      `Serve in small bowls.`,
+    ],
+    light: true,
+  },
+];
+
+const SOUTH_ASIAN_DESSERT: DessertStyle[] = [
+  {
+    name: (_f, g) => `${cap(g)} kheer`,
+    aromatics: ['milk', 'ghee'],
+    spices: ['cardamom', 'saffron'],
+    steps: ({ grain, aromatics, spices }) => [
+      `Simmer ${grain} in ${aromatics} on low heat, stirring often, until thick and creamy.`,
+      `Sweeten with sugar to taste.`,
+      `Stir in ${spices}.`,
+      `Serve warm or chilled in small bowls.`,
+    ],
+  },
+  {
+    name: () => 'Semolina halwa',
+    aromatics: ['ghee', 'milk'],
+    spices: ['cardamom'],
+    steps: ({ aromatics, spices }) => [
+      `Toast semolina in ${aromatics} until lightly golden and fragrant.`,
+      `Add sugar water gradually, stirring to avoid lumps.`,
+      `Cook until it pulls away from the pan.`,
+      `Finish with ${spices} and serve warm.`,
+    ],
+  },
+];
+
+const MIDDLE_EASTERN_DESSERT: DessertStyle[] = [
+  {
+    name: (f) => `${cap(f)} with honey and yogurt`,
+    aromatics: ['yogurt', 'honey'],
+    spices: ['cinnamon'],
+    steps: ({ fruit, aromatics, spices }) => [
+      `Slice the ${fruit} and arrange in a bowl.`,
+      `Spoon over ${aromatics}.`,
+      `Dust with ${spices}.`,
+      `Serve at room temperature.`,
+    ],
+    light: true,
+  },
+];
+
+const LATIN_DESSERT: DessertStyle[] = [
+  {
+    name: (f) => `Grilled ${f} with cinnamon sugar`,
+    aromatics: ['butter'],
+    spices: ['cinnamon'],
+    light: true,
+    steps: ({ fruit, aromatics, spices }) => [
+      `Slice the ${fruit} and brush lightly with ${aromatics}.`,
+      `Sear in a hot pan until caramelized.`,
+      `Dust with sugar and ${spices}.`,
+      `Serve warm.`,
+    ],
+  },
+];
+
+const DESSERT_BY_REGION: Partial<Record<Region, DessertStyle[]>> = {
+  south_asian: SOUTH_ASIAN_DESSERT,
+  middle_eastern: MIDDLE_EASTERN_DESSERT,
+  latin: LATIN_DESSERT,
+};
+
+/* ------------------------------------------------------------------ */
+/* Drinks — for the Surprise Me / Guests spread (appetizer/main/drink/  */
+/* dessert), not part of the weekly plan's meal slots                  */
+/* ------------------------------------------------------------------ */
+
+interface DrinkCtx {
+  aromatics: string;
+  spices: string;
+}
+
+interface DrinkStyle {
+  name: () => string;
+  /** Dairy/fruit/citrus extras that carry tokens — SAFETY-FILTERED by caller. */
+  aromatics: string[];
+  spices: string[];
+  steps: (ctx: DrinkCtx) => string[];
+}
+
+const GLOBAL_DRINKS: DrinkStyle[] = [
+  {
+    name: () => 'Iced lemon-mint cooler',
+    aromatics: ['lemon', 'mint'],
+    spices: ['sugar'],
+    steps: ({ aromatics, spices }) => [
+      `Juice the lemon and roughly tear the mint.`,
+      `Stir both into a jug of cold water with ${spices} to taste.`,
+      `Add ${aromatics} and stir well.`,
+      `Pour over ice and serve.`,
+    ],
+  },
+  {
+    name: () => 'Ginger lemonade',
+    aromatics: ['ginger', 'lemon'],
+    spices: ['sugar'],
+    steps: ({ aromatics, spices }) => [
+      `Grate the ginger and steep briefly in warm water.`,
+      `Stir in ${aromatics} and ${spices} to taste.`,
+      `Chill, then pour over ice.`,
+      `Garnish with a lemon slice.`,
+    ],
+  },
+  {
+    name: () => 'Sparkling fruit punch',
+    aromatics: ['mixed berries', 'orange'],
+    spices: ['sugar'],
+    steps: ({ aromatics, spices }) => [
+      `Muddle ${aromatics} lightly with ${spices}.`,
+      `Top with chilled sparkling water.`,
+      `Stir gently and pour over ice.`,
+      `Garnish with extra fruit.`,
+    ],
+  },
+];
+
+const SOUTH_ASIAN_DRINKS: DrinkStyle[] = [
+  {
+    name: () => 'Mango lassi',
+    aromatics: ['yogurt', 'mango'],
+    spices: ['sugar', 'cardamom'],
+    steps: ({ aromatics, spices }) => [
+      `Blend ${aromatics} with a splash of cold water until smooth.`,
+      `Sweeten with ${spices} to taste.`,
+      `Pour over ice.`,
+      `Serve chilled.`,
+    ],
+  },
+  {
+    name: () => 'Masala chai',
+    aromatics: ['milk'],
+    spices: ['cardamom', 'cinnamon', 'ginger'],
+    steps: ({ aromatics, spices }) => [
+      `Simmer water with tea leaves and ${spices}.`,
+      `Add ${aromatics} and bring back to a gentle boil.`,
+      `Sweeten with sugar to taste.`,
+      `Strain and serve hot.`,
+    ],
+  },
+];
+
+const MIDDLE_EASTERN_DRINKS: DrinkStyle[] = [
+  {
+    name: () => 'Mint lemonade',
+    aromatics: ['lemon', 'mint'],
+    spices: ['sugar'],
+    steps: ({ aromatics, spices }) => [
+      `Blend ${aromatics} with cold water and ${spices} to taste.`,
+      `Strain to remove pulp, if preferred.`,
+      `Pour over ice.`,
+      `Garnish with a mint sprig.`,
+    ],
+  },
+];
+
+const DRINK_BY_REGION: Partial<Record<Region, DrinkStyle[]>> = {
+  south_asian: SOUTH_ASIAN_DRINKS,
+  middle_eastern: MIDDLE_EASTERN_DRINKS,
+};
+
 const CUISINE_LABEL: Record<Region, string> = {
   south_asian: 'South Asian',
   middle_eastern: 'Middle Eastern',
@@ -860,6 +1089,87 @@ export function buildRegionalMeal(input: RegionalMealInput): RegionalMeal {
     recipe: {
       servings: 4,
       timeMinutes: light ? 15 + (seed % 3) * 5 : 25 + (seed % 4) * 5,
+      steps: style.steps(ctx),
+    },
+  };
+}
+
+export interface RegionalDessertInput {
+  region: Region;
+  fruit: string;
+  grain: string;
+  seed: number;
+  isSafe: (ingredient: string) => boolean;
+  /** Household's 1-5 health-consciousness scale — >=4 prefers `light` (fruit-
+   *  forward, low added sugar/dairy) styles over richer ones like halwa/kheer. */
+  healthConsciousness?: number;
+}
+
+/**
+ * Builds a dessert — separate from `buildRegionalMeal` because desserts are
+ * fruit/grain/sugar-driven, not protein-driven; forcing chicken or lentils
+ * through the savory pipeline for a "dessert" slot made no sense.
+ */
+export function buildRegionalDessert(input: RegionalDessertInput): RegionalMeal {
+  const { region, fruit, grain, seed, isSafe, healthConsciousness = 3 } = input;
+  const allStyles = DESSERT_BY_REGION[region] ?? GLOBAL_DESSERT;
+  const lightStyles = allStyles.filter((s) => s.light);
+  const styles = healthConsciousness >= 4 && lightStyles.length ? lightStyles : allStyles;
+  const style = styles[seed % styles.length];
+
+  const safeAromatics = style.aromatics.filter(isSafe);
+  const loc = (s: string) => localizeName(s, region);
+  const lAromatics = safeAromatics.map(loc);
+  const aromaticsText = lAromatics.length ? joinList(lAromatics) : 'a little sugar';
+  const spicesText = joinList(style.spices);
+
+  const ctx: DessertCtx = {
+    fruit: loc(fruit),
+    grain: loc(grain),
+    aromatics: aromaticsText,
+    spices: spicesText,
+  };
+
+  return {
+    name: style.name(loc(fruit), loc(grain)),
+    cuisine: CUISINE_LABEL[region] ?? 'Everyday',
+    extras: safeAromatics,
+    recipe: {
+      servings: 4,
+      timeMinutes: 10 + (seed % 3) * 5,
+      steps: style.steps(ctx),
+    },
+  };
+}
+
+export interface RegionalDrinkInput {
+  region: Region;
+  seed: number;
+  isSafe: (ingredient: string) => boolean;
+}
+
+/** Builds a drink to round out a Surprise Me / guest spread — no protein or
+ *  grain involved, just flavor + a sweetener, run through the same safety filter. */
+export function buildRegionalDrink(input: RegionalDrinkInput): RegionalMeal {
+  const { region, seed, isSafe } = input;
+  const styles = DRINK_BY_REGION[region] ?? GLOBAL_DRINKS;
+  const style = styles[seed % styles.length];
+
+  const safeAromatics = style.aromatics.filter(isSafe);
+  const loc = (s: string) => localizeName(s, region);
+  const lAromatics = safeAromatics.map(loc);
+  const aromaticsText = lAromatics.length ? joinList(lAromatics) : 'a little sugar';
+  const spicesText = joinList(style.spices.length ? style.spices : ['sugar']);
+
+  const ctx: DrinkCtx = { aromatics: aromaticsText, spices: spicesText };
+
+  return {
+    name: style.name(),
+    cuisine: CUISINE_LABEL[region] ?? 'Everyday',
+    extras: safeAromatics,
+    recipe: {
+      servings: 4,
+      timeMinutes: 5 + (seed % 2) * 5,
       steps: style.steps(ctx),
     },
   };

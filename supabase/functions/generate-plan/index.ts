@@ -61,6 +61,7 @@ async function constraintHash(household: Household, hardExclude: string[], softA
     region: household.region ?? null,
     budgetWeekly: household.budgetWeekly ?? null,
     currency: household.currency ?? null,
+    healthConsciousness: household.healthConsciousness ?? 3,
   };
   const bytes = new TextEncoder().encode(JSON.stringify(canonical));
   const digest = await crypto.subtle.digest('SHA-256', bytes);
@@ -71,13 +72,22 @@ const SYSTEM_PROMPT =
   'You are a culturally-aware household meal planner. You MUST respect halal, kosher, ' +
   'and all medical/allergen rules exactly. Use ONLY ingredients consistent with the ALLOW ' +
   'list and never any item in HARD_EXCLUDE.\n' +
-  'MEALS: Produce FOUR meals for EACH of the 7 days — slot must be one of ' +
-  '"breakfast","lunch","supper","dinner" (28 entries total). Breakfasts should be ' +
+  'MEALS: Produce FIVE meals for EACH of the 7 days — slot must be one of ' +
+  '"breakfast","lunch","supper","dinner","dessert" (35 entries total). Breakfasts should be ' +
   'breakfast-appropriate for the region (e.g. south_asian: anda paratha, chana, halwa puri).\n' +
   'SUPPER is the LIGHT evening tea-time snack that pairs with chai/tea or coffee — small and ' +
   'quick, NOT a second full dinner. Examples: south_asian: pakoray, samosa, chana chaat, masala ' +
   'toast, aloo tikki, dahi bhalla, biscuits/rusk; western: a cheese toastie, savoury muffin, ' +
   'scone, dip with crackers. Keep supper simple and small. "lunch" and "dinner" are the full meals.\n' +
+  'DESSERT is a small, fruit/grain/dairy-based sweet — NEVER built around the day\'s protein. Keep ' +
+  'it simple (a fruit dish, pudding, or regional sweet like kheer/halwa) and culturally appropriate ' +
+  'to the region.\n' +
+  'HEALTH_CONSCIOUSNESS (1-5, where 1 = no particular focus and 5 = extremely health-conscious, e.g. ' +
+  'gym-goers tracking macros): as this rises, progressively reduce added sugar/oil/ghee/butter and fried ' +
+  'preparations, prefer grilling/baking/steaming over deep-frying, lean on leaner proteins (fish, chicken, ' +
+  'legumes, egg whites) over fatty cuts, favor fruit-forward desserts over syrup-heavy sweets, and add more ' +
+  'vegetables/fiber per meal. At 1-2, cook normally with no special restriction. Never violate HARD_EXCLUDE ' +
+  'or SOFT_AVOID to satisfy this — it only adjusts technique and proportions within what is already allowed.\n' +
   'CUISINE: When a `region` other than "none" is given, the MAJORITY of meals must be ' +
   'authentic, named dishes of that cuisine (e.g. south_asian: karahi, biryani, daal, pulao, ' +
   'sabzi, qeema — not generic "traybake" or "stir-fry"). Use that cuisine\'s real spices and ' +
@@ -120,10 +130,13 @@ async function requestPlan(household: Household, retryNote?: string, attempt = 1
     region: household.region,
     budgetWeekly: household.budgetWeekly ?? null,
     currency: household.currency ?? null,
+    // 1 (not health-conscious) - 5 (extremely, e.g. gym-goers tracking
+    // macros) — see HEALTH_CONSCIOUSNESS note in SYSTEM_PROMPT.
+    healthConsciousness: household.healthConsciousness ?? 3,
     days: 7,
-    mealsPerDay: ['breakfast', 'lunch', 'supper', 'dinner'],
+    mealsPerDay: ['breakfast', 'lunch', 'supper', 'dinner', 'dessert'],
     format:
-      '{"days":[{"dayOfWeek":"monday".."sunday","slot":"breakfast"|"lunch"|"supper"|"dinner",' +
+      '{"days":[{"dayOfWeek":"monday".."sunday","slot":"breakfast"|"lunch"|"supper"|"dinner"|"dessert",' +
       '"name":string,"sharedOrVariant":"shared"|"variant","ingredients":string[],"satisfies":string[],' +
       '"cuisine":string,"recipe":{"servings":number,"timeMinutes":number,"steps":string[]}}],' +
       '"grocery":[{"name":string,"category":string,"quantity":string}]}',
@@ -136,10 +149,10 @@ async function requestPlan(household: Household, retryNote?: string, attempt = 1
     body: JSON.stringify({
       contents: [{ role: 'user', parts: [{ text: JSON.stringify(payload) }] }],
       systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-      // 28 meals × a 5-8 step recipe each, plus a grocery list, easily runs
+      // 35 meals × a 5-8 step recipe each, plus a grocery list, easily runs
       // past 8000 tokens and gets truncated mid-JSON — raise the ceiling well
       // above what a full week's worth of output actually needs.
-      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 16000 },
+      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 18000 },
     }),
   });
 

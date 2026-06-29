@@ -20,7 +20,7 @@ import { usePalette } from '@/theme/use-theme';
 import { MEAL_SLOTS, type CommunityRecipe, type DayOfWeek, type MealSlot } from '@/types';
 
 const JS_DAY_ORDER: DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-const SLOT_LABEL: Record<MealSlot, string> = { breakfast: 'Breakfast', lunch: 'Lunch', supper: 'Supper', dinner: 'Dinner' };
+const SLOT_LABEL: Record<MealSlot, string> = { breakfast: 'Breakfast', lunch: 'Lunch', supper: 'Supper', dinner: 'Dinner', dessert: 'Dessert' };
 
 function todayDayOfWeek(): DayOfWeek {
   return JS_DAY_ORDER[new Date().getDay()];

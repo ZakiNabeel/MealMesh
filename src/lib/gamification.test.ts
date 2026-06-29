@@ -41,7 +41,7 @@ function fullDay(weekStart: string, day: DayOfWeek): MealLog[] {
   return MEAL_SLOTS.map((s) => log(weekStart, day, s));
 }
 
-/** Every slot of every day in a week (the 28). */
+/** Every slot of every day in a week (the 35). */
 function fullWeek(weekStart: string): MealLog[] {
   return DAYS.flatMap((d) => fullDay(weekStart, d));
 }
@@ -66,19 +66,19 @@ describe('summarizeWeek', () => {
     expect(s.perfectWeek).toBe(false);
   });
 
-  it('awards a Clean-Plate Day badge + bonus for all four slots of a day', () => {
+  it('awards a Clean-Plate Day badge + bonus for all five slots of a day', () => {
     const s = summarizeWeek(fullDay(WEEK, 'tuesday'), WEEK);
     expect(s.cleanPlateDays).toEqual(['tuesday']);
     expect(s.byDay.find((d) => d.day === 'tuesday')?.complete).toBe(true);
-    expect(s.points).toBe(4 * MEAL_POINTS + CLEAN_PLATE_BONUS);
+    expect(s.points).toBe(5 * MEAL_POINTS + CLEAN_PLATE_BONUS);
   });
 
-  it('awards a Perfect Week badge + bonus when all 28 slots are cooked', () => {
+  it('awards a Perfect Week badge + bonus when all 35 slots are cooked', () => {
     const s = summarizeWeek(fullWeek(WEEK), WEEK);
-    expect(s.mealsCooked).toBe(28);
+    expect(s.mealsCooked).toBe(35);
     expect(s.perfectWeek).toBe(true);
     expect(s.cleanPlateDays).toHaveLength(7);
-    expect(s.points).toBe(28 * MEAL_POINTS + 7 * CLEAN_PLATE_BONUS + PERFECT_WEEK_BONUS);
+    expect(s.points).toBe(35 * MEAL_POINTS + 7 * CLEAN_PLATE_BONUS + PERFECT_WEEK_BONUS);
   });
 
   it('collapses duplicate (day,slot) logs so a double-tap cannot inflate score', () => {
@@ -146,9 +146,9 @@ describe('lifetimeStats', () => {
     const s = lifetimeStats(logs, '2026-06-22');
     expect(s.perfectWeeks).toBe(1);
     expect(s.cleanPlateDays).toBe(7 + 1);
-    expect(s.mealsLogged).toBe(28 + 4);
+    expect(s.mealsLogged).toBe(35 + 5);
     expect(s.totalPoints).toBe(
-      28 * MEAL_POINTS + 7 * CLEAN_PLATE_BONUS + PERFECT_WEEK_BONUS + (4 * MEAL_POINTS + CLEAN_PLATE_BONUS),
+      35 * MEAL_POINTS + 7 * CLEAN_PLATE_BONUS + PERFECT_WEEK_BONUS + (5 * MEAL_POINTS + CLEAN_PLATE_BONUS),
     );
   });
 });
