@@ -13,10 +13,11 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { Component, useEffect, type ReactNode } from 'react';
+import { Component, useEffect, useState, type ReactNode } from 'react';
 import { Platform, ScrollView, Text } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { BrandIntro } from '@/components/BrandIntro';
 import { AuthProvider } from '@/lib/auth';
 import { ThemeProvider, usePalette } from '@/theme/use-theme';
 
@@ -46,6 +47,47 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
     }
     return this.props.children;
   }
+}
+
+/**
+ * Whether to skip the launch animation. On web we play it once per browser
+ * session (so moving between pages doesn't replay it); on native every cold
+ * start gets it (a fresh JS context, which is exactly "the app was opened").
+ */
+const INTRO_KEY = 'mm_intro_seen';
+function introAlreadySeen(): boolean {
+  if (Platform.OS !== 'web' || typeof sessionStorage === 'undefined') return false;
+  try {
+    return sessionStorage.getItem(INTRO_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+function markIntroSeen() {
+  if (Platform.OS !== 'web' || typeof sessionStorage === 'undefined') return;
+  try {
+    sessionStorage.setItem(INTRO_KEY, '1');
+  } catch {
+    /* private mode — fine, it just replays */
+  }
+}
+
+/** Renders the app, with the BrandIntro overlaid until it finishes once. */
+function AppWithIntro() {
+  const [introDone, setIntroDone] = useState(introAlreadySeen);
+  return (
+    <>
+      <ThemedChrome />
+      {!introDone && (
+        <BrandIntro
+          onFinish={() => {
+            markIntroSeen();
+            setIntroDone(true);
+          }}
+        />
+      )}
+    </>
+  );
 }
 
 /** Stack + status bar that follow the active theme (lives under ThemeProvider). */
@@ -102,7 +144,7 @@ export default function RootLayout() {
       <ThemeProvider>
         <ErrorBoundary>
           <AuthProvider>
-            <ThemedChrome />
+            <AppWithIntro />
           </AuthProvider>
         </ErrorBoundary>
       </ThemeProvider>
