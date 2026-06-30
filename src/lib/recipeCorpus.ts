@@ -144,3 +144,62 @@ export function isRecipeSafe(exclusionTokens: Token[], hardExclude: Set<Token>):
 export function toRecipe(r: TaggedRecipe): Recipe {
   return { servings: r.servings ?? 4, timeMinutes: r.timeMinutes ?? 30, steps: r.steps };
 }
+
+/* ------------------------------------------------------------------ */
+/* DB row mapping                                                     */
+/* ------------------------------------------------------------------ */
+
+/** The `recipe_corpus` row shape (snake_case columns) as read from Supabase. */
+export interface CorpusRow {
+  title: string;
+  cuisine: string;
+  country_origin: string | null;
+  course: string;
+  ingredients: Array<{ name: string; quantity?: number; unit?: string }>;
+  steps: string[];
+  servings: number;
+  time_minutes: number;
+  exclusion_tokens: string[];
+  diet_compatible: string[];
+  cost_tier: number;
+  health_score: number;
+  source: string | null;
+  license: string | null;
+  attribution_url: string | null;
+}
+
+/**
+ * Map a `recipe_corpus` DB row to the in-memory `TaggedRecipe` shape the engine
+ * consumes. The safety tags (`exclusionTokens`, `dietCompatible`) are taken from
+ * the row — they were produced by THIS module's `tagRecipe()` at ingest, so they
+ * speak the same closed token vocabulary. The runtime safety gate
+ * (`isRecipeSafe`) still re-checks them against the household before use, so a
+ * stale or hand-edited row can only ever narrow the pool, never leak a forbidden
+ * ingredient.
+ */
+export function fromDbRow(row: CorpusRow): TaggedRecipe {
+  return {
+    title: row.title,
+    cuisine: row.cuisine as Region,
+    countryOrigin: row.country_origin ?? undefined,
+    course: row.course as Course,
+    ingredients: row.ingredients ?? [],
+    steps: row.steps ?? [],
+    servings: row.servings ?? 4,
+    timeMinutes: row.time_minutes ?? 30,
+    source: row.source ?? undefined,
+    license: row.license ?? undefined,
+    attributionUrl: row.attribution_url ?? undefined,
+    exclusionTokens: (row.exclusion_tokens ?? []) as Token[],
+    dietCompatible: (row.diet_compatible ?? []) as ConstraintKey[],
+    costTier: clampTier(row.cost_tier),
+    healthScore: clampHealth(row.health_score),
+  };
+}
+
+function clampTier(n: number): 1 | 2 | 3 {
+  return (n < 1 ? 1 : n > 3 ? 3 : n) as 1 | 2 | 3;
+}
+function clampHealth(n: number): 1 | 2 | 3 | 4 | 5 {
+  return (n < 1 ? 1 : n > 5 ? 5 : n) as 1 | 2 | 3 | 4 | 5;
+}

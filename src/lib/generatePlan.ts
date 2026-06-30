@@ -7,18 +7,23 @@
  * offline-capable.
  *
  * The engine (`generateLocalPlan`) builds a complete, safety-validated
- * procedural base and then overlays the richer recipe corpus (src/lib/corpus.ts)
- * where a safe, same-cuisine, same-course dish exists — so plans get more varied
- * and authentic as the corpus grows, while always staying complete and safe.
+ * procedural base and then overlays the richer recipe corpus where a safe,
+ * same-cuisine, same-course dish exists — so plans get more varied and authentic
+ * as the corpus grows, while always staying complete and safe.
  *
- * Kept `async` for call-site compatibility and a future move of the corpus to a
- * Supabase fetch. `signedIn` is retained for future per-account personalization.
+ * The corpus comes from `fetchCorpusForHousehold`: the Supabase `recipe_corpus`
+ * table when configured + seeded, otherwise the in-memory seed corpus. Either
+ * way the pool is pre-filtered for the household's HARD_EXCLUDE, and the engine
+ * re-validates, so generation is always safe, instant, and offline-capable.
+ *
+ * `signedIn` is retained for future per-account personalization.
  */
 
-import { getCorpus } from '@/lib/corpus';
+import { fetchCorpusForHousehold } from '@/lib/fetchCorpus';
 import { generateLocalPlan } from '@/lib/planEngine';
 import type { Household, MealPlan } from '@/types';
 
 export async function generatePlan(household: Household, seed: number, _signedIn: boolean): Promise<MealPlan> {
-  return generateLocalPlan(household, getCorpus(), seed);
+  const corpus = await fetchCorpusForHousehold(household);
+  return generateLocalPlan(household, corpus, seed);
 }

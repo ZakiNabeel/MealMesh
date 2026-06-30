@@ -1,4 +1,16 @@
 /**
+ * ⚠️ DEPRECATED — NOT a runtime generation path.
+ *
+ * MealMesh now generates plans on its OWN deterministic local engine
+ * (src/lib/generatePlan.ts → planEngine.ts + the recipe corpus), with no
+ * external LLM at runtime. That removed the Gemini quota/latency/truncation
+ * failure modes and made generation instant, free, and offline-capable.
+ *
+ * This function is retained only as reference for the LLM-proxy approach and is
+ * no longer called by the app. Do not wire new clients to it. See
+ * docs/MealMesh-context.md §2 (stack) / §4 (engine).
+ *
+ * ---------------------------------------------------------------------------
  * Edge Function: proxies the Gemini API to generate a household's weekly meal
  * plan. The Gemini API key lives only in this function's secrets — it is
  * never sent to or readable by the client. We call Gemini over plain REST

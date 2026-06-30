@@ -10,8 +10,9 @@
  */
 
 import { makeConstraint } from '@/lib/constraints';
+import { normalizeCuisineMix } from '@/lib/cuisineMix';
 import { supabase } from '@/lib/supabase';
-import type { AgeBand, Household, MealPlan, Member, Region } from '@/types';
+import type { AgeBand, CuisineWeight, Household, MealPlan, Member, Region } from '@/types';
 
 /* ------------------------------------------------------------------ */
 /* Row shapes (we don't generate DB types, so map explicitly)         */
@@ -21,10 +22,24 @@ interface HouseholdRow {
   id: string;
   name: string;
   region_preference: Region;
+  cuisines: CuisineWeight[] | null;
   country: string | null;
   currency: string | null;
   budget_weekly: number | null;
   health_consciousness: number | null;
+}
+
+/**
+ * Normalize a household's cuisine mix for persistence. Stored as a clean,
+ * 100-summing `CuisineWeight[]`; a single-region household is stored as `[]`
+ * (the region lives in `region_preference`) so we never duplicate the dominant
+ * region in two places.
+ */
+function cuisinesForSave(h: Household): CuisineWeight[] {
+  const mix = normalizeCuisineMix(h.region, h.cuisines);
+  // A single entry equal to the dominant region carries no extra information.
+  if (mix.length <= 1) return [];
+  return mix;
 }
 
 interface MemberRow {
@@ -84,6 +99,7 @@ export async function saveHousehold(h: Household): Promise<Household | null> {
     owner_user_id: userId,
     name: h.name,
     region_preference: h.region,
+    cuisines: cuisinesForSave(h),
     country: h.country ?? null,
     currency: h.currency ?? null,
     budget_weekly: h.budgetWeekly ?? null,
@@ -137,7 +153,7 @@ export async function loadHousehold(): Promise<Household | null> {
 
   const { data: hData } = await supabase
     .from('households')
-    .select('id, name, region_preference, country, currency, budget_weekly, health_consciousness')
+    .select('id, name, region_preference, cuisines, country, currency, budget_weekly, health_consciousness')
     .eq('owner_user_id', userId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -162,10 +178,15 @@ export async function loadHousehold(): Promise<Household | null> {
     ),
   }));
 
+  // Re-normalize on load: drops malformed/empty rows and guarantees a
+  // 100-summing mix, so the engine never sees a broken weighting.
+  const cuisines = normalizeCuisineMix(household.region_preference, household.cuisines ?? undefined);
+
   return {
     id: household.id,
     name: household.name,
     region: household.region_preference,
+    cuisines: cuisines.length > 1 ? cuisines : undefined,
     country: household.country ?? undefined,
     currency: household.currency ?? undefined,
     budgetWeekly: household.budget_weekly ?? undefined,

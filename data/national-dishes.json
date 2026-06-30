@@ -1,0 +1,56 @@
+{
+  "_comment": "Starter national/iconic-dish gazetteer: normalized dish name -> ISO country. Highest-confidence cuisine signal (a title that IS a known national dish). Seeded by hand from well-known dishes; extend from Wunderlich 2022 (doi.org/10.3390/data7110142) supplementary data. Keys are lowercased, punctuation-stripped; the matcher also does fuzzy/substring matching.",
+
+  "biryani": "PK", "chicken karahi": "PK", "nihari": "PK", "haleem": "PK", "chapli kebab": "PK", "seekh kebab": "PK", "chana chaat": "PK", "aloo gosht": "PK",
+  "butter chicken": "IN", "chicken tikka masala": "IN", "dal makhani": "IN", "masala dosa": "IN", "chole bhature": "IN", "palak paneer": "IN", "rogan josh": "IN", "samosa": "IN", "idli": "IN", "vada pav": "IN", "tandoori chicken": "IN",
+  "kottu roti": "LK", "lamprais": "LK",
+
+  "kung pao chicken": "CN", "mapo tofu": "CN", "sweet and sour pork": "CN", "dim sum": "CN", "char siu": "CN", "fried rice": "CN", "chow mein": "CN", "peking duck": "CN", "dumplings": "CN", "wonton soup": "CN", "hot pot": "CN",
+  "sushi": "JP", "ramen": "JP", "tempura": "JP", "teriyaki chicken": "JP", "miso soup": "JP", "udon": "JP", "katsu curry": "JP", "okonomiyaki": "JP",
+  "bibimbap": "KR", "kimchi": "KR", "bulgogi": "KR", "japchae": "KR", "tteokbokki": "KR",
+  "pad thai": "TH", "green curry": "TH", "tom yum": "TH", "massaman curry": "TH", "som tam": "TH",
+  "pho": "VN", "banh mi": "VN", "spring rolls": "VN",
+  "nasi goreng": "ID", "rendang": "ID", "satay": "ID",
+  "nasi lemak": "MY", "laksa": "MY",
+  "adobo": "PH", "sinigang": "PH", "lumpia": "PH",
+
+  "hummus": "LB", "falafel": "LB", "tabbouleh": "LB", "shawarma": "LB", "fattoush": "LB", "kibbeh": "LB",
+  "kebab": "TR", "doner": "TR", "baklava": "TR", "kofte": "TR", "menemen": "TR", "lahmacun": "TR",
+  "shakshuka": "IL", "falafel wrap": "IL",
+  "kabsa": "SA", "mandi": "SA",
+  "koshari": "EG", "ful medames": "EG", "molokhia": "EG",
+  "ghormeh sabzi": "IR", "chelo kebab": "IR", "fesenjan": "IR",
+
+  "moussaka": "GR", "souvlaki": "GR", "gyro": "GR", "spanakopita": "GR", "tzatziki": "GR", "greek salad": "GR",
+  "pizza": "IT", "pasta carbonara": "IT", "spaghetti bolognese": "IT", "lasagna": "IT", "risotto": "IT", "margherita": "IT", "gnocchi": "IT", "minestrone": "IT", "tiramisu": "IT",
+  "paella": "ES", "tortilla espanola": "ES", "gazpacho": "ES", "tapas": "ES", "patatas bravas": "ES",
+  "bacalhau": "PT", "pastel de nata": "PT",
+  "couscous": "MA", "tagine": "MA", "harira": "MA",
+
+  "coq au vin": "FR", "ratatouille": "FR", "croissant": "FR", "quiche lorraine": "FR", "beef bourguignon": "FR", "crepe": "FR", "cassoulet": "FR",
+  "schnitzel": "DE", "bratwurst": "DE", "sauerbraten": "DE", "spaetzle": "DE",
+  "fish and chips": "GB", "shepherds pie": "GB", "bangers and mash": "GB", "full english breakfast": "GB", "beef wellington": "GB",
+  "irish stew": "IE",
+  "pierogi": "PL", "bigos": "PL",
+  "goulash": "HU",
+  "borscht": "UA", "beef stroganoff": "RU", "pelmeni": "RU",
+  "smorrebrod": "DK", "kottbullar": "SE",
+
+  "hamburger": "US", "bbq ribs": "US", "mac and cheese": "US", "clam chowder": "US", "buffalo wings": "US", "cornbread": "US", "fried chicken": "US", "meatloaf": "US", "pancakes": "US",
+  "poutine": "CA",
+
+  "tacos": "MX", "enchiladas": "MX", "guacamole": "MX", "quesadilla": "MX", "chiles rellenos": "MX", "mole": "MX", "pozole": "MX", "burrito": "MX", "tamales": "MX",
+  "feijoada": "BR", "pao de queijo": "BR", "moqueca": "BR",
+  "asado": "AR", "empanadas": "AR", "milanesa": "AR",
+  "ceviche": "PE", "lomo saltado": "PE", "aji de gallina": "PE",
+  "arepas": "VE",
+  "ropa vieja": "CU",
+  "jerk chicken": "JM",
+
+  "jollof rice": "NG", "egusi soup": "NG", "suya": "NG", "pounded yam": "NG",
+  "injera": "ET", "doro wat": "ET", "shiro": "ET",
+  "ugali": "KE", "nyama choma": "KE",
+  "bobotie": "ZA", "bunny chow": "ZA",
+  "thieboudienne": "SN", "yassa": "SN",
+  "berbere lentils": "ET"
+}

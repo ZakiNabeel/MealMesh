@@ -40,7 +40,9 @@ const r = (
   license: 'original',
 });
 
-const RAW: RawRecipe[] = [
+/** The raw, untagged seed recipes. Exported so the offline seed script
+ *  (scripts/seed-corpus.ts) upserts the SAME authored list the app ships. */
+export const RAW: RawRecipe[] = [
   /* ---------------- South Asian — Pakistan ---------------- */
   r('Chicken Karahi', 'south_asian', 'dinner', ['chicken', 'tomato', 'ginger', 'garlic', 'green chili', 'coriander', 'cooking oil'],
     ['Sear chicken in oil over high heat.', 'Add tomato, ginger and garlic; cook until oil separates.', 'Add green chili and spices; simmer until tender.', 'Finish with fresh coriander.'], { country: 'PK', timeMinutes: 40 }),

@@ -1,0 +1,21 @@
+{
+  "_comment": "ISO 3166-1 alpha-2 country code -> MealMesh Region enum. Hand-maintained. Covers every country a recipe is likely to be tagged with; unmapped codes fall through to ingredient fingerprinting. Regions are culinary, not geographic: 'chinese' is split out from 'east_asian', and 'mediterranean' covers the Med-basin cuisines distinct from broader 'european'.",
+
+  "PK": "south_asian", "IN": "south_asian", "BD": "south_asian", "LK": "south_asian", "NP": "south_asian", "AF": "south_asian", "BT": "south_asian", "MV": "south_asian",
+
+  "CN": "chinese", "HK": "chinese", "TW": "chinese", "MO": "chinese", "SG": "chinese",
+
+  "JP": "east_asian", "KR": "east_asian", "KP": "east_asian", "TH": "east_asian", "VN": "east_asian", "MY": "east_asian", "ID": "east_asian", "PH": "east_asian", "MM": "east_asian", "KH": "east_asian", "LA": "east_asian", "MN": "east_asian", "BN": "east_asian",
+
+  "SA": "middle_eastern", "AE": "middle_eastern", "IR": "middle_eastern", "IQ": "middle_eastern", "TR": "middle_eastern", "LB": "middle_eastern", "SY": "middle_eastern", "JO": "middle_eastern", "IL": "middle_eastern", "PS": "middle_eastern", "YE": "middle_eastern", "OM": "middle_eastern", "QA": "middle_eastern", "KW": "middle_eastern", "BH": "middle_eastern", "EG": "middle_eastern",
+
+  "GR": "mediterranean", "IT": "mediterranean", "ES": "mediterranean", "PT": "mediterranean", "MA": "mediterranean", "TN": "mediterranean", "DZ": "mediterranean", "CY": "mediterranean", "MT": "mediterranean", "HR": "mediterranean", "AL": "mediterranean",
+
+  "FR": "european", "DE": "european", "GB": "european", "IE": "european", "NL": "european", "BE": "european", "CH": "european", "AT": "european", "SE": "european", "NO": "european", "DK": "european", "FI": "european", "PL": "european", "CZ": "european", "SK": "european", "HU": "european", "RO": "european", "BG": "european", "RS": "european", "UA": "european", "RU": "european", "IS": "european", "LT": "european", "LV": "european", "EE": "european", "SI": "european", "LU": "european",
+
+  "US": "american", "CA": "american", "AU": "american", "NZ": "american",
+
+  "MX": "latin", "BR": "latin", "AR": "latin", "PE": "latin", "CO": "latin", "CL": "latin", "VE": "latin", "EC": "latin", "BO": "latin", "PY": "latin", "UY": "latin", "GT": "latin", "CU": "latin", "DO": "latin", "JM": "latin", "PR": "latin", "CR": "latin", "PA": "latin", "HN": "latin", "NI": "latin", "SV": "latin", "TT": "latin",
+
+  "NG": "african", "ET": "african", "KE": "african", "GH": "african", "ZA": "african", "TZ": "african", "UG": "african", "SN": "african", "CM": "african", "CI": "african", "ML": "african", "SD": "african", "SO": "african", "ZW": "african", "ZM": "african", "MZ": "african", "RW": "african", "BF": "african", "BJ": "african", "GN": "african", "AO": "african", "MG": "african", "MW": "african", "ER": "african", "LY": "middle_eastern"
+}

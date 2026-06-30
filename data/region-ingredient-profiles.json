@@ -1,0 +1,15 @@
+{
+  "_comment": "Third-tier signal (confidence 70-85): when title gives no cue, score the recipe's ingredient set against each region's characteristic-ingredient weights. The enricher sums weights per region, then sets confidence from the winning margin over the runner-up. Weights are small positive ints; an ingredient can mark several regions. Lowercased whole-word substring match against ingredient names.",
+
+  "profiles": {
+    "south_asian": { "garam masala": 5, "turmeric": 3, "cumin": 2, "coriander": 2, "ghee": 4, "cardamom": 3, "fenugreek": 4, "curry leaf": 5, "basmati": 3, "lentil": 2, "paneer": 5, "tamarind": 2, "mustard seed": 3, "chili powder": 2 },
+    "chinese": { "soy sauce": 3, "hoisin": 5, "oyster sauce": 5, "shaoxing": 5, "five spice": 5, "sesame oil": 3, "bok choy": 4, "water chestnut": 4, "rice wine": 4, "scallion": 1, "ginger": 1, "tofu": 2 },
+    "east_asian": { "miso": 5, "mirin": 5, "dashi": 5, "nori": 4, "fish sauce": 4, "lemongrass": 4, "gochujang": 5, "rice vinegar": 2, "sake": 4, "kimchi": 5, "wasabi": 5, "coconut milk": 1, "lime leaf": 4 },
+    "middle_eastern": { "tahini": 5, "sumac": 5, "za'atar": 5, "harissa": 4, "pomegranate molasses": 5, "chickpea": 2, "bulgur": 4, "pita": 3, "lamb": 1, "mint": 1, "rose water": 4, "preserved lemon": 3 },
+    "mediterranean": { "olive oil": 2, "feta": 4, "oregano": 3, "basil": 3, "parmesan": 4, "balsamic": 3, "sun dried tomato": 3, "pancetta": 4, "mozzarella": 4, "capers": 3, "anchovy": 2, "saffron": 2 },
+    "european": { "butter": 1, "cream": 2, "dijon": 3, "thyme": 2, "caraway": 4, "dill": 3, "sauerkraut": 5, "rye": 3, "sour cream": 3, "horseradish": 4, "juniper": 4 },
+    "american": { "bacon": 2, "cheddar": 3, "ketchup": 3, "maple syrup": 4, "barbecue sauce": 5, "cornmeal": 3, "ranch": 4, "buttermilk": 3, "hot sauce": 2, "ground beef": 1 },
+    "latin": { "cilantro": 2, "lime": 1, "jalapeno": 4, "cumin": 1, "black bean": 3, "corn tortilla": 5, "avocado": 2, "chipotle": 5, "queso fresco": 4, "plantain": 3, "achiote": 5, "tomatillo": 5 },
+    "african": { "berbere": 5, "injera": 5, "egusi": 5, "fufu": 5, "plantain": 2, "cassava": 4, "palm oil": 4, "yam": 3, "scotch bonnet": 4, "teff": 5, "groundnut": 3 }
+  }
+}

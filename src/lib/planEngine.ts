@@ -17,7 +17,7 @@
  * and instant.
  */
 
-import { deriveAllowList, unionHardExclusions, validatePlan } from '@/lib/constraints';
+import { deriveAllowList, unionHardExclusions, unionSoftAvoid, validatePlan } from '@/lib/constraints';
 import { CUISINE_LABEL } from '@/lib/cuisine';
 import { normalizeCuisineMix, pickCuisine } from '@/lib/cuisineMix';
 import { consolidateGrocery } from '@/lib/grocery';
@@ -49,6 +49,19 @@ function jitter(s: string, i: number): number {
   return (h % 1000) / 1000;
 }
 
+/** Coarse protein family for rotation — so the week doesn't lean on one meat. */
+type ProteinFamily = 'chicken' | 'red_meat' | 'fish' | 'egg' | 'legume' | 'other';
+
+function proteinFamily(r: TaggedRecipe): ProteinFamily {
+  const text = r.ingredients.map((ing) => ing.name.toLowerCase()).join(' | ');
+  if (/\b(chicken|turkey|poultry)\b/.test(text)) return 'chicken';
+  if (/\b(beef|lamb|mutton|goat|pork|steak|mince|keema)\b/.test(text)) return 'red_meat';
+  if (/\b(fish|salmon|tuna|cod|shrimp|prawn|crab|shellfish)\b/.test(text)) return 'fish';
+  if (/\b(lentil|daal|dal|chickpea|bean|tofu|tempeh|paneer|legume)\b/.test(text)) return 'legume';
+  if (/\b(egg|omelet|omelette)\b/.test(text)) return 'egg';
+  return 'other';
+}
+
 /**
  * Generate a plan from the household, enriching the procedural base with the
  * given corpus. `corpus` may be empty — the plan is still complete and safe.
@@ -59,17 +72,25 @@ export function generateLocalPlan(household: Household, corpus: TaggedRecipe[], 
 
   const mix = normalizeCuisineMix(household.region, household.cuisines);
   const hard = householdHardExclude(household.members);
+  const soft = new Set<Token>(unionSoftAvoid(household.members));
   const hc = household.healthConsciousness ?? 3;
   const budgetTight = household.budgetWeekly != null;
   const country = household.country;
-  const satisfies = uniqueKeys(household);
+  const householdKeys = uniqueKeys(household);
   const used = new Set<string>();
+  // Protein families already used this week — repeats are penalized for variety.
+  const proteinUsed = new Map<ProteinFamily, number>();
+
+  const softHits = (r: TaggedRecipe): number =>
+    r.exclusionTokens.reduce((n, t) => (soft.has(t) ? n + 1 : n), 0);
 
   const score = (r: TaggedRecipe, i: number): number => {
     let s = jitter(r.title, i);
     if (country && r.countryOrigin === country) s += 5; // country-specific dish wins (PK vs IN)
     s += (hc - 3) * (r.healthScore - 3) * 0.5; // align health-consciousness with leanness
     if (budgetTight) s += 3 - r.costTier; // gently prefer cheaper dishes under a budget
+    s -= softHits(r) * 1.5; // a soft-avoided ingredient makes the dish less ideal
+    s -= (proteinUsed.get(proteinFamily(r)) ?? 0) * 1.2; // rotate proteins across the week
     return s;
   };
 
@@ -94,15 +115,21 @@ export function generateLocalPlan(household: Household, corpus: TaggedRecipe[], 
 
     const best = candidates.reduce((a, b) => (score(b, i) > score(a, i) ? b : a));
     used.add(best.title);
+    const fam = proteinFamily(best);
+    proteinUsed.set(fam, (proteinUsed.get(fam) ?? 0) + 1);
 
     return {
       dayOfWeek: meal.dayOfWeek,
       slot: meal.slot,
       name: best.title,
-      // Safe against the UNION of all members' hard rules ⇒ shared by everyone.
-      sharedOrVariant: 'shared',
+      // 'shared' = safe AND not soft-avoided by anyone, so one dish suits all.
+      // If a member soft-avoids one of its ingredients they take a simple swap,
+      // so the dish is a 'variant' rather than a single shared plate.
+      sharedOrVariant: softHits(best) > 0 ? 'variant' : 'shared',
       ingredients: best.ingredients.map((ing) => ing.name),
-      satisfies,
+      // Only claim the constraints this dish actually satisfies (intersection of
+      // the household's keys with the recipe's tagged compatibility).
+      satisfies: householdKeys.filter((k) => best.dietCompatible.includes(k)),
       cuisine: CUISINE_LABEL[best.cuisine] ?? CUISINE_LABEL[region] ?? 'Everyday',
       recipe: { servings: best.servings ?? 4, timeMinutes: best.timeMinutes ?? 30, steps: best.steps },
     };
