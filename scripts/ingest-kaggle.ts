@@ -49,6 +49,9 @@ const colTitle = process.env.KAGGLE_COL_TITLE ?? 'title';
 const colIngredients = process.env.KAGGLE_COL_INGREDIENTS ?? 'ingredients';
 const colSteps = process.env.KAGGLE_COL_STEPS ?? 'directions';
 const MAX_ROWS = process.env.KAGGLE_MAX_ROWS ? Number(process.env.KAGGLE_MAX_ROWS) : Infinity;
+// Max recipes to keep PER cuisine — stops a Western-skewed dataset from
+// drowning the corpus, giving a balanced, brandable spread across regions.
+const CUISINE_CAP = process.env.KAGGLE_CUISINE_CAP ? Number(process.env.KAGGLE_CUISINE_CAP) : Infinity;
 
 if (!url || !serviceKey) throw new Error('Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
 if (!dataPath) throw new Error('Set KAGGLE_DATA_PATH to the dataset CSV.');
@@ -118,6 +121,7 @@ function toRow(raw: RawRecipe, confidence: number, method: string) {
 /* ----------------------------- main ------------------------------- */
 async function main() {
   const seenSlugs = new Set<string>();
+  const perCuisine = new Map<string, number>();
   let readCount = 0;
   let kept = 0;
   let buffer: ReturnType<typeof toRow>[] = [];
@@ -149,6 +153,11 @@ async function main() {
     const { cuisine, countryOrigin, confidence, method } = enrichCuisine(title, ingredientStrings, gaz);
     if (cuisine === 'none' || confidence < MIN_CONFIDENCE) continue; // not confidently placeable
 
+    // Per-cuisine cap: once a region is full, skip further rows for it so the
+    // corpus stays balanced instead of mirroring the dataset's Western skew.
+    if ((perCuisine.get(cuisine) ?? 0) >= CUISINE_CAP) continue;
+    perCuisine.set(cuisine, (perCuisine.get(cuisine) ?? 0) + 1);
+
     seenSlugs.add(slug);
     const raw: RawRecipe = {
       title,
@@ -169,6 +178,8 @@ async function main() {
 
   await flush();
   console.log(`✓ Done. Read ${readCount} rows, ingested ${kept} verified recipes into recipe_corpus.`);
+  console.log('By cuisine:');
+  for (const [c, n] of [...perCuisine.entries()].sort((a, b) => b[1] - a[1])) console.log(`  ${c.padEnd(16)} ${n}`);
 }
 
 main().catch((e) => {

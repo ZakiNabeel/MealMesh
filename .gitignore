@@ -45,3 +45,7 @@ example
 
 .vercel
 .env*
+
+# Kaggle / large source datasets (never commit — multi-GB)
+data/dataset/
+*.csv
