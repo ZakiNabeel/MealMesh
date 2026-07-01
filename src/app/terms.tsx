@@ -7,7 +7,7 @@ import { Body, Heading, PressableScale, Screen, Small } from '@/components/ui';
 import { Spacing, Type } from '@/constants/theme';
 import { usePalette } from '@/theme/use-theme';
 
-const UPDATED = 'June 2026';
+const UPDATED = 'July 2026';
 
 export default function Terms() {
   const router = useRouter();
@@ -56,6 +56,16 @@ export default function Terms() {
           <Body color={palette.textSecondary}>
             Don't use MealMesh to attempt to extract, scrape, or resell plan content at scale, or to interfere with
             the service for other households.
+          </Body>
+        </Section>
+
+        <Section title="Community content">
+          <Body color={palette.textSecondary}>
+            If you make your profile public, you may post text, photos, and recipes to the community. You're
+            responsible for what you post. Don't post anything illegal, hateful, harassing, spammy, or that infringes
+            someone else's rights — we screen and remove content that violates this, and may suspend accounts that
+            repeatedly do. Community recipes are shared for inspiration only; they are not checked against your
+            household's dietary restrictions the way your own generated plan is.
           </Body>
         </Section>
 
