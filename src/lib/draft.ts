@@ -18,3 +18,23 @@ export function setDraftHousehold(h: Household): void {
 export function getDraftHousehold(): Household | null {
   return current;
 }
+
+/**
+ * A stable signature of everything about a household that affects plan
+ * generation. The plan screen compares this against the plan it's showing to
+ * decide whether a household edit means the plan must be regenerated — so
+ * editing diets/members/cuisine in settings actually changes the next plan.
+ */
+export function householdSignature(h: Household): string {
+  return JSON.stringify({
+    region: h.region,
+    cuisines: h.cuisines ?? null,
+    country: h.country ?? null,
+    budget: h.budgetWeekly ?? null,
+    health: h.healthConsciousness ?? 3,
+    members: h.members.map((m) => ({
+      age: m.ageBand,
+      keys: m.constraints.map((c) => c.key).sort(),
+    })),
+  });
+}

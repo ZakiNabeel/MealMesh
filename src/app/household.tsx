@@ -136,11 +136,14 @@ export default function HouseholdEdit() {
       members: built,
     };
     setSaving(true);
-    if (session && existingId !== 'draft') {
-      await saveHousehold(household);
-    } else {
-      setDraftHousehold(household);
-    }
+    // Persist to the DB when signed in (saveHousehold upserts the one household
+    // per user, so a 'draft' id is fine — it finds or creates the real row).
+    const saved = session ? await saveHousehold(household) : null;
+    // ALWAYS refresh the in-memory draft — settings and the plan screen read
+    // getDraftHousehold() first, so without this the stale draft would mask the
+    // edit and the next plan would ignore the change. Use the reloaded DB row
+    // (real ids) when we have it, else the just-built household.
+    setDraftHousehold(saved ?? household);
     setSaving(false);
     router.back();
   }

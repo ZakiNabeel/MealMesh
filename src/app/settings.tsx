@@ -1,6 +1,6 @@
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -30,6 +30,15 @@ export default function Settings() {
     if (authLoading || !user || getDraftHousehold()) return;
     void loadHousehold().then((h) => h && setHousehold(h));
   }, [authLoading, user]);
+
+  // Refresh the household shown here whenever the screen regains focus — so
+  // returning from "Edit household" reflects the just-saved changes.
+  useFocusEffect(
+    useCallback(() => {
+      const d = getDraftHousehold();
+      if (d) setHousehold(d);
+    }, []),
+  );
   const col = isDesktop ? styles.col : undefined;
 
   return (

@@ -53,6 +53,24 @@ describe('local plan engine', () => {
     expect(names.some((n) => corpusTitles.has(n))).toBe(true);
   });
 
+  it('gives a kosher household a FULL 35-meal week (no dropped meals)', () => {
+    // Regression: kosher forbids meat+dairy in one meal. The generator used to
+    // build meat meals with yogurt, which the safety pass then DROPPED, leaving
+    // some days with only 2-3 meals. Every slot must now be filled and safe.
+    const members = [member('a', ['kosher']), member('b', ['halal'])];
+    const plan = generateLocalPlan(household(members), getCorpus(), 4);
+    expect(plan.days).toHaveLength(35);
+
+    const LAND_MEAT = ['meat', 'poultry', 'beef', 'red_meat', 'pork'];
+    for (const meal of plan.days) {
+      const toks = new Set<string>();
+      for (const ing of meal.ingredients) for (const t of analyzeIngredient(ing)) toks.add(t);
+      const hasMeat = LAND_MEAT.some((t) => toks.has(t));
+      const hasDairy = toks.has('dairy') || toks.has('lactose');
+      expect(hasMeat && hasDairy).toBe(false); // never meat + dairy in one meal
+    }
+  });
+
   it('is deterministic for the same household + seed', () => {
     const h = household([member('a', [])], { country: 'PK' });
     const a = generateLocalPlan(h, getCorpus(), 5);

@@ -21,6 +21,10 @@ import { MEAL_SLOTS, type ConstraintKey, type DayOfWeek, type Household, type Me
 
 const DAYS: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
+/** Land-animal flesh — the meat side of the kosher meat+dairy rule. Fish is
+ *  deliberately excluded (fish + dairy is fine under kashrut). */
+const LAND_MEAT_TOKENS = new Set<Token>(['meat', 'poultry', 'beef', 'red_meat', 'pork']);
+
 // Whole, plain fruit — no allergen/diet tokens of its own, safe for every
 // household, so dessert never needs the protein-style safety dance.
 const FRUITS = ['banana', 'mango', 'apple', 'mixed berries', 'orange', 'pear'];
@@ -35,9 +39,27 @@ export function generateMockPlan(household: Household, seed = 0): MealPlan {
   const hardSet = new Set<Token>(unionHardExclusions(household.members));
   const universal = new Set(allow.universal);
 
+  // Kosher forbids meat + dairy in one meal. It's a COMBINATION rule, so a
+  // per-ingredient check can't catch it — instead, when kosher is active we make
+  // meat meals reject dairy aromatics (see `mealSafe` below). This stops the
+  // safety pass from having to DROP those meals, which is what used to leave some
+  // days with fewer than 5 meals.
+  const kosherActive = hardSet.has('meat_dairy_mix');
+
   // A flavor ingredient is usable only if none of its tokens are hard-excluded.
   const isSafe = (ingredient: string): boolean =>
     ![...analyzeIngredient(ingredient)].some((t) => hardSet.has(t));
+
+  const isLandMeat = (ing: string): boolean =>
+    [...analyzeIngredient(ing)].some((t) => LAND_MEAT_TOKENS.has(t));
+  const isDairy = (ing: string): boolean =>
+    [...analyzeIngredient(ing)].some((t) => t === 'dairy' || t === 'lactose');
+
+  /** Per-meal safety: for a kosher household, a meat meal also rejects dairy. */
+  const mealSafe = (protein: string) =>
+    kosherActive && isLandMeat(protein)
+      ? (ing: string): boolean => isSafe(ing) && !isDairy(ing)
+      : isSafe;
 
   const legumeSet = new Set(allow.legumes);
   // Proteins to cook around: real proteins first, then legumes as a fallback.
@@ -95,7 +117,10 @@ export function generateMockPlan(household: Household, seed = 0): MealPlan {
         const grain = pick(grains, i + 1, 'rice');
         const v1 = pick(veg, i, 'seasonal vegetables');
         const v2 = pick(veg, i + 2, 'greens');
-        const fat = pick(oil, i, 'olive oil');
+        // Cooking fat must also respect the per-meal rule: a dairy fat (ghee,
+        // butter) can't go on a meat meal in a kosher household.
+        const safeOils = oil.filter(mealSafe(protein));
+        const fat = pick(safeOils.length ? safeOils : ['olive oil'], i, 'olive oil');
         const isLegume = legumeSet.has(protein);
 
         const dish = buildRegionalMeal({
@@ -108,7 +133,7 @@ export function generateMockPlan(household: Household, seed = 0): MealPlan {
           fat,
           isLegume,
           seed: i,
-          isSafe,
+          isSafe: mealSafe(protein),
         });
 
         const ingredients = dedupe([protein, grain, v1, v2, fat, ...dish.extras]);

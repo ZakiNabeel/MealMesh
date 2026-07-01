@@ -84,6 +84,18 @@ export function generateLocalPlan(household: Household, corpus: TaggedRecipe[], 
   const softHits = (r: TaggedRecipe): number =>
     r.exclusionTokens.reduce((n, t) => (soft.has(t) ? n + 1 : n), 0);
 
+  // Kosher = no meat + dairy in one meal. A corpus dish carrying both would be
+  // dropped by the final safety pass and leave a hole in the week, so exclude it
+  // from candidates up front (mirrors validatePlan's LAND_MEAT_TOKENS).
+  const kosherActive = hard.has('meat_dairy_mix');
+  const violatesKosher = (r: TaggedRecipe): boolean => {
+    if (!kosherActive) return false;
+    const t = new Set(r.exclusionTokens);
+    const meat = t.has('meat') || t.has('poultry') || t.has('beef') || t.has('red_meat') || t.has('pork');
+    const dairy = t.has('dairy') || t.has('lactose');
+    return meat && dairy;
+  };
+
   const score = (r: TaggedRecipe, i: number): number => {
     let s = jitter(r.title, i);
     if (country && r.countryOrigin === country) s += 5; // country-specific dish wins (PK vs IN)
@@ -109,7 +121,8 @@ export function generateLocalPlan(household: Household, corpus: TaggedRecipe[], 
         r.cuisine === region &&
         courses.includes(r.course) &&
         !used.has(r.title) &&
-        isRecipeSafe(r.exclusionTokens, hard),
+        isRecipeSafe(r.exclusionTokens, hard) &&
+        !violatesKosher(r),
     );
     if (candidates.length === 0) return meal; // keep the safe procedural dish
 
@@ -135,18 +148,25 @@ export function generateLocalPlan(household: Household, corpus: TaggedRecipe[], 
     };
   });
 
-  // Re-consolidate groceries from the upgraded meals and re-validate (defense in
-  // depth — corpus dishes are pre-filtered safe, but we never trust blindly).
+  // Completeness guarantee: an upgraded (corpus) meal that somehow fails the
+  // safety pass must NOT leave a hole in the week — fall back to the procedural
+  // base meal for that exact slot, which was already validated safe in mockPlan.
+  // This is what keeps every day at a full 5 meals (the earlier "some days show
+  // 2-3 meals" bug came from validatePlan dropping meals and leaving gaps).
+  const hardArray: Token[] = unionHardExclusions(household.members);
+  const mealIsSafe = (m: PlannedMeal): boolean =>
+    validatePlan({ days: [m], grocery: [] }, hardArray, household.members).violations.length === 0;
+  const finalDays = upgraded.map((m, idx) => (mealIsSafe(m) ? m : base.days[idx]));
+
+  // Re-consolidate groceries from the final meals; scrub the grocery list defensively.
   const allow = deriveAllowList(household.members, [...new Set(mix.map((c) => c.region))]);
-  const grocery = consolidateGrocery(upgraded, {
+  const grocery = consolidateGrocery(finalDays, {
     proteinPool: [...allow.proteins, ...allow.legumes],
     grains: allow.grains,
     veg: allow.vegetables,
     oil: allow.oils,
     legumes: allow.legumes,
   });
-
-  const hardArray: Token[] = unionHardExclusions(household.members);
-  const { safePlan } = validatePlan({ days: upgraded, grocery }, hardArray, household.members);
-  return safePlan;
+  const { safePlan } = validatePlan({ days: finalDays, grocery }, hardArray, household.members);
+  return { days: finalDays, grocery: safePlan.grocery };
 }

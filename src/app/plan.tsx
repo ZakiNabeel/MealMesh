@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Linking, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -13,7 +13,7 @@ import { useAuth } from '@/lib/auth';
 import { weeklyLocal } from '@/lib/budget';
 import { getFeed } from '@/lib/community';
 import { localizeName, youtubeSearchUrl } from '@/lib/cuisine';
-import { getDraftHousehold, setDraftHousehold } from '@/lib/draft';
+import { getDraftHousehold, householdSignature, setDraftHousehold } from '@/lib/draft';
 import { computeStreak, summarizeWeek, type WeekSummary } from '@/lib/gamification';
 import { formatMoney } from '@/lib/geo';
 import { generatePlan } from '@/lib/generatePlan';
@@ -94,6 +94,10 @@ export default function Plan() {
   const [household, setHousehold] = useState<Household | null>(getDraftHousehold());
   const [resolving, setResolving] = useState(true);
   const [seed, setSeed] = useState(0);
+  // Signature of the household the currently-shown plan was built for. Lets us
+  // detect an edit made in settings and regenerate instead of showing a plan
+  // that ignores the change.
+  const planSigRef = useRef<string | null>(null);
   const [tab, setTab] = useState<'plan' | 'grocery'>('plan');
   // Which day the plan tab is focused on. Today renders first (index 0).
   const [dayIdx, setDayIdx] = useState(0);
@@ -211,6 +215,19 @@ export default function Plan() {
     };
   }, [session, authLoading]);
 
+  // When returning to this screen (e.g. after editing the household in
+  // settings), re-read the draft. If the household changed, swap it in so the
+  // plan below regenerates — otherwise an edit would silently do nothing.
+  useFocusEffect(
+    useCallback(() => {
+      const d = getDraftHousehold();
+      if (!d) return;
+      if (!household || householdSignature(d) !== householdSignature(household)) {
+        setHousehold(d);
+      }
+    }, [household]),
+  );
+
   // Generate (or load a saved) plan once the household is resolved. On
   // first view this loads whichever plan was generated LAST, regardless of
   // today's real calendar week — a plan must persist across a Monday
@@ -222,9 +239,13 @@ export default function Plan() {
     setLoading(true);
     (async () => {
       const persisted = Boolean(session) && household.id !== 'draft';
+      const sig = householdSignature(household);
+      // Regenerate (don't reuse the saved plan) when the household changed since
+      // the shown plan was built — that's how an edit flows into the plan.
+      const changed = planSigRef.current !== null && planSigRef.current !== sig;
       let result: MealPlan | null = null;
       let weekStart = currentWeekStart();
-      if (persisted && seed === 0) {
+      if (persisted && seed === 0 && !changed) {
         const latest = await loadLatestPlan(household.id);
         if (latest) {
           result = latest.plan;
@@ -236,6 +257,7 @@ export default function Plan() {
         weekStart = currentWeekStart();
         if (persisted) await savePlan(household.id, weekStart, result);
       }
+      planSigRef.current = sig;
       if (!cancelled) {
         setPlan(result);
         setActiveWeekStart(weekStart);
