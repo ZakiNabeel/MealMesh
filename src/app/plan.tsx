@@ -236,13 +236,25 @@ export default function Plan() {
   useEffect(() => {
     if (resolving || !household) return;
     let cancelled = false;
-    setLoading(true);
     (async () => {
       const persisted = Boolean(session) && household.id !== 'draft';
       const sig = householdSignature(household);
       // Regenerate (don't reuse the saved plan) when the household changed since
       // the shown plan was built — that's how an edit flows into the plan.
       const changed = planSigRef.current !== null && planSigRef.current !== sig;
+
+      // A guest who just signed up: the household above was a moment ago a
+      // 'draft' and just got persisted with a real id, but the plan they were
+      // already looking at (built for that same household content) is still
+      // sitting in `plan` and was never saved (guests can't persist). Save
+      // THAT plan instead of throwing it away and generating a new one —
+      // otherwise every first-time signup loses the plan the user just made.
+      if (persisted && seed === 0 && !changed && plan && planSigRef.current === sig) {
+        await savePlan(household.id, activeWeekStart ?? currentWeekStart(), plan);
+        return;
+      }
+
+      setLoading(true);
       let result: MealPlan | null = null;
       let weekStart = currentWeekStart();
       if (persisted && seed === 0 && !changed) {
