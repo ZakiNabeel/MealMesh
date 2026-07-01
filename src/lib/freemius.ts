@@ -30,13 +30,26 @@ const PLAN_IDS: Record<PriceTier, string | undefined> = {
 
 export const isFreemiusConfigured = Boolean(PRODUCT_ID && PUBLIC_KEY && PLAN_IDS.global);
 
+const JQUERY_URL = 'https://code.jquery.com/jquery-3.7.1.min.js';
 const SCRIPT_URL = 'https://checkout.freemius.com/checkout.min.js';
 
-// Minimal shape of the global the SDK installs.
-type FreemiusCheckout = { open: (opts: Record<string, unknown>) => void };
-type FreemiusGlobal = { Checkout: new (config: Record<string, unknown>) => FreemiusCheckout };
+// Minimal shape of the global the SDK installs. FS.Checkout is a singleton
+// object (not a class) exposing configure(...) -> handler, handler.open(...).
+type FreemiusHandler = { open: (opts: Record<string, unknown>) => void };
+type FreemiusGlobal = { Checkout: { configure: (config: Record<string, unknown>) => FreemiusHandler } };
 function fsGlobal(): FreemiusGlobal | undefined {
   return (globalThis as unknown as { FS?: FreemiusGlobal }).FS;
+}
+
+function loadExternalScript(src: string): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const el = document.createElement('script');
+    el.src = src;
+    el.async = true;
+    el.onload = () => resolve();
+    el.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(el);
+  });
 }
 
 let scriptPromise: Promise<void> | null = null;
@@ -44,14 +57,15 @@ function loadScript(): Promise<void> {
   if (typeof document === 'undefined') return Promise.reject(new Error('web only'));
   if (fsGlobal()?.Checkout) return Promise.resolve();
   if (!scriptPromise) {
-    scriptPromise = new Promise<void>((resolve, reject) => {
-      const el = document.createElement('script');
-      el.src = SCRIPT_URL;
-      el.async = true;
-      el.onload = () => resolve();
-      el.onerror = () => reject(new Error('Failed to load Freemius checkout'));
-      document.head.appendChild(el);
-    });
+    // checkout.min.js's own code is wrapped as `}(jQuery)` — it depends on a
+    // global jQuery being present when it runs, or FS.Checkout never gets
+    // assigned (only the jQuery-independent FS.Logger does).
+    scriptPromise = (async () => {
+      if (!(globalThis as unknown as { jQuery?: unknown }).jQuery) {
+        await loadExternalScript(JQUERY_URL);
+      }
+      await loadExternalScript(SCRIPT_URL);
+    })();
   }
   return scriptPromise;
 }
@@ -73,19 +87,20 @@ export async function openCheckout(
     await loadScript();
     const FS = fsGlobal();
     if (!FS) return { error: 'Could not load checkout. Please try again.' };
-    const checkout = new FS.Checkout({
-      product_id: PRODUCT_ID,
+    const handler = FS.Checkout.configure({
+      plugin_id: PRODUCT_ID,
       plan_id: planId,
       public_key: PUBLIC_KEY,
     });
-    checkout.open({
+    handler.open({
       name: 'MealMesh',
       billing_cycle: cycle,
       user_email: opts?.email,
       success: (data: unknown) => opts?.onSuccess?.(data),
     });
     return {};
-  } catch {
+  } catch (e) {
+    console.error('[freemius] checkout failed', e);
     return { error: 'Could not open checkout. Please try again.' };
   }
 }
