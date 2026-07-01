@@ -176,16 +176,20 @@ export default function Plan() {
   // Only path that ever produces a NEW plan — the day-rollover bug this fixed
   // means nothing else may call setSeed.
   const regenerate = useCallback(async () => {
-    if (!isPro) {
-      const used = await generationsThisWeek();
-      if (used >= FREE_WEEKLY_PLANS - 1) {
-        router.push('/paywall');
-        return;
+    try {
+      if (!isPro) {
+        const used = await generationsThisWeek();
+        if (used >= FREE_WEEKLY_PLANS - 1) {
+          router.push('/paywall');
+          return;
+        }
+        await bumpGenerations();
       }
-      await bumpGenerations();
+      setPlan(null);
+      setSeed((s) => s + 1);
+    } catch (err) {
+      console.error('[Plan] regenerate failed:', err);
     }
-    setPlan(null);
-    setSeed((s) => s + 1);
   }, [isPro, router]);
 
   // Resolve the working household: persist a guest's draft once signed in, or
@@ -255,25 +259,31 @@ export default function Plan() {
       }
 
       setLoading(true);
-      let result: MealPlan | null = null;
-      let weekStart = currentWeekStart();
-      if (persisted && seed === 0 && !changed) {
-        const latest = await loadLatestPlan(household.id);
-        if (latest) {
-          result = latest.plan;
-          weekStart = latest.weekStart;
+      try {
+        let result: MealPlan | null = null;
+        let weekStart = currentWeekStart();
+        if (persisted && seed === 0 && !changed) {
+          const latest = await loadLatestPlan(household.id);
+          if (latest) {
+            result = latest.plan;
+            weekStart = latest.weekStart;
+          }
         }
-      }
-      if (!result) {
-        result = await generatePlan(household, seed, Boolean(session));
-        weekStart = currentWeekStart();
-        if (persisted) await savePlan(household.id, weekStart, result);
-      }
-      planSigRef.current = sig;
-      if (!cancelled) {
-        setPlan(result);
-        setActiveWeekStart(weekStart);
-        setLoading(false);
+        if (!result) {
+          result = await generatePlan(household, seed, Boolean(session));
+          weekStart = currentWeekStart();
+          if (persisted) await savePlan(household.id, weekStart, result);
+        }
+        planSigRef.current = sig;
+        if (!cancelled) {
+          setPlan(result);
+          setActiveWeekStart(weekStart);
+        }
+      } catch (err) {
+        // Log so we can see it — the spinner clears and the user can retry.
+        console.error('[Plan] generatePlan failed:', err);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
     return () => {
@@ -346,8 +356,20 @@ export default function Plan() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: Spacing.three, gap: Spacing.three }}>
         {!plan ? (
           <View style={styles.empty}>
-            <ActivityIndicator color={palette.accent} />
-            <LoadingQuip />
+            {loading ? (
+              <>
+                <ActivityIndicator color={palette.accent} />
+                <LoadingQuip />
+              </>
+            ) : (
+              <>
+                <Heading style={{ textAlign: 'center' }}>Couldn't build your plan</Heading>
+                <Body color={palette.textSecondary} style={{ textAlign: 'center' }}>
+                  Something went wrong generating this week's meals. Tap below to try again.
+                </Body>
+                <Button title="Try again" onPress={regenerate} />
+              </>
+            )}
           </View>
         ) : tab === 'plan' ? (
           <>
