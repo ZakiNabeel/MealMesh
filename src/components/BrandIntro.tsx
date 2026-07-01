@@ -1,8 +1,8 @@
 /**
  * BrandIntro — the launch animation shown once when the app cold-starts.
  *
- * ~5s branded sequence on a blue→green gradient (matching the native OS splash
- * color, so the handoff from the system splash is seamless): the MealMesh logo
+ * ~5s branded sequence on the logo's garden-green gradient (matching the native
+ * OS splash color, so the handoff from the system splash is seamless): the MealMesh logo
  * scales in with a soft glow, then the wordmark and tagline rise, hold, and fade
  * out — handing off to the real app.
  *
@@ -25,7 +25,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Threads, Type } from '@/constants/theme';
+import { Type } from '@/constants/theme';
 import { useReduced } from '@/theme/use-theme';
 
 const LOGO = require('../../assets/images/icon.png');
@@ -82,7 +82,7 @@ export function BrandIntro({ onFinish }: { onFinish: () => void }) {
   return (
     <Animated.View style={[StyleSheet.absoluteFill, styles.root, containerStyle]} pointerEvents="none">
       <LinearGradient
-        colors={['#208AEF', '#1C9FC9', Threads.green]}
+        colors={['#7FAE85', '#9FC1A4', '#B7D4BB']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
