@@ -9,6 +9,7 @@
  *   EXPO_PUBLIC_FREEMIUS_PLAN_ID_ASIA_AFRICA    (Asia/Africa-tier plan's ID)
  *   EXPO_PUBLIC_FREEMIUS_PLAN_ID_GLOBAL         (global-tier plan's ID)
  *   EXPO_PUBLIC_FREEMIUS_PUBLIC_KEY             (Product → Settings → Keys → Public Key, pk_…)
+ *   EXPO_PUBLIC_FREEMIUS_STORE_ID               (dashboard URL: .../stores/<id>/... — for the customer portal link)
  *
  * Until those are set, `isFreemiusConfigured` is false and the paywall shows a
  * "coming soon" note instead of opening checkout. Activation of Pro after a
@@ -21,6 +22,7 @@ import type { PriceTier } from '@/lib/pricing';
 
 const PRODUCT_ID = process.env.EXPO_PUBLIC_FREEMIUS_PRODUCT_ID;
 const PUBLIC_KEY = process.env.EXPO_PUBLIC_FREEMIUS_PUBLIC_KEY;
+const STORE_ID = process.env.EXPO_PUBLIC_FREEMIUS_STORE_ID;
 
 const PLAN_IDS: Record<PriceTier, string | undefined> = {
   pk: process.env.EXPO_PUBLIC_FREEMIUS_PLAN_ID_PK,
@@ -102,5 +104,33 @@ export async function openCheckout(
   } catch (e) {
     console.error('[freemius] checkout failed', e);
     return { error: 'Could not open checkout. Please try again.' };
+  }
+}
+
+/**
+ * Freemius Customer Portal — where a Pro subscriber manages payment method,
+ * views invoices, and cancels. Freemius hosts it; there's no supported way to
+ * iframe-embed it outside WordPress, so this opens it in the system browser
+ * (native) or a new tab (web) — the officially documented integration path.
+ */
+export const isCustomerPortalConfigured = Boolean(STORE_ID);
+
+export function customerPortalUrl(): string | null {
+  return STORE_ID ? `https://customers.freemius.com/store/${STORE_ID}` : null;
+}
+
+export async function openCustomerPortal(): Promise<{ error?: string }> {
+  const url = customerPortalUrl();
+  if (!url) return { error: 'NOT_CONFIGURED' };
+  if (Platform.OS === 'web') {
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return {};
+  }
+  try {
+    const WebBrowser = await import('expo-web-browser');
+    await WebBrowser.openBrowserAsync(url);
+    return {};
+  } catch {
+    return { error: 'Could not open the customer portal. Please try again.' };
   }
 }

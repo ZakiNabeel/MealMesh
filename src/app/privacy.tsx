@@ -83,7 +83,7 @@ export default function Privacy() {
         </Section>
 
         <Section title="Contact">
-          <Body color={palette.textSecondary}>Questions about this policy? Email hello@mealmesh.app.</Body>
+          <Body color={palette.textSecondary}>Questions about this policy? Email getmealmesh@gmail.com.</Body>
         </Section>
       </ScrollView>
     </Screen>

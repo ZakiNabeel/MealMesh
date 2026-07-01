@@ -9,6 +9,7 @@ import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Scre
 import { Radius, Spacing, THEME_META, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { getDraftHousehold } from '@/lib/draft';
+import { isCustomerPortalConfigured, openCustomerPortal } from '@/lib/freemius';
 import { loadHousehold } from '@/lib/store';
 import { useSubscription } from '@/lib/subscription';
 import { usePalette, useTheme } from '@/theme/use-theme';
@@ -22,6 +23,16 @@ export default function Settings() {
   const { isPro } = useSubscription();
   const [household, setHousehold] = useState<Household | null>(getDraftHousehold());
   const isDesktop = useIsDesktop();
+  const [portalBusy, setPortalBusy] = useState(false);
+  const [portalNote, setPortalNote] = useState<string | null>(null);
+
+  async function manageSubscription() {
+    setPortalNote(null);
+    setPortalBusy(true);
+    const { error } = await openCustomerPortal();
+    setPortalBusy(false);
+    if (error) setPortalNote(error === 'NOT_CONFIGURED' ? 'Subscription management is coming soon.' : error);
+  }
 
   // The in-memory draft only survives within this session; a signed-in user
   // landing here fresh (no prior /plan visit yet) needs their saved
@@ -124,7 +135,26 @@ export default function Settings() {
         <Reveal delay={240} style={col}>
           <Section title="Subscription">
             <Row label="Plan" value={isPro ? 'Pro ✦' : 'Free'} />
-            {!isPro && <Button title="Upgrade to Pro" onPress={() => router.push('/paywall')} />}
+            {isPro ? (
+              <View style={{ gap: Spacing.two }}>
+                <Button
+                  title={portalBusy ? 'Opening…' : 'Manage subscription'}
+                  variant="secondary"
+                  onPress={manageSubscription}
+                  disabled={portalBusy || !isCustomerPortalConfigured}
+                />
+                <Small color={palette.textSecondary}>
+                  Update payment method, view invoices, or cancel — opens the Freemius customer portal.
+                </Small>
+                {portalNote && (
+                  <Small color={palette.textSecondary} style={{ textAlign: 'center' }}>
+                    {portalNote}
+                  </Small>
+                )}
+              </View>
+            ) : (
+              <Button title="Upgrade to Pro" onPress={() => router.push('/paywall')} />
+            )}
           </Section>
         </Reveal>
         </View>

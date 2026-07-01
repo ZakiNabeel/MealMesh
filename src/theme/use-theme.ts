@@ -27,6 +27,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       .catch(() => {});
   }, []);
 
+  // Enforce light color-scheme on web so the browser never applies dark UA styles,
+  // regardless of the OS dark-mode setting. Runs once on mount.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    document.documentElement.style.colorScheme = 'light';
+  }, []);
+
   // Keep the web page background in sync so screen edges never flash the wrong colour.
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {

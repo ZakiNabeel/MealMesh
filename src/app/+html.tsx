@@ -14,6 +14,8 @@ export default function Root({ children }: { children: ReactNode }) {
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        {/* Force light mode — MealMesh has no dark theme at the system level. */}
+        <meta name="color-scheme" content="light" />
         <meta name="description" content="One household. Many diets. One plan — and one grocery list. MealMesh builds a weekly meal plan that respects every diet at your table." />
         <meta name="theme-color" content="#9DBA8C" />
 
