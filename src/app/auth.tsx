@@ -7,6 +7,8 @@ import { Body, Button, Eyebrow, Heading, PressableScale, Reveal, Screen, Small }
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { setPendingMarketingConsent } from '@/lib/marketing';
+import { setPendingUsername } from '@/lib/pendingUsername';
+import { isValidUsername } from '@/lib/social';
 import { usePalette } from '@/theme/use-theme';
 
 const LOGO = require('../../assets/logo.svg');
@@ -25,6 +27,7 @@ export default function Auth() {
   const { session, signInWithEmail, signInWithGoogle } = useAuth();
 
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [busy, setBusy] = useState<'email' | 'google' | null>(null);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,14 +39,30 @@ export default function Auth() {
     if (session) router.replace('/plan');
   }, [session, router]);
 
+  // Optional: if a returning user leaves this blank we must NOT touch their
+  // existing username, and a brand-new user gets the DB's auto-generated one
+  // regardless (see migration 0005) — this only ever overrides that default.
+  function stashUsernameIfValid(): string | null {
+    const u = username.trim().toLowerCase();
+    if (!u) return null;
+    if (!isValidUsername(u)) return 'Username must be 3–20 letters, numbers or underscores.';
+    return null;
+  }
+
   async function onMagicLink() {
     setError(null);
     if (!email.includes('@')) {
       setError('Enter a valid email address.');
       return;
     }
+    const usernameError = stashUsernameIfValid();
+    if (usernameError) {
+      setError(usernameError);
+      return;
+    }
     setBusy('email');
     await setPendingMarketingConsent(marketingOptIn);
+    if (username.trim()) await setPendingUsername(username);
     const { error: e } = await signInWithEmail(email);
     setBusy(null);
     if (e) setError(e);
@@ -52,8 +71,14 @@ export default function Auth() {
 
   async function onGoogle() {
     setError(null);
+    const usernameError = stashUsernameIfValid();
+    if (usernameError) {
+      setError(usernameError);
+      return;
+    }
     setBusy('google');
     await setPendingMarketingConsent(marketingOptIn);
+    if (username.trim()) await setPendingUsername(username);
     const { error: e } = await signInWithGoogle();
     setBusy(null);
     if (e) setError(e);
@@ -102,6 +127,21 @@ export default function Auth() {
               onSubmitEditing={onMagicLink}
               style={[styles.field, { color: palette.text, backgroundColor: palette.card, borderColor: palette.border }]}
             />
+
+            <View style={{ gap: 6 }}>
+              <TextInput
+                value={username}
+                onChangeText={setUsername}
+                placeholder="Pick a username (optional)"
+                placeholderTextColor={palette.textSecondary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={20}
+                onSubmitEditing={onMagicLink}
+                style={[styles.field, { color: palette.text, backgroundColor: palette.card, borderColor: palette.border }]}
+              />
+              <Small color={palette.textSecondary}>New here? Choose a username — otherwise we&apos;ll pick one for you.</Small>
+            </View>
 
             <PressableScale onPress={() => setMarketingOptIn((v) => !v)} to={0.98}>
               <View style={styles.consent}>

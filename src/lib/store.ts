@@ -47,6 +47,7 @@ interface MemberRow {
   name: string;
   age_band: AgeBand;
   calorie_target: number | null;
+  avatar_url: string | null;
   member_constraints: ConstraintRow[];
 }
 
@@ -126,6 +127,7 @@ export async function saveHousehold(h: Household): Promise<Household | null> {
         name: m.name,
         age_band: m.ageBand,
         calorie_target: m.calorieTarget,
+        avatar_url: m.avatarUrl ?? null,
       })
       .select('id')
       .single();
@@ -163,7 +165,7 @@ export async function loadHousehold(): Promise<Household | null> {
 
   const { data: mData } = await supabase
     .from('members')
-    .select('id, name, age_band, calorie_target, member_constraints(constraint_key, type, severity)')
+    .select('id, name, age_band, calorie_target, avatar_url, member_constraints(constraint_key, type, severity)')
     .eq('household_id', household.id);
   const memberRows = (mData ?? []) as MemberRow[];
 
@@ -172,6 +174,7 @@ export async function loadHousehold(): Promise<Household | null> {
     name: row.name,
     ageBand: row.age_band,
     calorieTarget: row.calorie_target,
+    avatarUrl: row.avatar_url,
     // Rebuild via the library so category/severity stay authoritative.
     constraints: row.member_constraints.map((c) =>
       makeConstraint(c.constraint_key as Member['constraints'][number]['key'], c.severity as 'hard' | 'soft'),

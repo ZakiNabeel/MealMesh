@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Art } from '@/components/art';
 import { CountryPicker } from '@/components/CountryPicker';
@@ -11,10 +11,11 @@ import { constraintsByCategory, makeConstraint } from '@/lib/constraints';
 import { REGIONS } from '@/lib/dietLibrary';
 import { setDraftHousehold } from '@/lib/draft';
 import { countryByCode, currencySymbol } from '@/lib/geo';
+import { pickAndUploadImage } from '@/lib/imageUpload';
 import { usePalette } from '@/theme/use-theme';
 import type { AgeBand, ConstraintCategory, ConstraintKey, CuisineWeight, Household, Member, Region } from '@/types';
 
-type DraftMember = { id: string; name: string; ageBand: AgeBand; keys: ConstraintKey[] };
+type DraftMember = { id: string; name: string; ageBand: AgeBand; keys: ConstraintKey[]; avatarUrl?: string | null };
 
 const STEPS = ['household', 'members', 'diets', 'review'] as const;
 type Step = (typeof STEPS)[number];
@@ -76,6 +77,8 @@ export default function Onboarding() {
   const [healthConsciousness, setHealthConsciousness] = useState(3);
   const [members, setMembers] = useState<DraftMember[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   // members-step form
   const [newName, setNewName] = useState('');
@@ -86,7 +89,7 @@ export default function Onboarding() {
   function addMember() {
     const name = newName.trim();
     if (!name) return;
-    const m: DraftMember = { id: nextId(), name, ageBand: newAge, keys: [] };
+    const m: DraftMember = { id: nextId(), name, ageBand: newAge, keys: [], avatarUrl: null };
     setMembers((prev) => [...prev, m]);
     setActiveId(m.id);
     setNewName('');
@@ -95,6 +98,18 @@ export default function Onboarding() {
 
   function removeMember(id: string) {
     setMembers((prev) => prev.filter((m) => m.id !== id));
+  }
+
+  async function pickMemberAvatar(id: string) {
+    setPhotoError(null);
+    setUploadingId(id);
+    const res = await pickAndUploadImage('avatars', { square: true });
+    setUploadingId(null);
+    if ('url' in res) {
+      setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, avatarUrl: res.url } : m)));
+    } else if ('error' in res) {
+      setPhotoError(res.error);
+    }
   }
 
   function toggleKey(memberId: string, key: ConstraintKey) {
@@ -126,6 +141,7 @@ export default function Onboarding() {
         name: m.name || 'Member',
         ageBand: m.ageBand,
         calorieTarget: null,
+        avatarUrl: m.avatarUrl ?? null,
         constraints: m.keys.map((k) => makeConstraint(k)),
       }));
       const household: Household = {
@@ -259,9 +275,16 @@ export default function Onboarding() {
 
               <View style={{ gap: Spacing.two }}>
                 {members.map((m) => (
-                  <MemberRow key={m.id} member={m} onRemove={() => removeMember(m.id)} />
+                  <MemberRow
+                    key={m.id}
+                    member={m}
+                    uploading={uploadingId === m.id}
+                    onPickPhoto={() => pickMemberAvatar(m.id)}
+                    onRemove={() => removeMember(m.id)}
+                  />
                 ))}
               </View>
+              {photoError && <Small color={palette.danger}>{photoError}</Small>}
             </View>
           )}
 
@@ -284,15 +307,19 @@ export default function Onboarding() {
                             : { backgroundColor: palette.card, borderColor: palette.border },
                         ]}
                       >
-                        <Text
-                          style={{
-                            fontFamily: Type.display,
-                            fontSize: 20,
-                            color: activeMember?.id === m.id ? palette.onAccent : palette.text,
-                          }}
-                        >
-                          {(m.name.trim()[0] ?? '?').toUpperCase()}
-                        </Text>
+                        {m.avatarUrl ? (
+                          <Image source={{ uri: m.avatarUrl }} style={styles.avatarPhoto} />
+                        ) : (
+                          <Text
+                            style={{
+                              fontFamily: Type.display,
+                              fontSize: 20,
+                              color: activeMember?.id === m.id ? palette.onAccent : palette.text,
+                            }}
+                          >
+                            {(m.name.trim()[0] ?? '?').toUpperCase()}
+                          </Text>
+                        )}
                       </View>
                       <Small numberOfLines={1}>{m.keys.length ? `${m.keys.length} set` : 'none'}</Small>
                     </View>
@@ -419,18 +446,36 @@ function Segmented(props: {
   );
 }
 
-function MemberRow({ member, onRemove }: { member: DraftMember; onRemove: () => void }) {
+function MemberRow({
+  member,
+  uploading,
+  onPickPhoto,
+  onRemove,
+}: {
+  member: DraftMember;
+  uploading: boolean;
+  onPickPhoto: () => void;
+  onRemove: () => void;
+}) {
   const palette = usePalette();
   return (
     <View style={[styles.memberRow, { borderColor: palette.border, backgroundColor: palette.card }]}>
-      <View style={[styles.avatarSm, { backgroundColor: palette.accentMuted }]}>
-        <Text style={{ fontFamily: Type.display, fontSize: 16, color: palette.accent }}>
-          {(member.name.trim()[0] ?? '?').toUpperCase()}
-        </Text>
-      </View>
+      <PressableScale onPress={onPickPhoto} to={0.9} disabled={uploading}>
+        <View style={[styles.avatarSm, { backgroundColor: palette.accentMuted }]}>
+          {uploading ? (
+            <ActivityIndicator size="small" color={palette.accent} />
+          ) : member.avatarUrl ? (
+            <Image source={{ uri: member.avatarUrl }} style={styles.avatarPhotoSm} />
+          ) : (
+            <Text style={{ fontFamily: Type.display, fontSize: 16, color: palette.accent }}>
+              {(member.name.trim()[0] ?? '?').toUpperCase()}
+            </Text>
+          )}
+        </View>
+      </PressableScale>
       <View style={{ flex: 1 }}>
         <Body style={{ fontFamily: Type.bodySemibold }}>{member.name}</Body>
-        <Small>{member.ageBand}</Small>
+        <Small>{member.ageBand} · {member.avatarUrl ? 'Tap photo to change' : 'Tap circle to add a photo'}</Small>
       </View>
       <PressableScale onPress={onRemove} to={0.9}>
         <Text style={{ fontFamily: Type.bodySemibold, fontSize: 13, color: palette.textSecondary }}>Remove</Text>
@@ -463,8 +508,10 @@ const styles = StyleSheet.create({
   segmented: { flexDirection: 'row', padding: 4, borderRadius: Radius.pill, gap: 4 },
   segment: { height: 40, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center' },
   avatars: { gap: Spacing.three, paddingVertical: Spacing.one, paddingRight: Spacing.three },
-  avatar: { width: 52, height: 52, borderRadius: 999, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  avatarSm: { width: 40, height: 40, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 52, height: 52, borderRadius: 999, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatarPhoto: { width: '100%', height: '100%' },
+  avatarSm: { width: 40, height: 40, borderRadius: 999, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatarPhotoSm: { width: '100%', height: '100%' },
   memberRow: {
     flexDirection: 'row',
     alignItems: 'center',

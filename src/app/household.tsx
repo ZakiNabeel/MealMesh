@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
@@ -13,11 +13,12 @@ import { constraintsByCategory, makeConstraint } from '@/lib/constraints';
 import { normalizeCuisineMix } from '@/lib/cuisineMix';
 import { getDraftHousehold, setDraftHousehold } from '@/lib/draft';
 import { countryByCode, currencySymbol } from '@/lib/geo';
+import { pickAndUploadImage } from '@/lib/imageUpload';
 import { loadHousehold, saveHousehold } from '@/lib/store';
 import { usePalette } from '@/theme/use-theme';
 import type { AgeBand, ConstraintCategory, ConstraintKey, CuisineWeight, Household, Member, Region } from '@/types';
 
-type DraftMember = { id: string; name: string; ageBand: AgeBand; keys: ConstraintKey[] };
+type DraftMember = { id: string; name: string; ageBand: AgeBand; keys: ConstraintKey[]; avatarUrl?: string | null };
 
 const AGE_BANDS: { value: AgeBand; label: string }[] = [
   { value: 'adult', label: 'Adult' },
@@ -68,6 +69,8 @@ export default function HouseholdEdit() {
   const [healthConsciousness, setHealthConsciousness] = useState(3);
   const [members, setMembers] = useState<DraftMember[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   const [newName, setNewName] = useState('');
   const [newAge, setNewAge] = useState<AgeBand>('adult');
@@ -86,7 +89,13 @@ export default function HouseholdEdit() {
         setBudget(existing.budgetWeekly ? String(existing.budgetWeekly) : '');
         setHealthConsciousness(existing.healthConsciousness ?? 3);
         setMembers(
-          existing.members.map((m) => ({ id: m.id, name: m.name, ageBand: m.ageBand, keys: m.constraints.map((c) => c.key) })),
+          existing.members.map((m) => ({
+            id: m.id,
+            name: m.name,
+            ageBand: m.ageBand,
+            keys: m.constraints.map((c) => c.key),
+            avatarUrl: m.avatarUrl ?? null,
+          })),
         );
       }
       setResolving(false);
@@ -99,7 +108,7 @@ export default function HouseholdEdit() {
   function addMember() {
     const trimmed = newName.trim();
     if (!trimmed) return;
-    const m: DraftMember = { id: nextId(), name: trimmed, ageBand: newAge, keys: [] };
+    const m: DraftMember = { id: nextId(), name: trimmed, ageBand: newAge, keys: [], avatarUrl: null };
     setMembers((prev) => [...prev, m]);
     setExpandedId(m.id);
     setNewName('');
@@ -108,6 +117,18 @@ export default function HouseholdEdit() {
 
   function removeMember(id: string) {
     setMembers((prev) => prev.filter((m) => m.id !== id));
+  }
+
+  async function pickMemberAvatar(id: string) {
+    setPhotoError(null);
+    setUploadingId(id);
+    const res = await pickAndUploadImage('avatars', { square: true });
+    setUploadingId(null);
+    if ('url' in res) {
+      setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, avatarUrl: res.url } : m)));
+    } else if ('error' in res) {
+      setPhotoError(res.error);
+    }
   }
 
   function toggleKey(memberId: string, key: ConstraintKey) {
@@ -122,6 +143,7 @@ export default function HouseholdEdit() {
       name: m.name || 'Member',
       ageBand: m.ageBand,
       calorieTarget: null,
+      avatarUrl: m.avatarUrl ?? null,
       constraints: m.keys.map((k) => makeConstraint(k)),
     }));
     const household: Household = {
@@ -233,12 +255,15 @@ export default function HouseholdEdit() {
                   key={m.id}
                   member={m}
                   expanded={expandedId === m.id}
+                  uploading={uploadingId === m.id}
+                  onPickPhoto={() => pickMemberAvatar(m.id)}
                   onToggleExpand={() => setExpandedId((id) => (id === m.id ? null : m.id))}
                   onRemove={() => removeMember(m.id)}
                   groups={groups}
                   onToggleKey={(key) => toggleKey(m.id, key)}
                 />
               ))}
+              {photoError && <Small color={palette.danger}>{photoError}</Small>}
               <View style={{ gap: Spacing.two }}>
                 <Field value={newName} onChangeText={setNewName} placeholder="Add a person…" onSubmitEditing={addMember} />
                 <View style={[styles.segmented, { backgroundColor: palette.backgroundElement }]}>
@@ -270,6 +295,8 @@ export default function HouseholdEdit() {
 function MemberCard({
   member,
   expanded,
+  uploading,
+  onPickPhoto,
   onToggleExpand,
   onRemove,
   groups,
@@ -277,6 +304,8 @@ function MemberCard({
 }: {
   member: DraftMember;
   expanded: boolean;
+  uploading: boolean;
+  onPickPhoto: () => void;
   onToggleExpand: () => void;
   onRemove: () => void;
   groups: { category: ConstraintCategory; items: { key: ConstraintKey; label: string }[] }[];
@@ -285,20 +314,30 @@ function MemberCard({
   const palette = usePalette();
   return (
     <View style={[styles.memberCard, { borderColor: palette.border, backgroundColor: palette.backgroundElement }]}>
-      <PressableScale onPress={onToggleExpand} to={0.98}>
-        <View style={styles.memberRow}>
+      <View style={styles.memberRow}>
+        <PressableScale onPress={onPickPhoto} to={0.9} disabled={uploading}>
           <View style={[styles.avatarSm, { backgroundColor: palette.accentMuted }]}>
-            <Text style={{ fontFamily: Type.display, fontSize: 16, color: palette.accent }}>{(member.name.trim()[0] ?? '?').toUpperCase()}</Text>
+            {uploading ? (
+              <ActivityIndicator size="small" color={palette.accent} />
+            ) : member.avatarUrl ? (
+              <Image source={{ uri: member.avatarUrl }} style={styles.avatarPhotoSm} />
+            ) : (
+              <Text style={{ fontFamily: Type.display, fontSize: 16, color: palette.accent }}>{(member.name.trim()[0] ?? '?').toUpperCase()}</Text>
+            )}
           </View>
-          <View style={{ flex: 1 }}>
-            <Body style={{ fontFamily: Type.bodySemibold }}>{member.name}</Body>
-            <Small color={palette.textSecondary}>
-              {member.ageBand} · {member.keys.length ? `${member.keys.length} diet${member.keys.length === 1 ? '' : 's'}` : 'no restrictions'}
-            </Small>
+        </PressableScale>
+        <PressableScale onPress={onToggleExpand} to={0.98} style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three }}>
+            <View style={{ flex: 1 }}>
+              <Body style={{ fontFamily: Type.bodySemibold }}>{member.name}</Body>
+              <Small color={palette.textSecondary}>
+                {member.ageBand} · {member.keys.length ? `${member.keys.length} diet${member.keys.length === 1 ? '' : 's'}` : 'no restrictions'}
+              </Small>
+            </View>
+            <Text style={{ fontFamily: Type.bodySemibold, fontSize: 13, color: palette.textSecondary }}>{expanded ? 'Done' : 'Edit diets'}</Text>
           </View>
-          <Text style={{ fontFamily: Type.bodySemibold, fontSize: 13, color: palette.textSecondary }}>{expanded ? 'Done' : 'Edit diets'}</Text>
-        </View>
-      </PressableScale>
+        </PressableScale>
+      </View>
 
       {expanded && (
         <View style={{ gap: Spacing.three, paddingTop: Spacing.three }}>
@@ -349,5 +388,6 @@ const styles = StyleSheet.create({
   segment: { height: 40, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center' },
   memberCard: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.three },
   memberRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  avatarSm: { width: 40, height: 40, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  avatarSm: { width: 40, height: 40, borderRadius: 999, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatarPhotoSm: { width: '100%', height: '100%' },
 });

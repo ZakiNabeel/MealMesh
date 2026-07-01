@@ -163,6 +163,9 @@ export interface Member {
   ageBand: AgeBand;
   calorieTarget: number | null;
   constraints: MemberConstraint[];
+  /** Optional photo, uploaded via the 'avatars' bucket. Falls back to the
+   *  first-letter initial badge when unset. */
+  avatarUrl?: string | null;
 }
 
 /** One cuisine in a household's mix, with its share of the week's meals (0-100). */

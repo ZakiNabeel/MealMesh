@@ -180,7 +180,7 @@ export function WebsiteLanding() {
     const y = e.nativeEvent.contentOffset.y;
     setScrolled(y > 8);
     let current: string | null = null;
-    for (const key of ['how', 'why', 'community', 'articles']) {
+    for (const key of ['how', 'community', 'articles']) {
       if (y >= (anchors.current[key] ?? Infinity) - 120) current = key;
     }
     setActiveKey(current);
@@ -228,7 +228,6 @@ export function WebsiteLanding() {
             ) : (
               <View style={styles.navRight}>
                 <NavLink label="How it works" onPress={() => goTo('how')} active={activeKey === 'how'} />
-                <NavLink label="Why MealMesh" onPress={() => goTo('why')} active={activeKey === 'why'} />
                 <NavLink label="Community" onPress={() => goTo('community')} active={activeKey === 'community'} />
                 <NavLink
                   label="Articles"
@@ -280,9 +279,6 @@ export function WebsiteLanding() {
               <Text style={[styles.trust, { color: palette.textSecondary }]}>
                 No card to start · Works on phone & laptop · Your diets stay private
               </Text>
-              <Text style={[styles.trust, { color: palette.textSecondary }]}>
-                ✓ Built on a deterministic safety algorithm — not just guesswork
-              </Text>
             </Reveal>
           </View>
 
@@ -320,36 +316,6 @@ export function WebsiteLanding() {
               ))}
             </ScrollReveal>
           </Center>
-        </View>
-
-        {/* WHY MEALMESH */}
-        <View onLayout={onAnchor('why')} style={[{ backgroundColor: palette.backgroundElement }, styles.divider, { borderTopColor: palette.border }]}>
-          <Center style={sectionPad}>
-            <ScrollReveal>
-              <SectionHead kicker="THE DIFFERENCE" title="Built for safety, not guesswork" />
-            </ScrollReveal>
-            <ScrollReveal delay={80} style={cards3}>
-              {VALUES.map((v) => (
-                <View key={v.title} style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
-                  <View style={[styles.valueIconWrap, { backgroundColor: palette.accentMuted }]}>
-                    <ValueIcon name={v.icon} color={palette.accent} />
-                  </View>
-                  <Text style={[styles.cardTitle, { color: palette.text }]}>{v.title}</Text>
-                  <Text style={[styles.cardBody, { color: palette.textSecondary }]}>{v.body}</Text>
-                </View>
-              ))}
-            </ScrollReveal>
-          </Center>
-        </View>
-
-        {/* ARTICLES */}
-        <View onLayout={onAnchor('articles')} style={{ paddingVertical: narrow ? 52 : 80 }}>
-          <Center style={{ paddingHorizontal: pad, marginBottom: Spacing.four }}>
-            <ScrollReveal>
-              <SectionHead kicker="FROM THE KITCHEN" title="Guides for multi-diet households" />
-            </ScrollReveal>
-          </Center>
-          <ArticleMarquee liveArticles={latestArticles} placeholders={ARTICLES} pad={pad} />
         </View>
 
         {/* COMMUNITY */}
@@ -395,40 +361,6 @@ export function WebsiteLanding() {
           </Center>
         </View>
 
-        {/* PRICING */}
-        <View>
-          <Center style={sectionPad}>
-            <ScrollReveal>
-              <SectionHead kicker="PRICING" title="Free to start. Fair pricing wherever you live." />
-            </ScrollReveal>
-            <ScrollReveal delay={80} style={cards3}>
-              <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
-                <Text style={[styles.eyebrow, { color: palette.accent }]}>FREE</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 6 }}>
-                  <Text style={{ fontFamily: Type.displayBold, fontSize: 34, color: palette.text }}>$0</Text>
-                </View>
-                <Text style={[styles.cardBody, { color: palette.textSecondary, marginTop: 6 }]}>
-                  1 member profile · 3 plans a week · basic grocery list
-                </Text>
-              </View>
-              <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.accent, borderWidth: 1.5 }]}>
-                <Text style={[styles.eyebrow, { color: palette.accent }]}>PRO · RECOMMENDED MONTHLY</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 6 }}>
-                  <Text style={{ fontFamily: Type.displayBold, fontSize: 34, color: palette.text }}>from $2.99</Text>
-                  <Text style={[styles.cardBody, { color: palette.textSecondary }]}>/month</Text>
-                </View>
-                <Text style={[styles.cardBody, { color: palette.textSecondary, marginTop: 6 }]}>
-                  Unlimited plans & profiles · all 40+ diets · regional cuisines · grocery export. Your exact price
-                  adapts to where you live — see it on the next screen, before you pay anything.
-                </Text>
-              </View>
-            </ScrollReveal>
-            <View style={styles.ctaBelow}>
-              <CTA label="See your price" onPress={() => router.push('/paywall')} />
-            </View>
-          </Center>
-        </View>
-
         {/* CTA BAND */}
         <Center style={{ paddingVertical: 24, paddingHorizontal: pad }}>
           <ScrollReveal style={[styles.band, { backgroundColor: palette.accent, paddingVertical: narrow ? 40 : 56, paddingHorizontal: pad }]}>
@@ -444,6 +376,16 @@ export function WebsiteLanding() {
             </Pressable>
           </ScrollReveal>
         </Center>
+
+        {/* ARTICLES */}
+        <View onLayout={onAnchor('articles')} style={{ paddingVertical: narrow ? 52 : 80 }}>
+          <Center style={{ paddingHorizontal: pad, marginBottom: Spacing.four }}>
+            <ScrollReveal>
+              <SectionHead kicker="FROM THE KITCHEN" title="Guides for multi-diet households" />
+            </ScrollReveal>
+          </Center>
+          <ArticleMarquee liveArticles={latestArticles} placeholders={ARTICLES} pad={pad} />
+        </View>
 
         {/* FOOTER */}
         <View style={[styles.footer, { borderTopColor: palette.border }]}>
@@ -481,11 +423,17 @@ export function WebsiteLanding() {
 
       <SheetModal visible={existingPlanPrompt} onClose={() => setExistingPlanPrompt(false)}>
         <View style={{ gap: Spacing.three }}>
-          <Heading>You already have a plan</Heading>
-          <Body color={palette.textSecondary}>
+          <Heading style={{ fontSize: 20, lineHeight: 25 }}>You already have a plan</Heading>
+          <Body color={palette.textSecondary} style={{ fontSize: 14.5, lineHeight: 21 }}>
             Pick up where you left off, or start fresh with a new household setup.
           </Body>
-          <Button title="Go to my home" onPress={() => router.push('/home')} />
+          <Button
+            title="Go to my home"
+            onPress={() => {
+              setExistingPlanPrompt(false);
+              router.push('/home');
+            }}
+          />
           <Button
             title="Make a new plan"
             variant="secondary"
@@ -632,12 +580,6 @@ const COMMUNITY: { icon: keyof typeof LINE_ICONS; title: string; body: string }[
   { icon: 'camera', title: 'Share what you cook', body: 'Post a photo of tonight’s dinner, swap recipes, and get ideas from other home cooks juggling the same diets.' },
   { icon: 'flame', title: 'Build streaks & climb', body: 'Mark meals cooked to earn points and badges, keep a daily streak, and see where you rank on the leaderboard.' },
   { icon: 'users', title: 'Follow other cooks', body: 'Find people cooking for a table like yours, follow them, and cook their recipes in one tap.' },
-];
-
-const VALUES: { icon: keyof typeof LINE_ICONS; title: string; body: string }[] = [
-  { icon: 'shield', title: 'Safety-first engine', body: 'Allergens and religious rules are hard-enforced in code — a deterministic check, never left to the model alone.' },
-  { icon: 'globe', title: 'Culturally aware', body: 'Halal, kosher, Jain, South-Asian, Mediterranean and more — real dishes with local names, not bland substitutes.' },
-  { icon: 'cart', title: 'One grocery list', body: 'Every meal for every member, merged into a single checkable shopping list calibrated to your budget.' },
 ];
 
 const ARTICLES = [

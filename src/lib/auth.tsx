@@ -14,6 +14,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { Platform } from 'react-native';
 
 import { applyPendingMarketingConsent } from '@/lib/marketing';
+import { applyPendingUsername } from '@/lib/pendingUsername';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -58,13 +59,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setLoading(false);
-      if (data.session?.user) void applyPendingMarketingConsent(data.session.user.id);
+      if (data.session?.user) {
+        void applyPendingMarketingConsent(data.session.user.id);
+        void applyPendingUsername();
+      }
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next);
-      // Flush any marketing-consent choice made on the auth screen before the
-      // sign-in redirect (there was no session to write it to at that point).
-      if (next?.user) void applyPendingMarketingConsent(next.user.id);
+      // Flush any marketing-consent / username choice made on the auth screen
+      // before the sign-in redirect (there was no session to write to yet).
+      if (next?.user) {
+        void applyPendingMarketingConsent(next.user.id);
+        void applyPendingUsername();
+      }
     });
     return () => sub.subscription.unsubscribe();
   }, []);
