@@ -1,14 +1,15 @@
 import { useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Art } from '@/components/art';
-import { MeshMark } from '@/components/MeshMark';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { Body, Button, Display, Eyebrow, PressableScale, Reveal, Screen, Small, useIsInstalledApp } from '@/components/ui';
 import { WebsiteLanding } from '@/components/WebsiteLanding';
 import { Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { usePalette } from '@/theme/use-theme';
+
+const LOGO = require('../../assets/logo.svg');
 
 export default function Welcome() {
   // Browser visitors (phone or laptop) see the marketing website — signed in or
@@ -33,7 +34,7 @@ function MobileWelcome() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <View style={styles.hero}>
           <Reveal style={{ alignItems: 'center' }}>
-            <MeshMark size={116} />
+            <Image source={LOGO} style={{ width: 116, height: 116, borderRadius: 116 * 0.28 }} />
           </Reveal>
 
           <Reveal delay={120}>

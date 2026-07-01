@@ -102,7 +102,8 @@ function ThemedChrome() {
           contentStyle: { backgroundColor: palette.background },
         }}
       />
-      <StatusBar style={palette.statusBar} />
+      {/* Always "dark" (dark icons) because the app is locked to light mode. */}
+      <StatusBar style="dark" />
     </>
   );
 }
