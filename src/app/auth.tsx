@@ -6,6 +6,7 @@ import { Art } from '@/components/art';
 import { Body, Button, Eyebrow, Heading, PressableScale, Reveal, Screen, Small } from '@/components/ui';
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
+import { setPendingMarketingConsent } from '@/lib/marketing';
 import { usePalette } from '@/theme/use-theme';
 
 const LOGO = require('../../assets/logo.svg');
@@ -27,6 +28,9 @@ export default function Auth() {
   const [busy, setBusy] = useState<'email' | 'google' | null>(null);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Explicit, opt-in marketing consent (default OFF). Persisted before the
+  // sign-in redirect and written to the profile once the session lands.
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
 
   useEffect(() => {
     if (session) router.replace('/plan');
@@ -39,6 +43,7 @@ export default function Auth() {
       return;
     }
     setBusy('email');
+    await setPendingMarketingConsent(marketingOptIn);
     const { error: e } = await signInWithEmail(email);
     setBusy(null);
     if (e) setError(e);
@@ -48,6 +53,7 @@ export default function Auth() {
   async function onGoogle() {
     setError(null);
     setBusy('google');
+    await setPendingMarketingConsent(marketingOptIn);
     const { error: e } = await signInWithGoogle();
     setBusy(null);
     if (e) setError(e);
@@ -97,6 +103,22 @@ export default function Auth() {
               style={[styles.field, { color: palette.text, backgroundColor: palette.card, borderColor: palette.border }]}
             />
 
+            <PressableScale onPress={() => setMarketingOptIn((v) => !v)} to={0.98}>
+              <View style={styles.consent}>
+                <View
+                  style={[
+                    styles.checkbox,
+                    { borderColor: marketingOptIn ? palette.accent : palette.border, backgroundColor: marketingOptIn ? palette.accent : 'transparent' },
+                  ]}
+                >
+                  {marketingOptIn && <Text style={{ color: palette.card, fontSize: 13, fontFamily: Type.bodyBold }}>✓</Text>}
+                </View>
+                <Small color={palette.textSecondary} style={{ flex: 1 }}>
+                  Email me meal-planning tips and occasional offers. Optional — you can unsubscribe anytime.
+                </Small>
+              </View>
+            </PressableScale>
+
             <Button
               title={busy === 'email' ? 'Sending…' : 'Send magic link'}
               onPress={onMagicLink}
@@ -144,6 +166,8 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.three,
   },
+  consent: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two, paddingVertical: Spacing.one },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   divider: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   line: { flex: 1, height: 1 },
   google: {

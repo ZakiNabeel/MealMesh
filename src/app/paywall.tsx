@@ -9,6 +9,7 @@ import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { getDraftHousehold } from '@/lib/draft';
 import { isFreemiusConfigured, openCheckout } from '@/lib/freemius';
+import { detectCountry } from '@/lib/geoDetect';
 import { TIER_PRICES, tierForCountry, type PriceTier } from '@/lib/pricing';
 import { loadHousehold } from '@/lib/store';
 import { usePalette } from '@/theme/use-theme';
@@ -40,9 +41,22 @@ export default function Paywall() {
 
   useEffect(() => {
     if (getDraftHousehold()?.country) return; // already resolved synchronously above
-    loadHousehold().then((h) => {
-      if (h?.country) setTier(tierForCountry(h.country));
-    });
+    let cancelled = false;
+    (async () => {
+      // Prefer the saved household country; otherwise detect from the device's
+      // network location so the user still sees their regional price.
+      const h = await loadHousehold();
+      if (cancelled) return;
+      if (h?.country) {
+        setTier(tierForCountry(h.country));
+        return;
+      }
+      const code = await detectCountry();
+      if (!cancelled && code) setTier(tierForCountry(code));
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const prices = TIER_PRICES[tier];

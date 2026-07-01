@@ -16,6 +16,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { moderateText } from '@/lib/moderation';
 import { supabase } from '@/lib/supabase';
 import type {
   AuthorSummary,
@@ -272,6 +273,8 @@ export async function createPost(input: {
 }): Promise<{ post?: Post; error?: string }> {
   const userId = await currentUserId();
   if (!userId) return { error: 'Sign in first.' };
+  const mod = moderateText(input.body, { min: input.type === 'text' ? 2 : 0 });
+  if (!mod.ok) return { error: mod.reason };
   const { data, error } = await supabase
     .from('posts')
     .insert({
@@ -342,6 +345,8 @@ export async function addComment(input: { postId: string; parentCommentId?: stri
   if (!userId) return { error: 'Sign in first.' };
   const body = input.body.trim();
   if (!body) return { error: 'Write something first.' };
+  const mod = moderateText(body);
+  if (!mod.ok) return { error: mod.reason };
 
   const { data, error } = await supabase
     .from('comments')
@@ -427,6 +432,10 @@ export async function createRecipe(input: {
   const steps = input.steps.map((s) => s.trim()).filter(Boolean);
   if (!title) return { error: 'Give the recipe a title.' };
   if (ingredients.length === 0 || steps.length === 0) return { error: 'Add at least one ingredient and one step.' };
+  for (const text of [title, input.description ?? '', ...ingredients, ...steps]) {
+    const mod = moderateText(text);
+    if (!mod.ok) return { error: mod.reason };
+  }
 
   const { data, error } = await supabase
     .from('recipes')
