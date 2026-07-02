@@ -152,6 +152,8 @@ function emptyMessage(scope: LeaderboardScope): string {
   }
 }
 
+const PAGE_SIZE = 10;
+
 function RankedList({
   entries,
   scope,
@@ -162,6 +164,16 @@ function RankedList({
   onOpen: (username: string) => void;
 }) {
   const palette = usePalette();
+  // Show 10 positions at a time; the up/down keys page through the next/prev 10.
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
+
+  // A scope switch (or a refresh that shortens the list) can leave us on a page
+  // that no longer exists — snap back into range.
+  useEffect(() => {
+    setPage((p) => Math.min(p, pageCount - 1));
+  }, [pageCount]);
+
   if (entries.length === 0) {
     return (
       <GlassCard style={{ gap: Spacing.two }}>
@@ -169,32 +181,78 @@ function RankedList({
       </GlassCard>
     );
   }
+
+  const start = page * PAGE_SIZE;
+  const visible = entries.slice(start, start + PAGE_SIZE);
+  const canPrev = page > 0;
+  const canNext = page < pageCount - 1;
+
   return (
     <GlassCard style={{ gap: 0, paddingVertical: Spacing.one, paddingHorizontal: Spacing.one }}>
-      {entries.map((e, i) => (
-        <PressableScale key={e.userId} onPress={() => onOpen(e.username)} to={0.98}>
-          <View style={[styles.row, i > 0 && { borderTopWidth: 1, borderTopColor: palette.border }]}>
-            <Text style={{ fontFamily: Type.displayBold, fontSize: 15, color: palette.textSecondary, width: 28 }}>
-              {i + 1}
-            </Text>
-            <Avatar name={e.displayName || e.username} uri={e.avatarUrl} size={36} />
-            <View style={{ flex: 1, gap: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Body numberOfLines={1} style={{ fontFamily: Type.bodySemibold, flexShrink: 1 }}>
-                  {e.displayName || e.username}
-                </Body>
-                {e.isPro && <ProBadge size={13} />}
+      {visible.map((e, i) => {
+        const rank = start + i;
+        return (
+          <PressableScale key={e.userId} onPress={() => onOpen(e.username)} to={0.98}>
+            <View style={[styles.row, i > 0 && { borderTopWidth: 1, borderTopColor: palette.border }]}>
+              <Text style={{ fontFamily: Type.displayBold, fontSize: 15, color: palette.textSecondary, width: 28 }}>
+                {rank + 1}
+              </Text>
+              <Avatar name={e.displayName || e.username} uri={e.avatarUrl} size={36} />
+              <View style={{ flex: 1, gap: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Body numberOfLines={1} style={{ fontFamily: Type.bodySemibold, flexShrink: 1 }}>
+                    {e.displayName || e.username}
+                  </Body>
+                  {e.isPro && <ProBadge size={13} />}
+                </View>
+                <Small color={palette.textSecondary}>@{e.username}</Small>
               </View>
-              <Small color={palette.textSecondary}>@{e.username}</Small>
+              <View style={{ alignItems: 'flex-end', gap: 1 }}>
+                <Text style={{ fontFamily: Type.displayBold, fontSize: 16, color: palette.accent }}>{e.totalPoints}</Text>
+                {e.currentStreak > 0 && <Small color={palette.textSecondary}>{e.currentStreak}-day streak</Small>}
+              </View>
             </View>
-            <View style={{ alignItems: 'flex-end', gap: 1 }}>
-              <Text style={{ fontFamily: Type.displayBold, fontSize: 16, color: palette.accent }}>{e.totalPoints}</Text>
-              {e.currentStreak > 0 && <Small color={palette.textSecondary}>{e.currentStreak}-day streak</Small>}
-            </View>
-          </View>
-        </PressableScale>
-      ))}
+          </PressableScale>
+        );
+      })}
+
+      {entries.length > PAGE_SIZE && (
+        <View style={[styles.pager, { borderTopColor: palette.border }]}>
+          <PagerKey
+            dir="up"
+            disabled={!canPrev}
+            onPress={() => canPrev && setPage((p) => p - 1)}
+          />
+          <Small color={palette.textSecondary}>
+            {start + 1}–{start + visible.length} of {entries.length}
+          </Small>
+          <PagerKey
+            dir="down"
+            disabled={!canNext}
+            onPress={() => canNext && setPage((p) => p + 1)}
+          />
+        </View>
+      )}
     </GlassCard>
+  );
+}
+
+/** A round up/down key for paging the leaderboard 10 positions at a time. */
+function PagerKey({ dir, disabled, onPress }: { dir: 'up' | 'down'; disabled: boolean; onPress: () => void }) {
+  const palette = usePalette();
+  return (
+    <PressableScale onPress={onPress} to={0.9} disabled={disabled}>
+      <View
+        style={[
+          styles.pagerKey,
+          { borderColor: palette.border, backgroundColor: palette.card, opacity: disabled ? 0.4 : 1 },
+        ]}
+      >
+        <Text style={{ fontFamily: Type.displayBold, fontSize: 16, color: palette.accent, marginTop: dir === 'up' ? -1 : 1 }}>
+          {dir === 'up' ? '↑' : '↓'}
+        </Text>
+      </View>
+    </PressableScale>
   );
 }
 
@@ -299,6 +357,16 @@ const styles = StyleSheet.create({
   back: { width: 40, height: 40, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   center: { alignItems: 'center', justifyContent: 'center', gap: Spacing.three, padding: Spacing.four },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.three, paddingHorizontal: Spacing.two },
+  pager: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    marginTop: Spacing.one,
+  },
+  pagerKey: { width: 38, height: 38, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   divider: { height: 1, width: '100%' },
   input: { flex: 1, borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: Spacing.three, height: 44, fontFamily: Type.body, fontSize: 14 },
 });

@@ -7,6 +7,7 @@
  * social links. The phone experience stays the focused app (see app/index).
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -146,7 +147,35 @@ export function WebsiteLanding() {
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [latestArticles, setLatestArticles] = useState<FeedArticle[] | null>(null);
   const [existingPlanPrompt, setExistingPlanPrompt] = useState(false);
+  const [signupPrompt, setSignupPrompt] = useState(false);
   const dark = palette.glassTint === 'dark';
+
+  // Soft sign-up nudge: give signed-out visitors a moment to look around, then
+  // invite them to create a free account so we can actually see who's using the
+  // site. Capped to once a day per browser so returning visitors aren't nagged.
+  const SIGNUP_PROMPT_KEY = 'mealmesh.signupPromptDismissedAt';
+  useEffect(() => {
+    if (session) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    void AsyncStorage.getItem(SIGNUP_PROMPT_KEY).then((raw) => {
+      if (cancelled) return;
+      const last = raw ? Number(raw) : 0;
+      if (Date.now() - last < 24 * 60 * 60 * 1000) return;
+      timer = setTimeout(() => {
+        if (!cancelled) setSignupPrompt(true);
+      }, 6000);
+    });
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [session]);
+
+  const dismissSignup = () => {
+    setSignupPrompt(false);
+    void AsyncStorage.setItem(SIGNUP_PROMPT_KEY, String(Date.now()));
+  };
 
   // "Build our plan" shouldn't silently restart someone who already has a
   // household — offer to go straight back to it instead of re-onboarding.
@@ -442,6 +471,24 @@ export function WebsiteLanding() {
               router.push('/onboarding');
             }}
           />
+        </View>
+      </SheetModal>
+
+      <SheetModal visible={signupPrompt} onClose={dismissSignup}>
+        <View style={{ gap: Spacing.three }}>
+          <Heading style={{ fontSize: 20, lineHeight: 25 }}>Create your free account</Heading>
+          <Body color={palette.textSecondary} style={{ fontSize: 14.5, lineHeight: 21 }}>
+            Sign up to save your household plan, sync it across your phone and laptop, and join the community
+            leaderboard. It’s free and takes one tap.
+          </Body>
+          <Button
+            title="Sign up free"
+            onPress={() => {
+              dismissSignup();
+              router.push('/auth');
+            }}
+          />
+          <Button title="Maybe later" variant="secondary" onPress={dismissSignup} />
         </View>
       </SheetModal>
     </View>
