@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Linking, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Platform, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
@@ -17,7 +17,7 @@ import { getDraftHousehold, householdSignature, setDraftHousehold } from '@/lib/
 import { computeStreak, summarizeWeek, type WeekSummary } from '@/lib/gamification';
 import { formatMoney } from '@/lib/geo';
 import { generatePlan } from '@/lib/generatePlan';
-import { buildGroceryPdf, groceryPdfFileName, shareOrDownloadGroceryPdf } from '@/lib/groceryPdf';
+import { buildGroceryPdf, groceryListText, groceryPdfFileName, shareOrDownloadGroceryPdf } from '@/lib/groceryPdf';
 import { pickAndUploadImage } from '@/lib/imageUpload';
 import { getAllLogs, getMyRank, logMeal, unlogMeal } from '@/lib/social';
 import { currentWeekStart, loadHousehold, loadLatestPlan, localDateKey, savePlan, saveHousehold } from '@/lib/store';
@@ -1210,13 +1210,25 @@ function GroceryExportAction({
       return;
     }
     setStatus('working');
-    const blob = buildGroceryPdf(items, region, `${household.name} — ${scopeLabel}`);
-    const fileName = groceryPdfFileName(household.name);
-    const { shared } = await shareOrDownloadGroceryPdf(blob, fileName);
-    setStatus(shared ? 'shared' : 'downloaded');
+    const title = `${household.name} — ${scopeLabel}`;
+    // PDF export/download is a web-only path (jsPDF blob + <a download> / Web
+    // Share file API). On phones, share the list as text via the OS share sheet.
+    if (Platform.OS === 'web') {
+      const blob = buildGroceryPdf(items, region, title);
+      const { shared } = await shareOrDownloadGroceryPdf(blob, groceryPdfFileName(household.name));
+      setStatus(shared ? 'shared' : 'downloaded');
+    } else {
+      try {
+        const result = await Share.share({ message: groceryListText(items, region, title) });
+        setStatus(result.action === Share.sharedAction ? 'shared' : 'idle');
+      } catch {
+        setStatus('idle');
+      }
+    }
     setTimeout(() => setStatus('idle'), 2500);
   };
 
+  const isWeb = Platform.OS === 'web';
   const label =
     status === 'working'
       ? 'Preparing…'
@@ -1225,8 +1237,12 @@ function GroceryExportAction({
         : status === 'downloaded'
           ? 'Downloaded ✓'
           : isPro
-            ? '⬇ Export / Share PDF'
-            : 'Export PDF — Pro';
+            ? isWeb
+              ? '⬇ Export / Share PDF'
+              : '⤴ Share grocery list'
+            : isWeb
+              ? 'Export PDF — Pro'
+              : 'Share grocery list — Pro';
 
   return (
     <PressableScale onPress={onPress} to={0.97} disabled={status === 'working'}>

@@ -68,6 +68,26 @@ export function buildGroceryPdf(grocery: GroceryItem[], region: Region, househol
   return doc.output('blob');
 }
 
+/**
+ * Plain-text grocery list for the native share sheet. jsPDF's blob output and
+ * the `<a download>`/Web-Share-file path are web-only (they touch `document`,
+ * `File`, `URL`), so on phones we share a clean text list instead — which
+ * WhatsApp, Notes, Messages, etc. all accept.
+ */
+export function groceryListText(items: GroceryItem[], region: Region, householdName: string): string {
+  const lines: string[] = [`Grocery list — ${householdName}`, ''];
+  for (const [category, group] of groupByCategory(items)) {
+    lines.push(category);
+    for (const item of group) {
+      const name = cap(localizeName(item.name, region));
+      lines.push(item.quantity ? `• ${name} — ${item.quantity}` : `• ${name}`);
+    }
+    lines.push('');
+  }
+  lines.push('Made with MealMesh · getmealmesh.com');
+  return lines.join('\n');
+}
+
 export function groceryPdfFileName(householdName: string): string {
   const slug = householdName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'household';
   return `${slug}-grocery-list.pdf`;

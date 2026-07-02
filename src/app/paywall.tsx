@@ -1,6 +1,6 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { Art } from '@/components/art';
@@ -8,7 +8,7 @@ import { Body, Button, Eyebrow, GlassCard, Heading, PressableScale, Reveal, Scre
 import { Radius, Spacing, Type } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { getDraftHousehold } from '@/lib/draft';
-import { isFreemiusConfigured, openCheckout } from '@/lib/freemius';
+import { isFreemiusConfigured, openCheckout, openWebUpgrade } from '@/lib/freemius';
 import { detectCountry } from '@/lib/geoDetect';
 import { TIER_PRICES, tierForCountry, type PriceTier } from '@/lib/pricing';
 import { loadHousehold } from '@/lib/store';
@@ -33,8 +33,11 @@ export default function Paywall() {
   const palette = usePalette();
   const { user } = useAuth();
   const isDesktop = useIsDesktop();
+  const params = useLocalSearchParams<{ billing?: string }>();
+  const isNative = Platform.OS !== 'web';
   // Monthly is the promoted default; yearly is still available but not pushed.
-  const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
+  // Honor a ?billing= hint (used when the native app hands off to this page).
+  const [billing, setBilling] = useState<'monthly' | 'yearly'>(params.billing === 'yearly' ? 'yearly' : 'monthly');
   const [tier, setTier] = useState<PriceTier>(() => tierForCountry(getDraftHousehold()?.country));
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -66,7 +69,21 @@ export default function Paywall() {
   async function goPro() {
     setNote(null);
     setBusy(true);
-    const { error } = await openCheckout(billing === 'yearly' ? 'annual' : 'monthly', tier, {
+    const cycle = billing === 'yearly' ? 'annual' : 'monthly';
+
+    // Native can't host the Freemius checkout — hand off to the website, where
+    // the user subscribes and Pro syncs back to the app automatically.
+    if (isNative) {
+      const { error } = await openWebUpgrade(cycle);
+      setBusy(false);
+      setNote(
+        error ??
+          'We opened MealMesh in your browser — finish signing up for Pro there and it unlocks here automatically.',
+      );
+      return;
+    }
+
+    const { error } = await openCheckout(cycle, tier, {
       email: user?.email ?? undefined,
       onSuccess: () => router.replace('/plan'),
     });
@@ -131,14 +148,22 @@ export default function Paywall() {
             <Body color={palette.textSecondary}>{per}</Body>
           </View>
 
-          <Button title={busy ? 'Opening checkout…' : 'Go Pro'} onPress={goPro} disabled={busy} />
+          <Button
+            title={busy ? 'Opening…' : isNative ? 'Go Pro on the web' : 'Go Pro'}
+            onPress={goPro}
+            disabled={busy}
+          />
           {note && (
             <Small color={palette.textSecondary} style={{ textAlign: 'center' }}>
               {note}
             </Small>
           )}
           <Small color={palette.textSecondary} style={{ textAlign: 'center' }}>
-            {isFreemiusConfigured ? 'Cancel anytime · local pricing available' : 'Cancel anytime · powered by Freemius'}
+            {isNative
+              ? 'Subscribe securely on getmealmesh.com — Pro then unlocks in the app automatically.'
+              : isFreemiusConfigured
+                ? 'Cancel anytime · local pricing available'
+                : 'Cancel anytime · powered by Freemius'}
           </Small>
         </Reveal>
       </ScrollView>

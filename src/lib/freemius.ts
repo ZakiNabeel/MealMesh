@@ -24,6 +24,37 @@ const PRODUCT_ID = process.env.EXPO_PUBLIC_FREEMIUS_PRODUCT_ID;
 const PUBLIC_KEY = process.env.EXPO_PUBLIC_FREEMIUS_PUBLIC_KEY;
 const STORE_ID = process.env.EXPO_PUBLIC_FREEMIUS_STORE_ID;
 
+// Public marketing/app site. Native builds can't run the Freemius checkout
+// overlay (and app-store policy wants digital billing off the native surface),
+// so the phone app sends users here to subscribe; the webhook then flips their
+// shared subscription_status and Pro unlocks in the app automatically.
+const SITE_URL = (process.env.EXPO_PUBLIC_SITE_URL ?? 'https://getmealmesh.com').replace(/\/$/, '');
+
+/** The website paywall URL, with the chosen billing cycle pre-selected. */
+export function webUpgradeUrl(cycle: 'monthly' | 'annual'): string {
+  return `${SITE_URL}/paywall?billing=${cycle === 'annual' ? 'yearly' : 'monthly'}`;
+}
+
+/**
+ * Native "Go Pro": open the website paywall in the system browser so the user
+ * completes checkout on the web (the only surface Freemius runs on). Pro then
+ * syncs back to the app via the Freemius webhook → subscription_status.
+ */
+export async function openWebUpgrade(cycle: 'monthly' | 'annual'): Promise<{ error?: string }> {
+  const url = webUpgradeUrl(cycle);
+  try {
+    if (Platform.OS === 'web') {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return {};
+    }
+    const WebBrowser = await import('expo-web-browser');
+    await WebBrowser.openBrowserAsync(url);
+    return {};
+  } catch {
+    return { error: 'Could not open the upgrade page. Please visit getmealmesh.com to subscribe.' };
+  }
+}
+
 const PLAN_IDS: Record<PriceTier, string | undefined> = {
   pk: process.env.EXPO_PUBLIC_FREEMIUS_PLAN_ID_PK,
   asia_africa: process.env.EXPO_PUBLIC_FREEMIUS_PLAN_ID_ASIA_AFRICA,
