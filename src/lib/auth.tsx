@@ -56,14 +56,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-      if (data.session?.user) {
-        void applyPendingMarketingConsent(data.session.user.id);
-        void applyPendingUsername();
-      }
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        setSession(data.session);
+        setLoading(false);
+        if (data.session?.user) {
+          void applyPendingMarketingConsent(data.session.user.id);
+          void applyPendingUsername();
+        }
+      })
+      // Without this, a rejected getSession() would leave `loading` stuck true
+      // forever — trapping any screen that gates on it (e.g. the plan screen's
+      // "resolving" state) on a blank loading spinner.
+      .catch(() => setLoading(false));
+    // Belt-and-suspenders: if getSession() neither resolves nor rejects (a
+    // stalled read on a phone), still release the loading gate as a guest.
+    const guard = setTimeout(() => setLoading(false), 5000);
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next);
       // Flush any marketing-consent / username choice made on the auth screen
@@ -73,7 +82,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         void applyPendingUsername();
       }
     });
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      clearTimeout(guard);
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const value = useMemo<AuthState>(

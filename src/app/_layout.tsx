@@ -30,18 +30,19 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   }
   render() {
     if (this.state.error) {
-      const dev = typeof __DEV__ !== 'undefined' && __DEV__;
+      // Show the actual error (not just __DEV__) — these are internal-test
+      // builds and a visible message is far more useful than a blank screen for
+      // diagnosing crashes on real devices. TODO: gate back to __DEV__ (or a
+      // remote log) before the public production release.
       return (
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 32 }} style={{ flex: 1, backgroundColor: '#F1FAF5' }}>
           <Text style={{ fontSize: 20, fontWeight: '700', color: '#0B2B26', marginBottom: 8 }}>Something went wrong</Text>
           <Text style={{ fontSize: 15, color: '#5B7771' }}>Please reload the app. If it keeps happening, let us know.</Text>
-          {dev && (
-            <Text selectable style={{ marginTop: 20, fontSize: 12, color: '#b00020' }}>
-              {String(this.state.error.message)}
-              {'\n\n'}
-              {String(this.state.error.stack)}
-            </Text>
-          )}
+          <Text selectable style={{ marginTop: 20, fontSize: 12, color: '#b00020' }}>
+            {String(this.state.error.message)}
+            {'\n\n'}
+            {String(this.state.error.stack)}
+          </Text>
         </ScrollView>
       );
     }

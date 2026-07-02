@@ -30,6 +30,9 @@ import type { Household } from '@/types';
 /** Only rows we trust the cuisine tag of (seed/original rows are 100). */
 const MIN_CONFIDENCE = 80;
 
+/** Fall back to the seed corpus if the DB query hasn't answered in this long. */
+const CORPUS_FETCH_TIMEOUT_MS = 6000;
+
 /** Session memo so regenerating a plan doesn't refetch the same pool. */
 const cache = new Map<string, TaggedRecipe[]>();
 
@@ -62,13 +65,27 @@ export async function fetchCorpusForHousehold(household: Household): Promise<Tag
   if (isSupabaseConfigured) {
     const regions = regionsInMix(normalizeCuisineMix(household.region, household.cuisines));
     try {
-      const { data, error } = await supabase
+      const query = supabase
         .from('recipe_corpus')
         .select(
           'title, cuisine, country_origin, course, ingredients, steps, servings, time_minutes, exclusion_tokens, diet_compatible, cost_tier, health_score, source, license, attribution_url',
         )
         .in('cuisine', regions)
         .gte('cuisine_confidence', MIN_CONFIDENCE);
+
+      // Never let a stalled request freeze plan generation: race the query
+      // against a timeout and fall back to the seed corpus if the network hangs.
+      // (supabase-js has no built-in per-request timeout, and a hung fetch on a
+      // phone network would otherwise leave the plan screen spinning forever.)
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<{ data: null; error: Error }>((resolve) => {
+        timer = setTimeout(() => resolve({ data: null, error: new Error('corpus fetch timed out') }), CORPUS_FETCH_TIMEOUT_MS);
+      });
+      const { data, error } = (await Promise.race([query, timeout])) as {
+        data: CorpusRow[] | null;
+        error: unknown;
+      };
+      clearTimeout(timer);
 
       if (!error && data && data.length > 0) {
         const fetched = (data as CorpusRow[])
